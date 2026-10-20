@@ -137,16 +137,21 @@ pnpm tauri build      # 打包
 
 工具链要求：Node 22+、pnpm 10+、**Rust >= 1.98.1**（`src-tauri/Cargo.toml` 的 workspace `rust-version`）。`.env` 可选（从 `.env.template` 复制，含 CurseForge API key）。
 
-### 5.2 CI
+### 5.2 CI（已清理）
 
-`.github/workflows` 共 13 个。Fork 后建议：
+Fork 后保留 5 个工作流，其余上游专用流程已删除并通过 YAML 语法校验：
 
-| 保留 | 调整 | 删除 |
-| --- | --- | --- |
-| `test.yml`（lint + 三平台构建） | `build.yml`、`release.yml`（改发布目标与 secrets） | `publish-winget.yml`、`publish-aur.yml`、`publish-snap.yml`、`sign-macos.yml`、`update_mod_data.yml`、`update_version_list.yml`、`post-release-publish.yml` |
+| 保留 | 说明 |
+| --- | --- |
+| `test.yml` | Lint（eslint + cargo fmt）+ 三平台构建 + 便携版打包 |
+| `build.yml` | 可复用的多平台构建；产物前缀已改为 `WTUMCL_` |
+| `release.yml` | 打 tag 触发；已移除 macOS 签名作业与 SJTU 服务器上传，改为直接创建 GitHub Draft Release |
+| `audit.yml` | cargo 依赖安全审计 |
+| `pr-size-label.yml` | PR 体积标签 |
 
-`test.yml` 会跑 `pnpm eslint`、`cargo fmt --check` 与三平台 `pnpm tauri build`；`scripts/release/upload_to_sjmc_server.sh` 是上游专用上传脚本，需删除或替换。提交钩子 `.husky/pre-commit` 走 `pnpm lint-staged`。
+已删除：`nightly.yml`、`post-release-publish.yml`、`publish-aur.yml`、`publish-snap.yml`、`publish-winget.yml`、`sign-macos.yml`、`update_mod_data.yml`、`update_version_list.yml`，以及 `scripts/release/upload_to_sjmc_server.sh`。
 
+编译期环境变量统一改名（`build.rs` 按前缀收集）：`SJMCL_CURSEFORGE_API_KEY` / `SJMCL_BUILD_TYPE` / `SJMCL_COMMIT_SHA` → `WTUMCL_*`。**GitHub 仓库设置里的 secrets 也要同步改名**，否则构建时拿不到 CurseForge key。
 ## 6. 动工顺序（进度）
 
 - [x] 定稿软件名 / identifier / 仓库地址
@@ -157,7 +162,9 @@ pnpm tauri build      # 打包
 - [x] 品牌串受控替换（7 个语言文件 + 组件，跳过 URL）
 - [x] README 三语归属声明与双署名
 - [x] `rustfmt.toml` 改为 `newline_style = "Unix"`，使 Windows 本地格式检查可用
-- [ ] 替换图标（需要设计资源）
+- [x] 替换图标：由 `WTUMC-AI-VEDIO/WTUMCLOGO.png` 适配生成全套（透明底、预乘重采样、ico/icns/appx/前端 Logo）
+- [x] CI 清理（见 5.2）
+- [x] 用户协议链接改为占位（`docs/TOS.md`），README 徽章指向本仓、移除上游服务徽章与 banner 重绘
 - [ ] 清理 CI（13 个 workflow，多数为上游专用）
 - [x] 同步配套 CLI：deeplink 前缀、MCP 服务名、提示文案
 - [x] Cargo 包名改为 `WTUMCL`（产物为 `WTUMCL.exe`，与 productName 一致；`[lib]` 仍为 `app_lib`，代码无引用）
@@ -232,9 +239,24 @@ git config user.email "你的邮箱"
 
 ## 8. 尚未完成
 
-- **后端编译验证**：等 MSVC 就绪后执行 `cargo check`（见 7.3）
-- 图标替换
-- CI 清理：`publish-winget` / `publish-aur` / `publish-snap` / `sign-macos` / `update_mod_data` / `update_version_list` 等均为上游专用
-- 语言文件中 `legalInfo.settings.userAgreement` 仍指向上游用户协议（`mc.sjtu.cn/sjmcl/.../tos`），需决定替换或移除
-- README 徽章与 banner 仍指向上游仓库
+- **后端编译验证**：等 MSVC 就绪后执行 `cargo check`（见 7.3）。安装脚本：`F:\Desktop\setup-vs-buildtools.ps1`（默认装到 `F:\MicrosoftVisualStudio\2022\BuildTools`）
+- **用户协议正文**：`docs/TOS.md` 目前是占位，正式条款待拟
+- **其余上游文档链接**：语言文件中 `helpUrl`、扩展开发文档、MCP 文档、用户群等仍指向 `mc.sjtu.cn`（描述的是继承自上游的功能文档），后续可迁移
+- **GitHub Secrets 改名**：仓库设置里的 `SJMCL_*` 需改成 `WTUMCL_*`
+- **banner/图标源文件**：设计源图仍在 `F:\Desktop\WTUMC-AI-VEDIO\`，如需重生成图标按第 9 节方法
 - 按要求：**尚未向 origin 推送任何内容**
+
+## 9. 图标生成方法（复现用）
+
+源图为 664×664 不透明 PNG（白六边形 + 黑底）。适配流程：
+
+1. 去掉 2px 边框伪影，从四角 flood fill 抠出六边形外部区域（阈值 160）
+2. 对形状外缘 2px 环带按亮度还原 alpha（白描边叠在纯黑上的抗锯齿像素），RGB 置白，避免暗边
+3. 按内容 bbox 裁切，居中放到 3% 内边距的正方形画布，缩放到 1024 母版
+4. 所有尺寸使用**预乘 alpha**重采样（`convert("RGBa")` → resize → `convert("RGBA")`），否则小尺寸边缘会出现白边/毛刺
+5. 输出 `32/64/128/128@2x/512` PNG、多尺寸 `icon.ico`、`icon.icns`、appx 全尺寸、`variants/square.png`，以及前端 `public/images/icons/Logo_128x128.png`、`Logo_32x32.png`
+
+## 10. 网络与 GitHub 凭据
+
+- Rust 与 crates 走 rsproxy 镜像（见 7.2）
+- GitHub SSH 22 端口被本网络拒绝，`origin` 使用 HTTPS + `gh auth setup-git` 复用 gh 凭据

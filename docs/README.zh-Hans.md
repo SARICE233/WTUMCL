@@ -2,13 +2,11 @@
 > 原项目版权归 SJMCL 团队（© 2024-2026）所有，以 GPLv3 及附加条款（见 [LICENSE.EXTRA](../LICENSE.EXTRA)）发布。
 > 源仓库：https://github.com/UNIkeEN/SJMCL
 
-<img src="figs/banner.png" alt="SJMCL" />
+<img src="figs/banner.png" alt="WTUMCL" width="640" />
 
-[![Test Build](https://img.shields.io/github/actions/workflow/status/UNIkeEN/SJMCL/test.yml?label=test%20build&logo=github&style=for-the-badge)](https://github.com/UNIkeEN/SJMCL/blob/main/.github/workflows/test.yml)
-![Downloads](https://img.shields.io/github/downloads/UNIkeEN/SJMCL/total?logo=github&style=for-the-badge)
-![Stars](https://img.shields.io/github/stars/UNIkeEN/SJMCL?style=for-the-badge)
-![Runs](https://img.shields.io/badge/dynamic/json?color=blue&style=for-the-badge&label=runs&query=$.total_count_str&url=https%3A%2F%2Fmc.sjtu.cn%2Fapi-sjmcl%2Fcount)
-[![Deepwiki](https://img.shields.io/badge/Ask-DeepWiki-20B2AA?logo=&style=for-the-badge)](https://deepwiki.com/UNIkeEN/SJMCL)
+[![Test Build](https://img.shields.io/github/actions/workflow/status/SARICE233/WTUMCL/test.yml?label=test%20build&logo=github&style=for-the-badge)](https://github.com/SARICE233/WTUMCL/blob/main/.github/workflows/test.yml)
+![Downloads](https://img.shields.io/github/downloads/SARICE233/WTUMCL/total?logo=github&style=for-the-badge)
+![Stars](https://img.shields.io/github/stars/SARICE233/WTUMCL?style=for-the-badge)
 
 [English](../README.md) · **简体中文** · [繁體中文](README.zh-Hant.md)
 
