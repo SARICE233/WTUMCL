@@ -178,7 +178,7 @@ Fork 后保留 5 个工作流，其余上游专用流程已删除并通过 YAML 
 | Rust 工具链 | **1.99.1**（原 1.96.1 低于要求的 1.98.1，已升级） |
 | 前端构建 | `pnpm build` 通过，44 个页面全部静态导出，`out/` 16.9 MB |
 | 前端 lint | `pnpm eslint 'src/**/*.{js,jsx,ts,tsx}' --no-fix --max-warnings=0` 通过（CI 同款命令） |
-| 后端类型检查 | **阻塞**：缺 MSVC 链接器，见 7.3 |
+| 后端类型检查 | ✅ `cargo check` exit 0，0 错误（见 7.3） |
 | 后端格式检查 | Windows 上 `cargo fmt --check` 必然失败，见 7.1 |
 
 ### 7.1 Windows 上 cargo fmt 的假阳性
@@ -206,28 +206,28 @@ registry = "sparse+https://rsproxy.cn/index/"
 
 **GitHub 访问**：本网络下 GitHub 的 **SSH 22 端口被拒绝**（`ssh: connect to host github.com port 22: Connection refused`），因此 `origin` 使用 HTTPS 地址，并已执行 `gh auth setup-git` 让 git 复用 `gh` 的凭据。若在其他网络想用 SSH，需另配 SSH key。
 
-### 7.3 阻塞项：缺少 MSVC 链接器
+### 7.3 后端工具链（已解决）
 
-依赖下载完成后，`cargo check` 在编译构建脚本阶段失败：
+**MSVC 已安装**：Visual Studio Build Tools 2022 装在 `F:\MicrosoftVisualStudio\2022\BuildTools`（避开 C 盘），缓存目录 `F:\MicrosoftVisualStudio\Cache`。
 
+| 组件 | 版本/路径 |
+| --- | --- |
+| MSVC 工具集 | 14.44.35207（`F:` 盘，约 3.4 GB） |
+| Windows SDK | 10.0.26100.0（`C:\Program Files (x86)\Windows Kits\10`，安装器固定路径） |
+| link.exe | `F:\MicrosoftVisualStudio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\link.exe` |
+
+注意：本机 shell 不自动带 VS 环境，直接跑 cargo 会报 `linker link.exe not found`。构建前需要注入 vcvars 环境：
+
+```powershell
+$vcvars = "F:\MicrosoftVisualStudio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+$cmdLine = '"' + $vcvars + '" >nul 2>&1 && set'
+foreach ($line in (cmd.exe /c $cmdLine)) {
+  if ($line -match '^([A-Za-z_]+)=(.*)$') { $n = $matches[1]; if ($n -in @('PATH','LIB','INCLUDE')) { Set-Item -Path ('Env:' + $n) -Value $matches[2] } }
+}
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
-error: linker `link.exe` not found
-note: the msvc targets depend on the msvc linker but `link.exe` was not found
-```
 
-排查结论（**不是代码问题**，是机器环境问题）：
-
-- `C:\Program Files\Microsoft Visual Studio\2022`、`...\Microsoft Visual Studio\18` 等目录均为**空目录**，是卸载残留；`vswhere.exe` 不存在
-- `C:\Program Files (x86)\Windows Kits\10` 下只有 `UnionMetadata`，缺 `Lib` 与 `Include`
-- 系统内没有 `gcc` / `clang` / `ld`，也没有 MinGW、MSYS2、LLVM
-- 当前会话**没有管理员权限**，无法安装 VS Build Tools
-
-因此在装好 MSVC 之前，`cargo check`、`cargo build`、`pnpm tauri build` 全都无法执行。两条路：
-
-**A（推荐，与 CI 一致）** 安装 Visual Studio Build Tools 2022，勾选「使用 C++ 的桌面开发」工作负载（含 MSVC v143 与 Windows SDK）。装完重跑 `cargo check` 即可。
-
-**B（无管理员权限时）** 装免安装版 MinGW-w64，执行 `rustup target add x86_64-pc-windows-gnu`，用 GNU 目标编译检查。能验证源码可编译，但与 CI 上 Windows runner 的 MSVC 结果不完全等价。
-
+验证结果：`cargo check` **exit 0，0 错误**（19 条 warning 均为上游既有死代码/未用变量，不在本次改动文件中）。
 ### 7.4 提交身份
 
 当前仓库本地身份是占位值，正式开发前请替换：
@@ -239,7 +239,7 @@ git config user.email "你的邮箱"
 
 ## 8. 尚未完成
 
-- **后端编译验证**：等 MSVC 就绪后执行 `cargo check`（见 7.3）。安装脚本：`F:\Desktop\setup-vs-buildtools.ps1`（默认装到 `F:\MicrosoftVisualStudio\2022\BuildTools`）
+- ~~后端编译验证~~ 已完成：`cargo check` 通过（见 7.3）
 - **用户协议正文**：`docs/TOS.md` 目前是占位，正式条款待拟
 - **其余上游文档链接**：语言文件中 `helpUrl`、扩展开发文档、MCP 文档、用户群等仍指向 `mc.sjtu.cn`（描述的是继承自上游的功能文档），后续可迁移
 - **GitHub Secrets 改名**：仓库设置里的 `SJMCL_*` 需改成 `WTUMCL_*`
