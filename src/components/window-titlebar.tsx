@@ -238,7 +238,7 @@ const WindowTitlebar = () => {
         {(isWindows || isLinux) && (
           <Image
             src="/images/icons/Logo_32x32.png"
-            alt="SJMCL"
+            alt="WTUMCL"
             boxSize="16px"
           />
         )}

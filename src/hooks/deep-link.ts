@@ -1,7 +1,7 @@
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { useEffect, useRef } from "react";
 
-const SJMCL_LINK_PREFIX = "sjmcl://";
+const SJMCL_LINK_PREFIX = "wtumcl://";
 const EMIT_DEEPLINK_EVENT = "deeplink:emit";
 
 type TriggerRule = RegExp | ((subpath: string) => boolean);

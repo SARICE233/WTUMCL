@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "SJMCL",
+  "productName": "WTUMCL",
   "version": "1.3.2",
-  "identifier": "SJMCL",
+  "identifier": "cn.wtu.wtumcl",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
@@ -31,7 +31,7 @@
       "app"
     ],
     "category": "Game",
-    "copyright": "Copyright © 2024-2026 SJMCL Team",
+    "copyright": "Copyright © 2024-2026 SJMCL Team. Modifications © 2026 WTU Block Academy. Based on SJMCL (github.com/UNIkeEN/SJMCL).",
     "icon": [
       "assets/icons/32x32.png",
       "assets/icons/64x64.png",
@@ -68,7 +68,7 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "sjmcl"
+          "wtumcl"
         ]
       }
     },

@@ -13,7 +13,7 @@ pub fn tool_routes() -> Vec<ToolRoute<McpContext>> {
       #[schemars(description = "Minecraft instance ID.")]
       instance_id: String,
     } => format!(
-      "sjmcl://launch?id={}",
+      "wtumcl://launch?id={}",
       urlencoding::encode(&params.instance_id)
     )
   )]

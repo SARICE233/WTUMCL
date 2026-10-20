@@ -18,7 +18,7 @@ pub async fn send_statistics(version: String, os: String, sha256: String) {
   _ = reqwest::Client::new()
     .post("https://mc.sjtu.cn/api-sjmcl/statistics")
     .json(&json!({
-      "version": version,
+      "version": format!("WTU-{version}"),
       "os": os,
       "exe_sha256": sha256,
     }))
