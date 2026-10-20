@@ -23,7 +23,7 @@ impl LauncherConfig {
     // Resolve build_type and displayed version string.
     let is_dev = cfg!(debug_assertions);
     let pkg_version = app.package_info().version.to_string();
-    let build_type = option_env!("SJMCL_BUILD_TYPE")
+    let build_type = option_env!("WTUMCL_BUILD_TYPE")
       .map(|s| s.parse().unwrap_or(BuildType::Dev))
       .unwrap_or(match (is_dev, pkg_version.as_str()) {
         (true, _) => BuildType::Dev,
@@ -125,7 +125,7 @@ impl LauncherConfig {
       allow_full_login_feature: false,
       // build metadata: compile-time constants may be injected by build.rs
       build_type,
-      build_commit_sha: option_env!("SJMCL_COMMIT_SHA").unwrap_or("").to_string(),
+      build_commit_sha: option_env!("WTUMCL_COMMIT_SHA").unwrap_or("").to_string(),
     };
 
     log::info!(

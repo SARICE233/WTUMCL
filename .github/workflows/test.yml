@@ -131,10 +131,10 @@ jobs:
       - name: Test Build
         run: pnpm tauri build --features devtools --no-bundle -- --profile test-build
         env:
-          SJMCL_CURSEFORGE_API_KEY: ${{ secrets.SJMCL_CURSEFORGE_API_KEY }}
-          # Exposed to Rust as compile-time constants by build.rs (all SJMCL_* env vars).
-          SJMCL_BUILD_TYPE: test-build
-          SJMCL_COMMIT_SHA: ${{ github.sha }}
+          WTUMCL_CURSEFORGE_API_KEY: ${{ secrets.WTUMCL_CURSEFORGE_API_KEY }}
+          # Exposed to Rust as compile-time constants by build.rs (all WTUMCL_* env vars).
+          WTUMCL_BUILD_TYPE: test-build
+          WTUMCL_COMMIT_SHA: ${{ github.sha }}
 
       - name: Build portable artifact
         id: portable
@@ -144,10 +144,10 @@ jobs:
           mkdir -p artifacts
           SHORT_SHA="${GITHUB_SHA:0:7}"
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then
-            OUTPUT_NAME="SJMCL_${SHORT_SHA}_windows_x86_64_portable.exe"
+            OUTPUT_NAME="WTUMCL_${SHORT_SHA}_windows_x86_64_portable.exe"
             python scripts/release/bundle_portable_assets.py -p "src-tauri/target/test-build/" -o "$OUTPUT_NAME" "WTUMCL.exe"
           else
-            OUTPUT_NAME="SJMCL_${SHORT_SHA}_linux_x86_64_portable"
+            OUTPUT_NAME="WTUMCL_${SHORT_SHA}_linux_x86_64_portable"
             python scripts/release/bundle_portable_assets.py -p "src-tauri/target/test-build/" -o "$OUTPUT_NAME" "WTUMCL"
           fi
           cp "src-tauri/target/test-build/$OUTPUT_NAME" artifacts/

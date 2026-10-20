@@ -15,8 +15,8 @@ use crate::resource::models::{
 
 lazy_static! {
   pub static ref CURSEFORGE_API_KEY: String = {
-    env::var("SJMCL_CURSEFORGE_API_KEY")
-      .unwrap_or_else(|_| env!("SJMCL_CURSEFORGE_API_KEY").to_string())
+    env::var("WTUMCL_CURSEFORGE_API_KEY")
+      .unwrap_or_else(|_| env!("WTUMCL_CURSEFORGE_API_KEY").to_string())
   };
 }
 
