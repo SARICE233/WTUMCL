@@ -1,6 +1,6 @@
-# WTU 方块学园 · 二次开发准备说明
+# WTUMC（武汉纺织大学 MC 社区）· 二次开发准备说明
 
-本项目是基于 [SJMCL](https://github.com/UNIkeEN/SJMCL) 的二次开发分支，由 **WTU 方块学园** 组织维护并发行。
+本项目是基于 [SJMCL](https://github.com/UNIkeEN/SJMCL) 的二次开发分支，由 **WTUMC** 组织维护并发行。
 
 > 本文件记录二次开发前必须完成的前提条件与改动面清单。正式改名动工前请先读完第 1、2 节。
 
@@ -58,7 +58,7 @@ GitHub 的 zip 下载会破坏两类 git 对象，这里已通过直接对齐上
 | identifier | `cn.wtu.wtumcl` | 同上；决定数据目录 `%APPDATA%\cn.wtu.wtumcl` |
 | deep-link scheme | `wtumcl` | 配置 1 处 + 代码 6 处 |
 | 界面短名 | `WTUMCL`（Logo，末位 L 蓝色高亮） | `src/components/logo-title.tsx` |
-| 界面全名 | `WTU Launcher` | 同上（可随时改） |
+| 界面全名 | `WTUMC Launcher` | 同上（可随时改） |
 | 认证服务器自报名 | `WTUMCL` | `yggdrasil_server.rs` |
 | 版权 | 双署名：上游 + 本分支 | `tauri.conf.json`、7 个语言文件、README 三语 |
 | 仓库 | https://github.com/SARICE233/WTUMCL（私有，**尚未推送**） | `origin` |
@@ -224,7 +224,7 @@ pnpm tauri build
 ```
 验证结果：`cargo check` **exit 0，0 错误**（19 条 warning 均为上游既有死代码/未用变量，不在本次改动文件中）。
 
-**完整打包验证**：`pnpm tauri build` exit 0，release 编译 6m29s，产物 `src-tauri/target/release/WTUMCL.exe`（37.8 MB）与安装包 `bundle/nsis/WTUMCL_1.3.2_x64-setup.exe`（21.9 MB）。exe 元数据：ProductName `WTUMCL`、CompanyName `WTU Block Academy`。
+**完整打包验证**：`pnpm tauri build` exit 0，release 编译 6m29s，产物 `src-tauri/target/release/WTUMCL.exe`（37.8 MB）与安装包 `bundle/nsis/WTUMCL_1.3.2_x64-setup.exe`（21.9 MB）。exe 元数据：ProductName `WTUMCL`、CompanyName `WTUMC`。
 ### 7.4 提交身份
 
 当前仓库本地身份是占位值，正式开发前请替换：

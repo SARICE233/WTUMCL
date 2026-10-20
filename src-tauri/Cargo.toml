@@ -1,8 +1,8 @@
 [package]
 name = "WTUMCL"
 version.workspace = true
-description = "A third-party Minecraft launcher maintained by WTU Block Academy"
-authors = ["WTU Block Academy"]
+description = "A third-party Minecraft launcher maintained by WTUMC"
+authors = ["WTUMC"]
 license = "GNU General Public License v3.0 (with additional terms)"
 repository = "https://github.com/SARICE233/WTUMCL"
 edition.workspace = true

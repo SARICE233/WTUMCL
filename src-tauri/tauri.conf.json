@@ -31,9 +31,9 @@
       "app"
     ],
     "category": "Game",
-    "publisher": "WTU Block Academy",
-    "shortDescription": "A third-party Minecraft launcher maintained by WTU Block Academy",
-    "copyright": "Copyright © 2024-2026 SJMCL Team. Modifications © 2026 WTU Block Academy. Based on SJMCL (github.com/UNIkeEN/SJMCL).",
+    "publisher": "WTUMC",
+    "shortDescription": "A third-party Minecraft launcher maintained by WTUMC",
+    "copyright": "Copyright © 2024-2026 SJMCL Team. Modifications © 2026 WTUMC (Wuhan Textile University Minecraft Community). Based on SJMCL (github.com/UNIkeEN/SJMCL).",
     "icon": [
       "assets/icons/32x32.png",
       "assets/icons/64x64.png",
