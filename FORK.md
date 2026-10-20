@@ -147,15 +147,79 @@ pnpm tauri build      # 打包
 8. 替换图标
 9. 清理 CI 与上游专用脚本
 
-## 7. 本机环境基线
+## 7. 本机环境基线（已验证）
 
-| 项 | 状态 |
+| 项 | 结论 |
 | --- | --- |
-| git 基线 | 已建立，历史对齐 upstream/main |
-| 子模块 | 已改 https，初始化中 |
-| 前端依赖 | 已安装（pnpm install 成功，lockfile 未变） |
-| Rust 工具链 | 升级中，要求 >= 1.98.1 |
-| 前端构建 | 验证中 |
-| 后端检查 | 验证中 |
+| git 基线 | 已建立，`main` 对齐 `upstream/main@ba24b6dc`，工作区干净 |
+| 子模块 | 已改 https 并初始化：`51efce8`（create-extension-CLI）、`83d1176`（vscode-extension，v0.2.0） |
+| 前端依赖 | `pnpm install` 成功（39s），`pnpm-lock.yaml` 无变化 |
+| Rust 工具链 | **1.99.1**（原 1.96.1 低于要求的 1.98.1，已升级） |
+| 前端构建 | `pnpm build` 通过，44 个页面全部静态导出，`out/` 16.9 MB |
+| 前端 lint | `pnpm eslint 'src/**/*.{js,jsx,ts,tsx}' --no-fix --max-warnings=0` 通过（CI 同款命令） |
+| 后端类型检查 | **阻塞**：缺 MSVC 链接器，见 7.3 |
+| 后端格式检查 | Windows 上 `cargo fmt --check` 必然失败，见 7.1 |
 
-详细验证结论见仓库根目录的提交记录与本次准备工作的报告。
+### 7.1 Windows 上 cargo fmt 的假阳性
+
+`src-tauri/rustfmt.toml` 设置了 `newline_style = "Native"`：Linux 上 Native 即 LF，与仓库文件一致，CI 通过；Windows 上 Native 即 CRLF，而仓库里存的是 LF，于是 `cargo fmt --check` 会对**每一个** Rust 文件报 `Incorrect newline style`。干净的上游检出同样如此，不是本项目引入的问题。
+
+可选处理（三选一，建议 a）：
+
+a. 本地只跑 `cargo fmt`（不带 `--check`）后提交，格式校验交给 Linux CI；
+b. 把 `newline_style` 改成 `"Unix"`（对 CI 无影响，本地与仓库一致）；
+c. 新增 `.gitattributes` 写入 `* text=auto eol=lf`，统一各平台检出为 LF。
+
+### 7.2 网络与镜像（已处理）
+
+本网络下官方源会停滞，已做两处替换：
+
+- **rustup**：`static.rust-lang.org` 下到 71.5 MB 后无进展；改用 rsproxy 后成功升级到 1.99.1
+- **cargo**：原有 `~/.cargo/config.toml` 使用 tuna 镜像，但其索引中 `dl` 仍指向 `static.crates.io`（退化成直连，下载 30 秒 0 字节后报错）。已改为 rsproxy 稀疏索引，原配置备份在 `~/.cargo/config.toml.bak-tuna`
+
+```toml
+[source.crates-io]
+replace-with = "rsproxy-sparse"
+
+[source.rsproxy-sparse]
+registry = "sparse+https://rsproxy.cn/index/"
+```
+
+更换后依赖可在数秒内完成下载。修好镜像会影响该机器上所有 Rust 项目，若其他项目需要 tuna 可换回备份。
+
+### 7.3 阻塞项：缺少 MSVC 链接器
+
+依赖下载完成后，`cargo check` 在编译构建脚本阶段失败：
+
+```
+error: linker `link.exe` not found
+note: the msvc targets depend on the msvc linker but `link.exe` was not found
+```
+
+排查结论（**不是代码问题**，是机器环境问题）：
+
+- `C:\Program Files\Microsoft Visual Studio\2022`、`...\Microsoft Visual Studio\18` 等目录均为**空目录**，是卸载残留；`vswhere.exe` 不存在
+- `C:\Program Files (x86)\Windows Kits\10` 下只有 `UnionMetadata`，缺 `Lib` 与 `Include`
+- 系统内没有 `gcc` / `clang` / `ld`，也没有 MinGW、MSYS2、LLVM
+- 当前会话**没有管理员权限**，无法安装 VS Build Tools
+
+因此在装好 MSVC 之前，`cargo check`、`cargo build`、`pnpm tauri build` 全都无法执行。两条路：
+
+**A（推荐，与 CI 一致）** 安装 Visual Studio Build Tools 2022，勾选「使用 C++ 的桌面开发」工作负载（含 MSVC v143 与 Windows SDK）。装完重跑 `cargo check` 即可。
+
+**B（无管理员权限时）** 装免安装版 MinGW-w64，执行 `rustup target add x86_64-pc-windows-gnu`，用 GNU 目标编译检查。能验证源码可编译，但与 CI 上 Windows runner 的 MSVC 结果不完全等价。
+
+### 7.4 提交身份
+
+当前仓库本地身份是占位值，正式开发前请替换：
+
+```bash
+git config user.name  "你的名字"
+git config user.email "你的邮箱"
+```
+
+## 8. 尚未完成（动工前需你决定）
+
+- 软件名 / identifier / 仓库地址未定稿（见第 2 节）
+- 后端编译检查待 MSVC 环境就绪后进行（见 7.3）
+- 未做任何品牌替换与功能改动，本次只准备环境与文档
