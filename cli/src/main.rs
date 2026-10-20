@@ -17,11 +17,11 @@ const DEFAULT_PORT: u16 = 18970;
 const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 5000;
 const RETRY_INTERVAL_MS: u64 = 250;
 
-const EXPECTED_SERVER_NAME: &str = "sjmcl-mcp";
+const EXPECTED_SERVER_NAME: &str = "wtumcl-mcp";
 const MCP_SERVER_HOST: &str = "127.0.0.1";
 const MCP_SERVER_PATH: &str = "/mcp";
-const RUN_SJMCL_DEEPLINK: &str = "sjmcl://run-silently";
-const ENABLE_MCP_HINT: &str = "Please enable Launcher MCP Server in SJMCL - Intelligence to use the CLI.\nIf your MCP server uses a port other than the default 18970, run the CLI with `-p <port>`.";
+const RUN_SJMCL_DEEPLINK: &str = "wtumcl://run-silently";
+const ENABLE_MCP_HINT: &str = "Please enable Launcher MCP Server in WTUMCL - Intelligence to use the CLI.\nIf your MCP server uses a port other than the default 18970, run the CLI with `-p <port>`.";
 
 #[derive(Clone)]
 struct CliOptions {
@@ -203,7 +203,7 @@ async fn try_connect(port: u16) -> Result<LauncherClient, String> {
   if actual_name != EXPECTED_SERVER_NAME {
     let _ = client.cancel().await;
     return Err(format!(
-      "endpoint {endpoint} is not the SJMCL MCP server (got `{actual_name}`)"
+      "endpoint {endpoint} is not the WTUMCL MCP server (got `{actual_name}`)"
     ));
   }
 
@@ -211,7 +211,7 @@ async fn try_connect(port: u16) -> Result<LauncherClient, String> {
 }
 
 fn print_help(tools: Option<&[Tool]>, hint: Option<&str>) {
-  println!("SJMCL CLI {}", env!("CARGO_PKG_VERSION"));
+  println!("WTUMCL CLI {}", env!("CARGO_PKG_VERSION"));
   println!();
   println!("Usage:");
   println!("  sjmcl-cli -h | --help");

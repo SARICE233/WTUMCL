@@ -85,6 +85,7 @@ GitHub 的 zip 下载会破坏两类 git 对象，这里已通过直接对齐上
 | `src-tauri/tauri.conf.json:71` + `src/services/deep-link.ts:4` + `src-tauri/src/lib.rs:46,68,384` + `src-tauri/src/launch/commands.rs:1019` | deep-link scheme 硬编码 `sjmcl://` | 三处一致替换，漏一处会导致导入整合包/启动链接失效 |
 | `src-tauri/src/account/helpers/offline/yggdrasil_server.rs:147-148` | 对外自报 `SJMCL` | 改为自有名称 |
 | `install.sh`、`PKGBUILD` | 安装脚本指向上游 | 改或删 |
+| `cli/src/main.rs` | 配套 CLI 的 deeplink 前缀与 MCP 服务名必须与应用一致 | 已同步为 `wtumcl://` 与 `wtumcl-mcp` |
 
 ### 3.2 打包与法律标识
 
@@ -158,6 +159,7 @@ pnpm tauri build      # 打包
 - [x] `rustfmt.toml` 改为 `newline_style = "Unix"`，使 Windows 本地格式检查可用
 - [ ] 替换图标（需要设计资源）
 - [ ] 清理 CI（13 个 workflow，多数为上游专用）
+- [x] 同步配套 CLI：deeplink 前缀、MCP 服务名、提示文案
 - [x] Cargo 包名改为 `WTUMCL`（产物为 `WTUMCL.exe`，与 productName 一致；`[lib]` 仍为 `app_lib`，代码无引用）
 ## 7. 本机环境基线（已验证）
 

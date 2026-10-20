@@ -32,7 +32,7 @@ impl ServerHandler for McpContext {
   fn get_info(&self) -> ServerInfo {
     ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
       .with_server_info(
-        Implementation::new("sjmcl-mcp", env!("CARGO_PKG_VERSION"))
+        Implementation::new("wtumcl-mcp", env!("CARGO_PKG_VERSION"))
           .with_title("SJMCL MCP")
           .with_description("MCP tools exposed by SJMCL, a modern Minecraft launcher"),
       )
