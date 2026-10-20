@@ -12,22 +12,6 @@ const HelpSettingsPage = () => {
     {
       items: [
         {
-          title: t("HelpSettingsPage.top.settings.LauncherDocs.title"),
-          children: (
-            <CommonIconButton
-              label={t("HelpSettingsPage.top.settings.LauncherDocs.url")}
-              icon="external"
-              withTooltip
-              tooltipPlacement="bottom-end"
-              size="xs"
-              h={18}
-              onClick={() =>
-                openUrl(t("HelpSettingsPage.top.settings.LauncherDocs.url"))
-              }
-            />
-          ),
-        },
-        {
           title: t("HelpSettingsPage.top.settings.UserGroup.title"),
           description: t("HelpSettingsPage.top.settings.UserGroup.description"),
           children: (

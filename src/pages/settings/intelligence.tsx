@@ -7,11 +7,9 @@ import {
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LuSparkles } from "react-icons/lu";
-import { CommonIconButton } from "@/components/common/common-icon-button";
 import {
   OptionItemGroup,
   OptionItemGroupProps,
@@ -99,32 +97,6 @@ const IntelligenceSettingsPage = () => {
         },
         ...(config.intelligence.mcpServer.launcher.enabled
           ? [
-              {
-                title: t(
-                  "IntelligenceSettingsPage.mcpServer.settings.docs.title"
-                ),
-                description: t(
-                  "IntelligenceSettingsPage.mcpServer.settings.docs.description"
-                ),
-                children: (
-                  <CommonIconButton
-                    label={t(
-                      "IntelligenceSettingsPage.mcpServer.settings.docs.url"
-                    )}
-                    icon="external"
-                    withTooltip
-                    tooltipPlacement="bottom-end"
-                    size="xs"
-                    onClick={() => {
-                      openUrl(
-                        t(
-                          "IntelligenceSettingsPage.mcpServer.settings.docs.url"
-                        )
-                      );
-                    }}
-                  />
-                ),
-              },
               {
                 title: t(
                   "IntelligenceSettingsPage.mcpServer.settings.port.title"

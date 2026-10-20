@@ -249,25 +249,6 @@ const ExtensionSettingsPage = () => {
 
   const extensionDocItems: OptionItemGroupProps["items"] = [
     {
-      title: t("ExtensionSettingsPage.top.settings.extensionDocs.title"),
-      description: t(
-        "ExtensionSettingsPage.top.settings.extensionDocs.description"
-      ),
-      children: (
-        <CommonIconButton
-          label={t("ExtensionSettingsPage.top.settings.extensionDocs.url")}
-          icon="external"
-          withTooltip
-          tooltipPlacement="bottom-end"
-          size="xs"
-          h={18}
-          onClick={() =>
-            openUrl(t("ExtensionSettingsPage.top.settings.extensionDocs.url"))
-          }
-        />
-      ),
-    },
-    {
       title: t("ExtensionSettingsPage.top.settings.awesomeExtensions.title"),
       description: t(
         "ExtensionSettingsPage.top.settings.awesomeExtensions.description"

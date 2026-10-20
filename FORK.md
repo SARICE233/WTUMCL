@@ -234,6 +234,27 @@ git config user.name  "你的名字"
 git config user.email "你的邮箱"
 ```
 
+## 7.5 WTUMC 社区服务对接
+
+站点：`https://wtumc.top:64053`（武汉纺织大学 MC 社区，源码在 `F:\Desktop\GEMINI-WEB\WTUMCweb-1.0-alpha`）。
+
+| 能力 | 端点 | 接入方式 |
+| --- | --- | --- |
+| 社区新闻 | `https://wtumc.top:64053/api/news?limit=12&offset=N` | 新增 Rust 适配器 `src-tauri/src/discover/helpers/wtumc_news.rs`，把站点的 `{code,msg,data}` 信封映射为启动器的新闻契约；默认数据源已改为该端点 |
+| 认证服务器 | `https://wtumc.top:64053/api/yggdrasil` | 已加入 `PRESET_AUTH_SERVERS`（排在第一位），账户页可直接选用 |
+| 社区主页 / 用户群 | `https://wtumc.top:64053` | 帮助页、关于页、版本更新提示等链接 |
+
+新闻条目映射规则：标题优先 `title_zh`，摘要取 `content_zh` 前 140 字，关键词用 `category`，`create_at` 补成 `${date}T00:00:00Z`，链接指向 `https://wtumc.top:64053/news/{id}`。
+
+### 给 web 项目的三条反馈
+
+1. **`skinDomains` 带了协议头**：`/api/yggdrasil` 返回 `"skinDomains": ["https://wtumc.top:64053"]`，authlib-injector 规范要求是**裸域名**（如 `wtumc.top`）。部分启动器会因此无法加载皮肤，建议改为裸域名。
+2. **缺少 ALI 端点**：`/.well-known/authlib-injector` 返回 404，用户若只填站点根地址，authlib-injector 无法识别为认证服务器，必须手填 `/api/yggdrasil`。建议补一个 ALI 端点提升易用性。
+3. **新闻 API 信封与启动器契约不同**：站点是 `{code,msg,data:{data:[...],total}}`，启动器期望 `{posts,next,cursors}`。已在启动器侧适配，若以后有其他 SJMCL 系启动器接入，可考虑服务端直接提供兼容端点。
+
+### 已阉割的入口
+
+本站暂无文档，因此移除了三个文档跳转入口（不再指向上游 SJTU 文档）：帮助页「启动器文档」、扩展页「扩展开发文档」、智能页「MCP 文档」。语言文件中的对应 key 暂留（未使用，不影响功能）。
 ## 8. 尚未完成
 
 - ~~后端编译验证~~ 已完成：`cargo check` 通过（见 7.3）

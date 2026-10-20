@@ -1,5 +1,6 @@
 pub static AUTHLIB_INJECTOR_JAR_NAME: &str = "authlib-injector.jar";
-pub static PRESET_AUTH_SERVERS: [&str; 2] = [
+pub static PRESET_AUTH_SERVERS: [&str; 3] = [
+  "https://wtumc.top:64053/api/yggdrasil",
   "https://skin.mualliance.ltd/api/yggdrasil",
   "https://littleskin.cn/api/yggdrasil",
 ];

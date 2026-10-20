@@ -6,6 +6,9 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 
 use crate::discover::helpers::mc_news::{MC_NEWS_ENDPOINT, fetch_mc_news_page};
+use crate::discover::helpers::wtumc_news::{
+  WTUMC_NEWS_ENDPOINT, fetch_wtumc_news_page, wtumc_source_info,
+};
 use crate::discover::models::{NewsPostRequest, NewsPostResponse, NewsSourceInfo};
 use crate::launcher_config::models::LauncherConfig;
 use crate::utils::web::with_retry;
@@ -25,6 +28,10 @@ pub async fn fetch_news_sources_info(app: AppHandle) -> SJMCLResult<Vec<NewsSour
     .map(|(url, _)| {
       let client = client.clone();
       async move {
+        if url.starts_with(WTUMC_NEWS_ENDPOINT) {
+          return wtumc_source_info(url);
+        }
+
         let mut news_source = NewsSourceInfo {
           name: "".to_string(),
           full_name: "".to_string(),
@@ -69,6 +76,10 @@ pub async fn fetch_news_post_summaries(
       async move {
         if url.starts_with(MC_NEWS_ENDPOINT) {
           return fetch_mc_news_page(&client, &url, cursor).await;
+        }
+
+        if url.starts_with(WTUMC_NEWS_ENDPOINT) {
+          return fetch_wtumc_news_page(&client, &url, cursor).await;
         }
 
         let mut req = client.get(&url).query(&[("pageSize", "12")]);

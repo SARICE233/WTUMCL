@@ -360,10 +360,7 @@ export const defaultConfig: LauncherConfig = {
   },
   localGameDirectories: [{ name: "Current", dir: ".minecraft/" }],
   globalGameConfig: defaultGameConfig,
-  discoverSourceEndpoints: [
-    ["https://www.mualliance.cn/news/api-sjmcl/article", true],
-    ["https://api.jsumc.fun/sjmcl?type=tribee&src=535", true],
-  ],
+  discoverSourceEndpoints: [["https://wtumc.top:64053/api/news", true]],
   extraJavaPaths: [],
   suppressedDialogs: [],
   states: {
