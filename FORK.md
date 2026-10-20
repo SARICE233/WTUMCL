@@ -158,7 +158,7 @@ pnpm tauri build      # 打包
 - [x] `rustfmt.toml` 改为 `newline_style = "Unix"`，使 Windows 本地格式检查可用
 - [ ] 替换图标（需要设计资源）
 - [ ] 清理 CI（13 个 workflow，多数为上游专用）
-- [ ] 待定：Cargo 包名 `SJMCL` 是否改为 `WTUMCL`（影响产物文件名与便携版）
+- [x] Cargo 包名改为 `WTUMCL`（产物为 `WTUMCL.exe`，与 productName 一致；`[lib]` 仍为 `app_lib`，代码无引用）
 ## 7. 本机环境基线（已验证）
 
 | 项 | 结论 |

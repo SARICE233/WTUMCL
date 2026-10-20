@@ -145,10 +145,10 @@ jobs:
           SHORT_SHA="${GITHUB_SHA:0:7}"
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then
             OUTPUT_NAME="SJMCL_${SHORT_SHA}_windows_x86_64_portable.exe"
-            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/test-build/" -o "$OUTPUT_NAME" "SJMCL.exe"
+            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/test-build/" -o "$OUTPUT_NAME" "WTUMCL.exe"
           else
             OUTPUT_NAME="SJMCL_${SHORT_SHA}_linux_x86_64_portable"
-            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/test-build/" -o "$OUTPUT_NAME" "SJMCL"
+            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/test-build/" -o "$OUTPUT_NAME" "WTUMCL"
           fi
           cp "src-tauri/target/test-build/$OUTPUT_NAME" artifacts/
           echo "output_name=$OUTPUT_NAME" >> "$GITHUB_OUTPUT"

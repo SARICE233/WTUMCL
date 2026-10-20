@@ -130,9 +130,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/${{ matrix.target }}/release/" -o "SJMCL-patched.exe" "SJMCL.exe"
+            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/${{ matrix.target }}/release/" -o "SJMCL-patched.exe" "WTUMCL.exe"
           elif [ "${{ matrix.platform }}" = "linux" ]; then
-            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/${{ matrix.target }}/release/" -o "SJMCL-patched" "SJMCL"
+            python scripts/release/bundle_portable_assets.py -p "src-tauri/target/${{ matrix.target }}/release/" -o "SJMCL-patched" "WTUMCL"
           fi
 
       - name: Setup artifact name
@@ -147,12 +147,12 @@ jobs:
           touch "${ARTIFACT_NAME}.sha256"
 
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            echo "$(sha256sum src-tauri/target/${{ matrix.target }}/release/SJMCL.exe | awk '{print $1}') ${ARTIFACT_NAME}" >> "${ARTIFACT_NAME}.sha256"
+            echo "$(sha256sum src-tauri/target/${{ matrix.target }}/release/WTUMCL.exe | awk '{print $1}') ${ARTIFACT_NAME}" >> "${ARTIFACT_NAME}.sha256"
             echo "$(sha256sum "src-tauri/target/${{ matrix.target }}/release/SJMCL-patched.exe" | awk '{print $1}') ${ARTIFACT_NAME}_portable" >> "${ARTIFACT_NAME}.sha256"
           elif [ "${{ matrix.platform }}" = "macos" ]; then
-            echo "$(sha256sum src-tauri/target/${{ matrix.target }}/release/SJMCL | awk '{print $1}') ${ARTIFACT_NAME}_unsigned" >> "${ARTIFACT_NAME}.sha256"
+            echo "$(sha256sum src-tauri/target/${{ matrix.target }}/release/WTUMCL | awk '{print $1}') ${ARTIFACT_NAME}_unsigned" >> "${ARTIFACT_NAME}.sha256"
           elif [ "${{ matrix.platform }}" = "linux" ]; then
-            echo "$(sha256sum src-tauri/target/${{ matrix.target }}/release/SJMCL | awk '{print $1}') ${ARTIFACT_NAME}" >> "${ARTIFACT_NAME}.sha256"
+            echo "$(sha256sum src-tauri/target/${{ matrix.target }}/release/WTUMCL | awk '{print $1}') ${ARTIFACT_NAME}" >> "${ARTIFACT_NAME}.sha256"
             echo "$(sha256sum "src-tauri/target/${{ matrix.target }}/release/SJMCL-patched" | awk '{print $1}') ${ARTIFACT_NAME}_portable" >> "${ARTIFACT_NAME}.sha256"
           fi
 
@@ -175,7 +175,7 @@ jobs:
           elif [ "${{ matrix.platform }}" = "macos" ]; then
             ls src-tauri/target/${{ matrix.target }}/release/bundle/macos
             # For MacOS, compress the .app folder
-            tar -cvzf artifacts/"$ARTIFACT_NAME".app.tar.gz -C "src-tauri/target/${{ matrix.target }}/release/bundle/macos" "SJMCL.app"
+            tar -cvzf artifacts/"$ARTIFACT_NAME".app.tar.gz -C "src-tauri/target/${{ matrix.target }}/release/bundle/macos" "WTUMCL.app"
           elif [ "${{ matrix.platform }}" = "linux" ]; then
             mv "src-tauri/target/${{ matrix.target }}/release/bundle/deb/"*.deb artifacts/"$ARTIFACT_NAME".deb
             mv "src-tauri/target/${{ matrix.target }}/release/bundle/rpm/"*.rpm artifacts/"$ARTIFACT_NAME".rpm
