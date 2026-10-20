@@ -216,18 +216,15 @@ registry = "sparse+https://rsproxy.cn/index/"
 | Windows SDK | 10.0.26100.0（`C:\Program Files (x86)\Windows Kits\10`，安装器固定路径） |
 | link.exe | `F:\MicrosoftVisualStudio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\link.exe` |
 
-注意：本机 shell 不自动带 VS 环境，直接跑 cargo 会报 `linker link.exe not found`。构建前需要注入 vcvars 环境：
+**无需手动注入 vcvars**：rustc 与 `cc` crate 都会通过 vswhere 自动定位 MSVC/SDK。实测在 `link.exe` 不在 PATH 的普通 shell 里，`cargo check` 依然 **exit 0**（11.9s，增量）。
 
-```powershell
-$vcvars = "F:\MicrosoftVisualStudio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-$cmdLine = '"' + $vcvars + '" >nul 2>&1 && set'
-foreach ($line in (cmd.exe /c $cmdLine)) {
-  if ($line -match '^([A-Za-z_]+)=(.*)$') { $n = $matches[1]; if ($n -in @('PATH','LIB','INCLUDE')) { Set-Item -Path ('Env:' + $n) -Value $matches[2] } }
-}
+```bash
 cargo check --manifest-path src-tauri/Cargo.toml
+pnpm tauri build
 ```
-
 验证结果：`cargo check` **exit 0，0 错误**（19 条 warning 均为上游既有死代码/未用变量，不在本次改动文件中）。
+
+**完整打包验证**：`pnpm tauri build` exit 0，release 编译 6m29s，产物 `src-tauri/target/release/WTUMCL.exe`（37.8 MB）与安装包 `bundle/nsis/WTUMCL_1.3.2_x64-setup.exe`（21.9 MB）。exe 元数据：ProductName `WTUMCL`、CompanyName `WTU Block Academy`。
 ### 7.4 提交身份
 
 当前仓库本地身份是占位值，正式开发前请替换：
