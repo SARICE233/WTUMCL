@@ -68,3 +68,6 @@ package-lock.json
 !.claude/skills
 .gemini/
 .cursor/
+
+# Local handoff notes (not shared via git)
+/handoff/
