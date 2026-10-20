@@ -1,3 +1,7 @@
+> **WTUMCL** 是基于 [SJMCL](https://github.com/UNIkeEN/SJMCL) 的二次开发分支，由 **WTU 方块学园** 维护。
+> 原项目版权归 SJMCL 团队（© 2024-2026）所有，以 GPLv3 及附加条款（见 [LICENSE.EXTRA](../LICENSE.EXTRA)）发布。
+> 源仓库：https://github.com/UNIkeEN/SJMCL
+
 <img src="figs/banner.png" alt="SJMCL" />
 
 [![Test Build](https://img.shields.io/github/actions/workflow/status/UNIkeEN/SJMCL/test.yml?label=test%20build&logo=github&style=for-the-badge)](https://github.com/UNIkeEN/SJMCL/blob/main/.github/workflows/test.yml)
@@ -151,6 +155,8 @@ pnpm tauri dev
 ## 版权声明
 
 版权所有 © 2024-2026 SJMCL 团队。
+
+本分支修改 © 2026 WTU 方块学园。
 
 > 本软件并非官方 Minecraft 服务。未获得 Mojang 或 Microsoft 批准或关联许可。
 

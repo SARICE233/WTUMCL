@@ -1,3 +1,7 @@
+> **WTUMCL** is a fork of [SJMCL](https://github.com/UNIkeEN/SJMCL), maintained by **WTU Block Academy**.
+> The original project is Copyright © 2024-2026 SJMCL Team and is licensed under GPLv3 with additional terms (see [LICENSE.EXTRA](LICENSE.EXTRA)).
+> Origin repository: https://github.com/UNIkeEN/SJMCL
+
 <img src="docs/figs/banner.png" alt="SJMCL" />
 
 [![Test Build](https://img.shields.io/github/actions/workflow/status/UNIkeEN/SJMCL/test.yml?label=test%20build&logo=github&style=for-the-badge)](https://github.com/UNIkeEN/SJMCL/blob/main/.github/workflows/test.yml)
@@ -152,6 +156,8 @@ If you want to develop extensions for SJMCL, check out the [Extension Documentat
 ## Copyright
 
 Copyright © 2024-2026 SJMCL Team.
+
+Modifications © 2026 WTU Block Academy.
 
 > NOT AN OFFICIAL MINECRAFT SERVICE. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 

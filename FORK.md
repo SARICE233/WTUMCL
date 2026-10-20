@@ -50,19 +50,30 @@ GitHub 的 zip 下载会破坏两类 git 对象，这里已通过直接对齐上
 - 附加条款 3 的豁免（仅新增预设认证服务器时可沿用原名）**不适用于本项目**——本项目会大改品牌与功能。
 - README 中 `NOT AN OFFICIAL MINECRAFT SERVICE.` 免责声明必须保留；产品名中避免出现 `Minecraft`。
 
-## 2. 命名清单（待定稿）
+## 2. 命名（已定稿）
 
-以下为建议值，**未定稿**。技术约束已核实。
+| 配置项 | 值 | 位置 |
+| --- | --- | --- |
+| productName | `WTUMCL` | `src-tauri/tauri.conf.json` |
+| identifier | `cn.wtu.wtumcl` | 同上；决定数据目录 `%APPDATA%\cn.wtu.wtumcl` |
+| deep-link scheme | `wtumcl` | 配置 1 处 + 代码 6 处 |
+| 界面短名 | `WTUMCL`（Logo，末位 L 蓝色高亮） | `src/components/logo-title.tsx` |
+| 界面全名 | `WTU Launcher` | 同上（可随时改） |
+| 认证服务器自报名 | `WTUMCL` | `yggdrasil_server.rs` |
+| 版权 | 双署名：上游 + 本分支 | `tauri.conf.json`、7 个语言文件、README 三语 |
+| 仓库 | https://github.com/SARICE233/WTUMCL（私有，**尚未推送**） | `origin` |
 
-| 配置项 | 位置 | 建议值 | 约束说明 |
-| --- | --- | --- | --- |
-| productName | `src-tauri/tauri.conf.json:3` | `WTU Launcher` | 必须 ASCII：参与安装包文件名，Linux deb/rpm 的 Package 字段需降格为 ASCII |
-| 界面显示名 | `src/locales/*.json` | `WTU 方块学园启动器` | 窗口标题、关于页等文案 |
-| identifier | `src-tauri/tauri.conf.json:5` | `cn.wtu.blockacademy` | 反向域名；**决定数据目录**（%APPDATA%\cn.wtu.blockacademy），定稿后不可再改 |
-| deep-link scheme | `src-tauri/tauri.conf.json:71` | `wtublock` | 需与第 3.1 节的代码常量同步修改 |
-| 认证服务器自报名称 | `src-tauri/src/account/helpers/offline/yggdrasil_server.rs:147-148` | `WTU 方块学园` | `serverName` / `implementationName` |
-| 版权 | `tauri.conf.json:34` + 语言文件 | 双署名 | 保留上游版权，追加本分支修改声明 |
+### 2.1 刻意保留的标识
 
+以下属于**数据格式或生态兼容**标识，改名会破坏用户数据或社区扩展兼容性，故保留原样：
+
+| 保留项 | 原因 |
+| --- | --- |
+| `sjmcl.ext.json`、`.sjmclx` | 扩展包格式；改动会与社区扩展及脚手架 CLI 不兼容 |
+| `sjmclcfg.json`、`sjmcl.conf.json`、`sjmcl.account.json` | 本地数据文件格式 |
+| `SJMCLError` / `SJMCLResult` 等 Rust 类型 | 纯内部类型，改名是无效改动量 |
+| `api-sjmcl`、`mc.sjtu.cn` 等外部服务 URL | 上游服务端接口，非本仓所有 |
+| `sjmcl-window-*` 等 DOM id | 内部标识，用户不可见 |
 ## 3. 改动面清单
 
 ### 3.1 功能性（不改会出错）
@@ -135,18 +146,19 @@ pnpm tauri build      # 打包
 
 `test.yml` 会跑 `pnpm eslint`、`cargo fmt --check` 与三平台 `pnpm tauri build`；`scripts/release/upload_to_sjmc_server.sh` 是上游专用上传脚本，需删除或替换。提交钩子 `.husky/pre-commit` 走 `pnpm lint-staged`。
 
-## 6. 动工顺序
+## 6. 动工顺序（进度）
 
-1. 定稿软件名、identifier、仓库地址（第 2 节）
-2. 改 `tauri.conf.json`：productName / identifier / copyright / deep-link scheme
-3. 同步改 deep-link 代码常量（第 3.1 节四处）
-4. 换更新源或禁用更新器
-5. 加 `WTU-` 版本前缀，移除或保留统计上报
-6. 品牌串受控替换（跳过 URL）
-7. 补 README 归属声明与双署名
-8. 替换图标
-9. 清理 CI 与上游专用脚本
-
+- [x] 定稿软件名 / identifier / 仓库地址
+- [x] 改 `tauri.conf.json`：productName、identifier、copyright、deep-link scheme
+- [x] 同步 deep-link 常量（Rust 5 处 + 前端 1 处）
+- [x] 更新源改为本仓，移除上游服务器源
+- [x] 统计上报加 `WTU-` 前缀（保留上报）
+- [x] 品牌串受控替换（7 个语言文件 + 组件，跳过 URL）
+- [x] README 三语归属声明与双署名
+- [x] `rustfmt.toml` 改为 `newline_style = "Unix"`，使 Windows 本地格式检查可用
+- [ ] 替换图标（需要设计资源）
+- [ ] 清理 CI（13 个 workflow，多数为上游专用）
+- [ ] 待定：Cargo 包名 `SJMCL` 是否改为 `WTUMCL`（影响产物文件名与便携版）
 ## 7. 本机环境基线（已验证）
 
 | 项 | 结论 |
@@ -164,11 +176,7 @@ pnpm tauri build      # 打包
 
 `src-tauri/rustfmt.toml` 设置了 `newline_style = "Native"`：Linux 上 Native 即 LF，与仓库文件一致，CI 通过；Windows 上 Native 即 CRLF，而仓库里存的是 LF，于是 `cargo fmt --check` 会对**每一个** Rust 文件报 `Incorrect newline style`。干净的上游检出同样如此，不是本项目引入的问题。
 
-可选处理（三选一，建议 a）：
-
-a. 本地只跑 `cargo fmt`（不带 `--check`）后提交，格式校验交给 Linux CI；
-b. 把 `newline_style` 改成 `"Unix"`（对 CI 无影响，本地与仓库一致）；
-c. 新增 `.gitattributes` 写入 `* text=auto eol=lf`，统一各平台检出为 LF。
+已采用方案 b：`newline_style` 已改为 `"Unix"`，`cargo fmt --check` 现可在 Windows 本地通过（实测 exit 0），对 Linux CI 无影响。
 
 ### 7.2 网络与镜像（已处理）
 
@@ -218,8 +226,11 @@ git config user.name  "你的名字"
 git config user.email "你的邮箱"
 ```
 
-## 8. 尚未完成（动工前需你决定）
+## 8. 尚未完成
 
-- 软件名 / identifier / 仓库地址未定稿（见第 2 节）
-- 后端编译检查待 MSVC 环境就绪后进行（见 7.3）
-- 未做任何品牌替换与功能改动，本次只准备环境与文档
+- **后端编译验证**：等 MSVC 就绪后执行 `cargo check`（见 7.3）
+- 图标替换
+- CI 清理：`publish-winget` / `publish-aur` / `publish-snap` / `sign-macos` / `update_mod_data` / `update_version_list` 等均为上游专用
+- 语言文件中 `legalInfo.settings.userAgreement` 仍指向上游用户协议（`mc.sjtu.cn/sjmcl/.../tos`），需决定替换或移除
+- README 徽章与 banner 仍指向上游仓库
+- 按要求：**尚未向 origin 推送任何内容**
