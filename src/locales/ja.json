@@ -19,14 +19,18 @@
         "sourceCode": {
           "title": "GitHub でソースコードを見る"
         },
-        "aboutSJMC": {
-          "title": "上海交通大学 Minecraft クラブ (SJMC) について"
+        "aboutWTUMC": {
+          "title": "武漢紡織大学 MC コミュニティ（WTUMC）について"
         }
       }
     },
     "ack": {
       "title": "クレジット",
       "settings": {
+        "sjmcl": {
+          "title": "SJMCL",
+          "description": "本プロジェクトは SJMCL を基に開発されており、SJMCL 開発チームの貢献とオープンソース化に感謝します"
+        },
         "bmclapi": {
           "title": "BMCLAPI",
           "description": "@bangbang93 さんの高速ダウンロードミラーのご提供に感謝します。"
@@ -331,8 +335,8 @@
         "Florwyn": {
           "name": "Florwyn"
         },
-        "SJTU-eastgate": {
-          "name": "紫気東来（ SJTU 東門）"
+        "WTUMC": {
+          "name": "WTUMC"
         }
       }
     },
@@ -1040,7 +1044,7 @@
     },
     "autoCloseCountdown": "このウィンドウは {{seconds}} 秒後に自動で閉じられます（ウィンドウ内の任意の場所をクリックするとキャンセル）",
     "bottomAlert": "サポートを問い合わせる場合は、「このウィンドウのスクリーンショット」ではなく、クラッシュレポートをエクスポートし、相手に送信してください。",
-    "helpUrl": "https://mc.sjtu.cn/sjmcl/en/docs/user-group.html",
+    "helpUrl": "https://wtumc.top:64053",
     "crashDetails": {
       "title": "クラッシュ情報",
       "OPENJ9": "OpenJ9 JVM で実行できません。HotSpot JVM を使用してください。",
@@ -1413,9 +1417,9 @@
           "description": "中国の大学ゲーマーとともに遊ぼう",
           "url": "https://www.mualliance.cn"
         },
-        "SJMC": {
-          "title": "上海交通大学 Minecraft クラブ（SJMC）",
-          "url": "https://mc.sjtu.cn"
+        "WTUMC": {
+          "title": "武漢紡織大学 MC コミュニティ（WTUMC）",
+          "url": "https://wtumc.top:64053"
         }
       }
     },
@@ -1444,13 +1448,13 @@
     "top": {
       "settings": {
         "LauncherDocs": {
-          "title": "SJMC Launcher ドキュメント（中国語）",
-          "url": "https://mc.sjtu.cn/sjmcl/docs"
+          "title": "WTUMCL ドキュメント",
+          "url": "https://github.com/SARICE233/WTUMCL"
         },
         "UserGroup": {
           "title": "ユーザーコミュニティ",
           "description": "QQ グループや GitHub Discussions に参加して、問題報告、機能要望、サポートの相談ができます",
-          "url": "https://mc.sjtu.cn/sjmcl/en/docs/user-group"
+          "url": "https://wtumc.top:64053"
         }
       }
     }

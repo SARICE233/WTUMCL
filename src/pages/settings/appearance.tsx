@@ -319,7 +319,7 @@ const AppearanceSettingsPage = () => {
   };
 
   const PresetBackgroundList = () => {
-    const presetBgList = ["Florwyn", "SJTU-eastgate"];
+    const presetBgList = ["Florwyn", "WTUMC"];
 
     return (
       <Wrap spacing={3.5} justify="right">

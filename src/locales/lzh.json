@@ -19,14 +19,18 @@
         "sourceCode": {
           "title": "覽源碼於群碼之匯"
         },
-        "aboutSJMC": {
-          "title": "有涉上海交通大學礦藝社（SJMC）"
+        "aboutWTUMC": {
+          "title": "武漢紡織大學 MC 社群（WTUMC）小記"
         }
       }
     },
     "ack": {
       "title": "致謝",
       "settings": {
+        "sjmcl": {
+          "title": "SJMCL",
+          "description": "本作基於 SJMCL 改作，感念 SJMCL 諸君之勤與其開源之德"
+        },
         "bmclapi": {
           "title": "BMCLAPI",
           "description": "謝 @bangbang93 供高速引源。"
@@ -331,8 +335,8 @@
         "Florwyn": {
           "name": "櫻滿集"
         },
-        "SJTU-eastgate": {
-          "name": "SJTU 紫氣東來門"
+        "WTUMC": {
+          "name": "WTUMC"
         }
       }
     },
@@ -1040,7 +1044,7 @@
     },
     "autoCloseCountdown": "此匡將於 {{seconds}} 秒後自闔（擊匡中任意處可止）",
     "bottomAlert": "如需尋求他人助，請錄出並傳送潰報告，而非這個匡的截影",
-    "helpUrl": "https://mc.sjtu.cn/sjmcl/docs/user-group.html",
+    "helpUrl": "https://wtumc.top:64053",
     "crashDetails": {
       "title": "潰資訊",
       "OPENJ9": "今例不能在 OpenJ9 JVM 上行，請用 HotSpot JVM。",
@@ -1413,9 +1417,9 @@
           "description": "與天下諸學之戲者同遊。",
           "url": "https://www.mualliance.cn"
         },
-        "SJMC": {
-          "title": "上海交通大學礦藝社（SJMC）",
-          "url": "https://mc.sjtu.cn"
+        "WTUMC": {
+          "title": "武漢紡織大學 MC 社群（WTUMC）",
+          "url": "https://wtumc.top:64053"
         }
       }
     },
@@ -1444,13 +1448,13 @@
     "top": {
       "settings": {
         "LauncherDocs": {
-          "title": "SJMC Launcher 案文",
-          "url": "https://mc.sjtu.cn/sjmcl/docs"
+          "title": "WTUMCL 文書",
+          "url": "https://github.com/SARICE233/WTUMCL"
         },
         "UserGroup": {
           "title": "使用者社群",
           "description": "歡迎加入 QQ 群或于群碼之匯清談，擧陳疏漏，請益功用，以求襄助",
-          "url": "https://mc.sjtu.cn/sjmcl/docs/user-group"
+          "url": "https://wtumc.top:64053"
         }
       }
     }

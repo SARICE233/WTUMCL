@@ -51,7 +51,7 @@ const ExtensionSettingsPage = () => {
       multiple: false,
       filters: [
         {
-          name: "SJMCL Extension Package",
+          name: "WTUMCL Extension Package",
           extensions: ["sjmclx", "zip"],
         },
       ],

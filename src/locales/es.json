@@ -19,14 +19,18 @@
         "sourceCode": {
           "title": "Ver Código Fuente en GitHub"
         },
-        "aboutSJMC": {
-          "title": "Acerca de SJTU Minecraft Club (SJMC)"
+        "aboutWTUMC": {
+          "title": "Acerca de la comunidad MC de WTU (WTUMC)"
         }
       }
     },
     "ack": {
       "title": "Agradecimientos",
       "settings": {
+        "sjmcl": {
+          "title": "SJMCL",
+          "description": "WTUMCL deriva de SJMCL; gracias al equipo de SJMCL por su trabajo y su contribución de código abierto"
+        },
         "bmclapi": {
           "title": "BMCLAPI",
           "description": "Gracias a @bangbang93 por proporcionar el espejo de descarga de alta velocidad"
@@ -331,8 +335,8 @@
         "Florwyn": {
           "name": "Florwyn"
         },
-        "SJTU-eastgate": {
-          "name": "SJTU Eastgate"
+        "WTUMC": {
+          "name": "WTUMC"
         }
       }
     },
@@ -1040,7 +1044,7 @@
     },
     "autoCloseCountdown": "Esta ventana se cerrará automáticamente en {{seconds}} segundos (haz clic en cualquier lugar de la ventana para cancelar)",
     "bottomAlert": "Exporta y envía el reporte de error en lugar de una captura de pantalla de esta página para obtener ayuda.",
-    "helpUrl": "https://mc.sjtu.cn/sjmcl/en/docs/user-group.html",
+    "helpUrl": "https://wtumc.top:64053",
     "crashDetails": {
       "title": "Detalles del Error",
       "OPENJ9": "OpenJ9 JVM no es compatible. Por favor usa HotSpot JVM.",
@@ -1413,9 +1417,9 @@
           "description": "Juega con jugadores universitarios de toda China",
           "url": "https://www.mualliance.cn/en"
         },
-        "SJMC": {
-          "title": "Club de Minecraft de SJTU (SJMC)",
-          "url": "https://mc.sjtu.cn/en/"
+        "WTUMC": {
+          "title": "Comunidad MC de la Universidad Textil de Wuhan (WTUMC)",
+          "url": "https://wtumc.top:64053"
         }
       }
     },
@@ -1444,13 +1448,13 @@
     "top": {
       "settings": {
         "LauncherDocs": {
-          "title": "Documentación del SJMC Launcher",
-          "url": "https://mc.sjtu.cn/sjmcl/en/docs"
+          "title": "Documentación de WTUMCL",
+          "url": "https://github.com/SARICE233/WTUMCL"
         },
         "UserGroup": {
           "title": "Comunidad de Usuarios",
           "description": "Únete al grupo de QQ o a GitHub Discussions para reportar problemas, solicitar funciones u obtener ayuda",
-          "url": "https://mc.sjtu.cn/sjmcl/en/docs/user-group"
+          "url": "https://wtumc.top:64053"
         }
       }
     }

@@ -35,6 +35,7 @@ const AboutSettingsPage = () => {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   const ackList = {
+    sjmcl: "https://github.com/UNIkeEN/SJMCL",
     skinview3d: "https://github.com/bs-community/skinview3d",
     mcim: "https://www.mcimirror.top",
     bmclapi: "https://bmclapidoc.bangbang93.com/",
@@ -121,7 +122,7 @@ const AboutSettingsPage = () => {
                 ))}
               </AvatarGroup>
               <CommonIconButton
-                label="https://github.com/UNIkeEN/SJMCL/graphs/contributors?all=1"
+                label="https://github.com/SARICE233/WTUMCL/graphs/contributors?all=1"
                 icon="external"
                 withTooltip
                 tooltipPlacement="bottom-end"
@@ -129,7 +130,7 @@ const AboutSettingsPage = () => {
                 h={18}
                 onClick={() => {
                   openUrl(
-                    "https://github.com/UNIkeEN/SJMCL/graphs/contributors?all=1"
+                    "https://github.com/SARICE233/WTUMCL/graphs/contributors?all=1"
                   );
                 }}
               />
@@ -140,30 +141,30 @@ const AboutSettingsPage = () => {
           title: t("AboutSettingsPage.about.settings.sourceCode.title"),
           children: (
             <CommonIconButton
-              label="https://github.com/UNIkeEN/SJMCL"
+              label="https://github.com/SARICE233/WTUMCL"
               icon="external"
               withTooltip
               tooltipPlacement="bottom-end"
               size="xs"
               h={18}
               onClick={() => {
-                openUrl("https://github.com/UNIkeEN/SJMCL");
+                openUrl("https://github.com/SARICE233/WTUMCL");
               }}
             />
           ),
         },
         {
-          title: t("AboutSettingsPage.about.settings.aboutSJMC.title"),
+          title: t("AboutSettingsPage.about.settings.aboutWTUMC.title"),
           children: (
             <CommonIconButton
-              label="https://mc.sjtu.cn/welcome/content/3/"
+              label="https://wtumc.top:64053"
               icon="external"
               withTooltip
               tooltipPlacement="bottom-end"
               size="xs"
               h={18}
               onClick={() => {
-                openUrl("https://mc.sjtu.cn/welcome/content/3/");
+                openUrl("https://wtumc.top:64053");
               }}
             />
           ),
@@ -230,14 +231,14 @@ const AboutSettingsPage = () => {
           ),
           children: (
             <CommonIconButton
-              label="https://github.com/UNIkeEN/SJMCL?tab=readme-ov-file#copyright"
+              label="https://github.com/SARICE233/WTUMCL?tab=readme-ov-file#copyright"
               icon="external"
               withTooltip
               tooltipPlacement="bottom-end"
               size="xs"
               onClick={() => {
                 openUrl(
-                  "https://github.com/UNIkeEN/SJMCL?tab=readme-ov-file#copyright"
+                  "https://github.com/SARICE233/WTUMCL?tab=readme-ov-file#copyright"
                 );
               }}
             />

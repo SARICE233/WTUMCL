@@ -19,14 +19,18 @@
         "sourceCode": {
           "title": "在 GitHub 檢視原始碼"
         },
-        "aboutSJMC": {
-          "title": "關於上海交通大學 Minecraft 社（SJMC）"
+        "aboutWTUMC": {
+          "title": "關於武漢紡織大學 MC 社群（WTUMC）"
         }
       }
     },
     "ack": {
       "title": "致謝",
       "settings": {
+        "sjmcl": {
+          "title": "SJMCL",
+          "description": "本專案基於 SJMCL 二次開發，感謝 SJMCL 專案組的付出與開源"
+        },
         "bmclapi": {
           "title": "BMCLAPI",
           "description": "感謝 @bangbang93 提供的高速下載源"
@@ -331,8 +335,8 @@
         "Florwyn": {
           "name": "櫻滿集"
         },
-        "SJTU-eastgate": {
-          "name": "SJTU 紫氣東來門"
+        "WTUMC": {
+          "name": "WTUMC"
         }
       }
     },
@@ -1040,7 +1044,7 @@
     },
     "autoCloseCountdown": "視窗將在 {{seconds}} 秒後自動關閉（點擊視窗任意位置可取消）",
     "bottomAlert": "如需尋求他人幫助，請匯出併發送崩潰報告，而非這個視窗的截圖",
-    "helpUrl": "https://mc.sjtu.cn/sjmcl/docs/user-group.html",
+    "helpUrl": "https://wtumc.top:64053",
     "crashDetails": {
       "title": "崩潰資訊",
       "OPENJ9": "目前實例無法在 OpenJ9 JVM 上執行，請使用 HotSpot JVM。",
@@ -1413,9 +1417,9 @@
           "description": "和全國各高校的玩家一起遊玩",
           "url": "https://www.mualliance.cn"
         },
-        "SJMC": {
-          "title": "上海交通大學 Minecraft 社（SJMC）",
-          "url": "https://mc.sjtu.cn"
+        "WTUMC": {
+          "title": "武漢紡織大學 MC 社群（WTUMC）",
+          "url": "https://wtumc.top:64053"
         }
       }
     },
@@ -1444,13 +1448,13 @@
     "top": {
       "settings": {
         "LauncherDocs": {
-          "title": "SJMC Launcher 文件",
-          "url": "https://mc.sjtu.cn/sjmcl/docs"
+          "title": "WTUMCL 文件",
+          "url": "https://github.com/SARICE233/WTUMCL"
         },
         "UserGroup": {
           "title": "使用者社群",
           "description": "歡迎加入 QQ 群或 GitHub Discussions，回報問題、請求功能或取得協助",
-          "url": "https://mc.sjtu.cn/sjmcl/docs/user-group"
+          "url": "https://wtumc.top:64053"
         }
       }
     }
