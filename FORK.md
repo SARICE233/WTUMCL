@@ -197,6 +197,8 @@ registry = "sparse+https://rsproxy.cn/index/"
 
 更换后依赖可在数秒内完成下载。修好镜像会影响该机器上所有 Rust 项目，若其他项目需要 tuna 可换回备份。
 
+**GitHub 访问**：本网络下 GitHub 的 **SSH 22 端口被拒绝**（`ssh: connect to host github.com port 22: Connection refused`），因此 `origin` 使用 HTTPS 地址，并已执行 `gh auth setup-git` 让 git 复用 `gh` 的凭据。若在其他网络想用 SSH，需另配 SSH key。
+
 ### 7.3 阻塞项：缺少 MSVC 链接器
 
 依赖下载完成后，`cargo check` 在编译构建脚本阶段失败：
