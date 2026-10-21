@@ -40,7 +40,7 @@ GitHub 的 zip 下载会破坏两类 git 对象，这里已通过直接对齐上
 | # | 义务 | 依据 | 落实位置 |
 | --- | --- | --- | --- |
 | 1 | 不得使用 `SJMCL` / `SJMC Launcher` 作为软件名 | 附加条款 1 | 见第 2 节命名清单 |
-| 2 | 在 README、分发页面、支持文档、软件「关于」页声明基于 SJMCL 并给出源仓库 URL | 附加条款 2 | 待写（README 三语 + 关于页） |
+| 2 | 在 README、分发页面、支持文档、软件「关于」页声明基于 SJMCL 并给出源仓库 URL | 附加条款 2 | 已完成（README 三语 + 关于页） |
 | 3 | 统计上报的版本号带不少于两个字母的前缀 | 附加条款（统计要求） | 见第 4 节，前缀 `WTU-` |
 | 4 | 分发二进制时能以 GPLv3 提供含本分支修改的完整对应源码 | GPLv3 | 发布仓库需公开 |
 
@@ -164,8 +164,8 @@ Fork 后保留 5 个工作流，其余上游专用流程已删除并通过 YAML 
 - [x] `rustfmt.toml` 改为 `newline_style = "Unix"`，使 Windows 本地格式检查可用
 - [x] 替换图标：由 `WTUMC-AI-VEDIO/WTUMCLOGO.png` 适配生成全套（透明底、预乘重采样、ico/icns/appx/前端 Logo）
 - [x] CI 清理（见 5.2）
-- [x] 用户协议链接改为占位（`docs/TOS.md`），README 徽章指向本仓、移除上游服务徽章与 banner 重绘
-- [ ] 清理 CI（13 个 workflow，多数为上游专用）
+- [x] 用户协议正式成文（`docs/TOS.md`，2026-10-20），README 徽章指向本仓、移除上游服务徽章与 banner 重绘
+- [x] 清理 CI（13 个 workflow，多数为上游专用）
 - [x] 同步配套 CLI：deeplink 前缀、MCP 服务名、提示文案
 - [x] Cargo 包名改为 `WTUMCL`（产物为 `WTUMCL.exe`，与 productName 一致；`[lib]` 仍为 `app_lib`，代码无引用）
 ## 7. 本机环境基线（已验证）
@@ -248,19 +248,19 @@ git config user.email "你的邮箱"
 
 ### 给 web 项目的三条反馈
 
-1. **`skinDomains` 带了协议头**：`/api/yggdrasil` 返回 `"skinDomains": ["https://wtumc.top:64053"]`，authlib-injector 规范要求是**裸域名**（如 `wtumc.top`）。部分启动器会因此无法加载皮肤，建议改为裸域名。
+1. **`skinDomains` 带了协议头**：`/api/yggdrasil` 返回 `"skinDomains": ["https://wtumc.top:64053"]`，authlib-injector 规范要求是**裸域名**（如 `wtumc.top`）。部分启动器会因此无法加载皮肤，建议改为裸域名。启动器侧已在注入前规范化为裸域名（2026-10-20），服务端仍建议修正。
 2. **缺少 ALI 端点**：`/.well-known/authlib-injector` 返回 404，用户若只填站点根地址，authlib-injector 无法识别为认证服务器，必须手填 `/api/yggdrasil`。建议补一个 ALI 端点提升易用性。
 3. **新闻 API 信封与启动器契约不同**：站点是 `{code,msg,data:{data:[...],total}}`，启动器期望 `{posts,next,cursors}`。已在启动器侧适配，若以后有其他 SJMCL 系启动器接入，可考虑服务端直接提供兼容端点。
 
 ### 已阉割的入口
 
-本站暂无文档，因此移除了三个文档跳转入口（不再指向上游 SJTU 文档）：帮助页「启动器文档」、扩展页「扩展开发文档」、智能页「MCP 文档」。语言文件中的对应 key 暂留（未使用，不影响功能）。
+本站暂无文档，因此移除了三个文档跳转入口（不再指向上游 SJTU 文档）：帮助页「启动器文档」、扩展页「扩展开发文档」、智能页「MCP 文档」。对应 8 个 key 已从 7 个语言文件移除（2026-10-20），`pnpm locale diff en` 通过。
 ## 8. 尚未完成
 
 - ~~后端编译验证~~ 已完成：`cargo check` 通过（见 7.3）
-- **用户协议正文**：`docs/TOS.md` 目前是占位，正式条款待拟
-- **其余上游文档链接**：语言文件中 `helpUrl`、扩展开发文档、MCP 文档、用户群等仍指向 `mc.sjtu.cn`（描述的是继承自上游的功能文档），后续可迁移
-- **GitHub Secrets 改名**：仓库设置里的 `SJMCL_*` 需改成 `WTUMCL_*`
+- ~~用户协议正文~~ 已完成：`docs/TOS.md` 正式条款（2026-10-20）
+- **其余上游文档链接**：语言文件中 `helpUrl`、用户群等仍指向 `mc.sjtu.cn`（描述的是继承自上游的功能文档），后续可迁移
+- **GitHub Secrets 改名**：仓库设置里的 `SJMCL_*` 需改成 `WTUMCL_*`（用户决定暂时搁置）
 - **banner/图标源文件**：设计源图仍在 `F:\Desktop\WTUMC-AI-VEDIO\`，如需重生成图标按第 9 节方法
 - 按要求：**尚未向 origin 推送任何内容**
 

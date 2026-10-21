@@ -71,3 +71,17 @@ package-lock.json
 
 # Local handoff notes (not shared via git)
 /handoff/
+
+# Local preview builds (not shared via git)
+/preview/
+
+# OWV approval download cache (not shared via git)
+/resources/
+/chat-need-src/
+
+# local orchestration artifacts (not shared via git)
+/.owv/
+
+# design tool caches
+design/**/__pycache__/
+*.pyc

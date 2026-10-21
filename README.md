@@ -10,14 +10,22 @@
 
 **English** · [简体中文](docs/README.zh-Hans.md) · [繁體中文](docs/README.zh-Hant.md)
 
+## Introduction
+
+WTUMCL is the community edition of the SJMCL launcher, maintained for the **Wuhan Textile University Minecraft Community (WTUMC)**. It keeps the upstream launcher's core workflow — multiple game directories and instances, multi-account sign-in, resource downloads and an extension system — and connects it to WTUMC's own services by default: the community news feed, the community authentication server and community skin loading.
+
+The goal is simple: WTUMC members install the launcher, sign in with a community account, and join the community server with their skins working, without editing configuration files.
+
 ## Features
 
-* **Cross Platform**: Supports Windows 10/11, macOS and Linux.
+* **WTUMC Community Integration**: The community news feed at https://wtumc.top:64053/api/news is the default source, so community announcements and articles appear in the launcher's discovery page without manual setup.
+* **Community Accounts and Skins**: The community authentication server https://wtumc.top:64053/api/yggdrasil is built in. The launcher normalizes skin domains returned by the server (stripping URL schemes, ports and paths) so that community skins load correctly in game.
+* **Cross Platform**: Supports Windows 10/11, macOS 10.15+ and Linux (webkit2gtk 4.1).
 * **Efficient Instance Management**: Supports multiple game directories and instances, allowing the management of all instance resources (such as saves, mods, resource packs, shaders, screenshots, etc.) and settings in one place.
 * **Convenient Resource Download**: Supports downloading game clients, mod loaders, various game resources and modpacks from CurseForge and Modrinth.
-* **Multi-Account System Support**: Built-in Microsoft login and third-party authentication server support, compatible with the OAuth login process proposed by the Yggdrasil Connect proposal.
-* **External Service Collaboration**: Works with external webpages, applications, and Agent services through deeplinks and MCP services, delivering a range of convenient features and automation capabilities.
-* **Open Extension System**: Supports extension development to extend the launcher with more interesting and practical features. [>> View Community Extensions](https://github.com/SJMC-Dev/awesome-SJMCL-extensions/blob/main/README.en.md)
+* **Multi-Account System Support**: Built-in Microsoft login and third-party authentication server support, including authlib-injector compatible servers and the OAuth login flow proposed by the Yggdrasil Connect proposal.
+* **External Service Collaboration**: Works with external webpages, applications and Agent services through `wtumcl://` deeplinks and MCP services, delivering convenient features and automation capabilities.
+* **Open Extension System**: Keeps the SJMCL extension system and package format, so existing community extensions remain usable while new ones can be developed for WTUMCL.
 
 > Note: some features may be limited by region, platform, or bundle type.
 
@@ -27,131 +35,64 @@
 [![Next JS](https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Chakra UI](https://img.shields.io/badge/chakra_ui-v2-38B2AC?style=for-the-badge&logo=chakraui&logoColor=white&labelColor=319795)](https://v2.chakra-ui.com/)
 
+## WTUMC Community Services
+
+| Service | Address | Purpose |
+|---------|---------|---------|
+| Community site | https://wtumc.top:64053 | Community home page, announcements and user entry |
+| Community news feed | https://wtumc.top:64053/api/news | Default news source in the launcher |
+| Community authentication | https://wtumc.top:64053/api/yggdrasil | Yggdrasil / authlib-injector endpoint for community accounts |
+
+These services are operated by WTUMC and are the recommended defaults for community members. Accounts and skins from other authlib-injector compatible servers can still be added manually.
+
 ## Getting Started
 
-Getting started with SJMCL is simple, just download the latest release from the [Official Website](https://mc.sjtu.cn/sjmcl/en/downloads).
+Download the latest build from [GitHub Releases](https://github.com/SARICE233/WTUMCL/releases). Builds are produced by this repository's GitHub Actions workflows. WTUMCL does not maintain an official website download page or Homebrew / Snap / AUR / Winget packages, so please do not install an upstream SJMCL package if you want this fork.
 
-You can also find all the releases, including the nightly versions, on [GitHub Releases](https://github.com/UNIkeEN/SJMCL/releases).
-
-SJMCL currently supports the following platforms:
+WTUMCL currently supports the following platforms:
 
 | Platform  | Versions            | Architectures              | Provided Bundles                        |
 |-----------|---------------------|----------------------------|-----------------------------------------|
-| Windows   | 10 and above       | `aarch64`, `i686`, `x86_64`| installer `.exe`, portable `.exe`                 |
+| Windows   | 10 and above        | `aarch64`, `i686`, `x86_64` | installer `.exe`, portable `.exe`       |
 | macOS     | 10.15 and above     | `aarch64`, `x86_64`        | `.app`, `.dmg`                          |
-| Linux     | webkit2gtk 4.1 (e.g., Ubuntu 22.04) | `aarch64`, `x86_64`   | `.deb`, `.rpm`, portable binary |
+| Linux     | webkit2gtk 4.1 (e.g., Ubuntu 22.04) | `aarch64`, `x86_64` | `.deb`, `.rpm`, portable binary |
 
-To learn about how to use SJMCL’s features and browse frequently asked questions, please refer to the [User Documentation](https://mc.sjtu.cn/sjmcl/en/docs).
+## Build from Source
 
-<details>
-<summary><h3>Install from Command Line</h3></summary>
+To build WTUMCL yourself, install the following prerequisites:
 
-<details>
-<summary><h4>Linux</h4></summary>
+* Node.js 22 or newer and pnpm 10 or newer;
+* Rust 1.98.1 or newer;
+* the [Tauri system dependencies](https://tauri.app/start/prerequisites/) for your operating system.
 
-Install the latest stable release with the Linux installer:
-
-```bash
-curl -LsSf https://mc.sjtu.cn/sjmcl/releases/install.sh | sh -s -- --source sjmc
-```
-
-Install the latest stable release via [Homebrew](https://brew.sh) Cask if [Homebrew](https://brew.sh) is installed:
+Then clone the repository and build:
 
 ```bash
-brew install --cask sjmcl
-```
-
-
-Install the portable Linux build without root access:
-
-```bash
-curl -LsSf https://mc.sjtu.cn/sjmcl/releases/install.sh | sh -s -- --portable --source sjmc
-```
-
-Install from the Arch User Repository (AUR) with a common [AUR helper](https://wiki.archlinux.org/title/AUR_helpers):
-
-```bash
-yay -S sjmcl-bin
-```
-
-If you do not use an AUR helper, you can also install manually:
-
-```bash
-git clone https://aur.archlinux.org/sjmcl-bin.git
-cd sjmcl-bin
-makepkg -si
-```
-
-Install from Snap Store:
-
-```bash
-sudo snap install sjmcl
-```
-
-> [!WARNING]
-> When installing via Snap, game data may be stored in a sandboxed directory by default. Before uninstalling the launcher, please back up important data such as saves, resource packs, and mods in a timely manner.
-
-</details>
-
-<details>
-<summary><h4>macOS</h4></summary>
-
-Install with Homebrew:
-
-```bash
-brew install --cask sjmcl
-```
-
-</details>
-
-<details>
-<summary><h4>Windows</h4></summary>
-
-Install with Winget:
-
-```powershell
-winget install SJMC.SJMCL
-```
-
-> [!WARNING]
-> The Winget index is publicly maintained. Before installing, consider running `winget show SJMC.SJMCL` to inspect the installer URL, and make sure the download source is from `github.com/UNIkeEN/SJMCL` or `sjmcl.club`.
-
-</details>
-
-For more installation options and platform notes, see the [User Documentation](https://mc.sjtu.cn/sjmcl/en/docs/install).
-
-</details>
-
-## Development and Contributing
-
-To get started, clone the repository and install the required dependencies:
-
-```bash
-git clone git@github.com:UNIkeEN/SJMCL.git
+git clone https://github.com/SARICE233/WTUMCL.git
+cd WTUMCL
 pnpm install
-```
-
-To run the project in development mode:
-
-```bash
 pnpm tauri dev
 ```
 
-We warmly invite contributions from everyone. 
+Create a release build with:
 
-* Before you get started, please take a moment to review our [Contributing Guide](https://github.com/UNIkeEN/SJMCL/blob/main/CONTRIBUTING.md) (includes more details on the development workflow). 
-* API references and some developers’ insights can be found in the [Developer Documentation](https://mc.sjtu.cn/sjmcl/en/dev).
-* Feel free to share your ideas through [Pull Requests](https://github.com/UNIkeEN/SJMCL/pulls) or [GitHub Issues](https://github.com/UNIkeEN/SJMCL/issues).
+```bash
+pnpm tauri build
+```
+
+## Development and Contributing
+
+Contributions to this fork are welcome through [Issues](https://github.com/SARICE233/WTUMCL/issues) and [Pull Requests](https://github.com/SARICE233/WTUMCL/pulls). For changes that also affect the upstream project, please follow the upstream [Contributing Guide](https://github.com/UNIkeEN/SJMCL/blob/main/CONTRIBUTING.md).
 
 ### Developing Extensions
 
-If you want to develop extensions for SJMCL, check out the [Extension Documentation](https://mc.sjtu.cn/sjmcl/en/dev/extension/). It includes an introduction to the extension system and API references. We also provide a scaffold to help you quickly create a template project and get started.
+WTUMCL inherits the SJMCL extension system and package format. Existing extensions remain compatible, and new extensions can target WTUMCL in the same way. See the upstream repository for the extension API and scaffold.
 
-### Contributors
+### Upstream Contributors
 
 ![Contributors](https://contrib.rocks/image?repo=UNIkeEN/SJMCL "Contributors")
 
-## Copyright
+## License
 
 Copyright © 2024-2026 SJMCL Team.
 
@@ -159,9 +100,9 @@ Modifications © 2026 WTUMC.
 
 > NOT AN OFFICIAL MINECRAFT SERVICE. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
-The software is distributed under [GNU General Public License v3.0](/LICENSE).
+WTUMCL is distributed under [GNU General Public License v3.0](LICENSE).
 
-By GPLv3 License term 7, we require that when you distribute a modified version of the software, you must obey GPLv3 License as well as the following [additional terms](/LICENSE.EXTRA): 
+By GPLv3 License term 7, we require that when you distribute a modified version of the software, you must obey GPLv3 License as well as the following [additional terms](LICENSE.EXTRA):
 
 1. Use a different software name than SJMCL or SJMC Launcher;
 2. Mark clearly in your repository README file, your distribution website or thread, Support documents, About Page in the software that your program is based on SJMCL and give out the url of the origin repository.
@@ -169,38 +110,7 @@ By GPLv3 License term 7, we require that when you distribute a modified version 
 
 Besides, per term of use of our website, when distributing a modified version of the software, please send version numbers with prefix (more than two letters, e.g. `XX-0.0.1`) to our statistics server (`src-tauri/src/utils/sys_info.rs`) unless your modifications meets Clauses 3 above.
 
-## Contact Us
+## Contact
 
-QQ Group for SJMCL Users: 860851380
-
-You can also send email to [launcher@sjmc.club](mailto:launcher@sjmc.club) if you want to contact us.
-
-## Community Partners
-
-We sincerely thank the following organizations for their development and community support throughout the SJMCL project.
-
-[
-  <picture>
-    <source srcset="docs/figs/partners/sjmc-dark.png" media="(prefers-color-scheme: dark)">
-    <source srcset="docs/figs/partners/sjmc.png" media="(prefers-color-scheme: light)">
-    <img src="docs/figs/partners/sjmc.png" alt="SJMC" style="height: 65px;">
-  </picture>
-](https://mc.sjtu.cn/en/)
-&nbsp;&nbsp;
-[<img src="docs/figs/partners/sues-mc.png" alt="SUES-MC" style="height: 65px;"/>](https://www.suesmc.ltd/)
-
-[
-  <picture>
-    <source srcset="docs/figs/partners/mua-dark.png" media="(prefers-color-scheme: dark)">
-    <source srcset="docs/figs/partners/mua.png" media="(prefers-color-scheme: light)">
-    <img src="docs/figs/partners/mua.png" alt="MUA" style="height: 45px;">
-  </picture>
-](https://www.mualliance.cn/en)
-&nbsp;&nbsp;&nbsp;&nbsp;
-[
-  <picture>
-    <source srcset="docs/figs/partners/gnwork-dark.png" media="(prefers-color-scheme: dark)">
-    <source srcset="docs/figs/partners/gnwork.png" media="(prefers-color-scheme: light)">
-    <img src="docs/figs/partners/gnwork.png" alt="GNWORK" style="height: 45px;">
-  </picture>
-](https://space.bilibili.com/403097853)
+* WTUMC community site: https://wtumc.top:64053
+* Issue tracker: https://github.com/SARICE233/WTUMCL/issues

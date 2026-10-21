@@ -10,14 +10,22 @@
 
 [English](../README.md) · [简体中文](README.zh-Hans.md) · **繁體中文**
 
+## 簡介
+
+WTUMCL 是面向**武漢紡織大學 MC 社群（WTUMC）**的 SJMCL 社群版啟動器。它保留上游啟動器的核心工作流程——多遊戲目錄與多實例、多帳戶登入、資源下載和擴充系統——並預設接入 WTUMC 自己的服務：社群新聞源、社群認證伺服器與社群外觀載入。
+
+目標很直接：社群成員安裝啟動器後，用社群帳戶登入，即可進入社群伺服器，並讓外觀正常顯示，無需手動修改設定檔。
+
 ## 功能特性
 
-* **跨平臺支援**：相容 Windows 10/11、macOS 與 Linux。
+* **WTUMC 社群整合**：預設使用社群新聞源 https://wtumc.top:64053/api/news，啟動器的探索頁無需手動設定即可顯示社群公告與文章。
+* **社群帳戶與外觀**：內建社群認證伺服器 https://wtumc.top:64053/api/yggdrasil；啟動器會正規化認證伺服器回傳的外觀網域（移除協定標頭、連接埠與路徑），確保社群外觀在遊戲內正常載入。
+* **跨平臺支援**：相容 Windows 10/11、macOS 10.15+ 與 Linux（webkit2gtk 4.1）。
 * **高效的實例管理**：支援多個遊戲目錄與實例，集中管理所有實例資源（如存檔、模組、資源包、光影包、截圖等）與設定。
 * **便捷的資源下載**：支援從 CurseForge 與 Modrinth 等源下載遊戲用戶端、模組載入器、各類遊戲資源與模組包。
-* **多帳戶系統支援**：內建 Microsoft 登入與第三方認證伺服器支援，相容 Yggdrasil Connect 的 OAuth 登入流程規範提案。
-* **外部服務協同**：透過深度連結與 MCP 服務，與外部網頁、程式及 Agent 服務協同運作，提供一系列便捷功能與自動化能力。
-* **開放擴展系統**：支援開發擴展，為啟動器擴展更多有趣且實用的功能。[>> 查看社區擴展](https://github.com/SJMC-Dev/awesome-SJMCL-extensions/blob/main/README.zh-Hant.md)
+* **多帳戶系統支援**：內建 Microsoft 登入與第三方認證伺服器支援，相容 authlib-injector 認證伺服器以及 Yggdrasil Connect 的 OAuth 登入流程規範提案。
+* **外部服務協同**：透過 `wtumcl://` 深度連結與 MCP 服務，與外部網頁、程式及 Agent 服務協同運作，提供一系列便捷功能與自動化能力。
+* **開放擴充系統**：沿用 SJMCL 的擴充系統與擴充包格式，現有社群擴充仍可使用，也可按同樣方式為 WTUMCL 開發新擴充。
 
 > 注意：部分功能可能受地區、執行平臺或程式發行類型限制。
 
@@ -27,140 +35,75 @@
 [![Next JS](https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Chakra UI](https://img.shields.io/badge/chakra_ui-v2-38B2AC?style=for-the-badge&logo=chakraui&logoColor=white&labelColor=319795)](https://v2.chakra-ui.com/)
 
+## WTUMC 社群服務
+
+| 服務 | 位址 | 用途 |
+|------|------|------|
+| 社群網站 | https://wtumc.top:64053 | 社群首頁、公告與使用者入口 |
+| 社群新聞源 | https://wtumc.top:64053/api/news | 啟動器預設新聞資料來源 |
+| 社群認證伺服器 | https://wtumc.top:64053/api/yggdrasil | 社群帳戶使用的 Yggdrasil / authlib-injector 認證端點 |
+
+以上服務由 WTUMC 營運，是社群成員推薦使用的預設設定。其他相容 authlib-injector 的認證伺服器帳戶與外觀仍可手動加入。
+
 ## 開始使用
 
-開始使用 SJMCL，只需前往 [官網](https://mc.sjtu.cn/sjmcl/downloads) 下載最新版即可。
+請從 [GitHub Releases](https://github.com/SARICE233/WTUMCL/releases) 下載最新建置。建置產物由本倉庫的 GitHub Actions 工作流程產生。WTUMCL 不維護官方網站下載頁，也不發佈 Homebrew / Snap / AUR / Winget 套件；如果您需要本分支，請不要安裝上游 SJMCL 的發行套件。
 
-您也可以在 [GitHub Releases](https://github.com/UNIkeEN/SJMCL/releases) 獲取所有版本，包括週期性構建。
-
-SJMCL 目前支援以下平臺：
+WTUMCL 目前支援以下平臺：
 
 | 平臺    | 系統版本            | 架構               | 提供的發行類型                              |
 |---------|---------------------|--------------------|--------------------------------------------|
-| Windows | 10 及以上         | `aarch64`, `i686`, `x86_64`   | 安裝版 `.exe`，便攜版 `.exe` |
-| macOS   | 10.15 及以上        | `aarch64`, `x86_64`| `.app`，`.dmg`                   |
-| Linux   | webkit2gtk 4.1 (如 Ubuntu 22.04) | `aarch64`, `x86_64` | `.deb`, `.rpm`, 便攜版二進位制檔案 |
+| Windows | 10 及以上           | `aarch64`, `i686`, `x86_64` | 安裝版 `.exe`，便攜版 `.exe` |
+| macOS   | 10.15 及以上        | `aarch64`, `x86_64` | `.app`，`.dmg`                   |
+| Linux   | webkit2gtk 4.1（如 Ubuntu 22.04） | `aarch64`, `x86_64` | `.deb`，`.rpm`，便攜版二進位檔 |
 
-了解更多功能與常見問題，請參閱 [使用者文件](https://mc.sjtu.cn/sjmcl/docs)。
+## 從原始碼建置
 
-<details>
-<summary><h3>從命令列安裝</h3></summary>
+自行建置 WTUMCL 前，請準備：
 
-<details>
-<summary><h4>Linux</h4></summary>
+* Node.js 22 或更新版本，以及 pnpm 10 或更新版本；
+* Rust 1.98.1 或更新版本；
+* 對應作業系統的 [Tauri 系統相依套件](https://tauri.app/start/prerequisites/)。
 
-使用 Linux 一鍵安裝腳本安裝最新正式版：
-
-```bash
-curl -LsSf https://mc.sjtu.cn/sjmcl/releases/install.sh | sh -s -- --source sjmc
-```
-
-如果安裝了 [Homebrew](https://brew.sh)，可以透過 [Homebrew](https://brew.sh) Cask 來安裝：
+然後複製倉庫並建置：
 
 ```bash
-brew install --cask sjmcl
-```
-
-不使用 root 權限安裝 Linux 便攜版：
-
-```bash
-curl -LsSf https://mc.sjtu.cn/sjmcl/releases/install.sh | sh -s -- --portable --source sjmc
-```
-
-透過常見的 [AUR 助手](https://wiki.archlinux.org/title/AUR_helpers) 從 Arch Linux 使用者套件庫（AUR）安裝：
-
-```bash
-yay -S sjmcl-bin
-```
-
-若不使用 AUR 助手，您也可以手動安裝：
-
-```bash
-git clone https://aur.archlinux.org/sjmcl-bin.git
-cd sjmcl-bin
-makepkg -si
-```
-
-透過 Snap Store 安裝：
-
-```bash
-sudo snap install sjmcl
-```
-
-> [!WARNING]
-> 使用 Snap 安裝時，遊戲資料可能會預設存放在沙盒目錄內。解除安裝啟動器前，請及時備份存檔、資源包、模組等重要資料。
-
-</details>
-
-<details>
-<summary><h4>macOS</h4></summary>
-
-透過 Homebrew 安裝：
-
-```bash
-brew install --cask sjmcl
-```
-
-</details>
-
-<details>
-<summary><h4>Windows</h4></summary>
-
-透過 Winget 安裝：
-
-```powershell
-winget install SJMC.SJMCL
-```
-
-> [!WARNING]
-> Winget 的索引倉庫是公開協作維護的。安裝前建議執行 `winget show SJMC.SJMCL` 檢視安裝器位址，並確認下載來源來自 `github.com/UNIkeEN/SJMCL` 或 `sjmcl.club`。
-
-</details>
-
-更多安裝方式與平臺注意事項，請參閱 [使用者文件](https://mc.sjtu.cn/sjmcl/docs/install)。
-
-</details>
-
-## 開發與貢獻
-
-首先複製（clone）本專案並安裝前端依賴：
-
-```bash
-git clone git@github.com:UNIkeEN/SJMCL.git
+git clone https://github.com/SARICE233/WTUMCL.git
+cd WTUMCL
 pnpm install
-```
-
-使用開發模式執行：
-
-```bash
 pnpm tauri dev
 ```
 
-我們熱烈歡迎每一位開發者的貢獻。
+產生正式建置：
 
-* 在開始前，請先閱讀我們的 [貢獻指南](https://github.com/UNIkeEN/SJMCL/blob/main/CONTRIBUTING.md)（內含開發流程詳細說明）。
-* API 參考與部分開發者筆記見 [開發者文件](https://mc.sjtu.cn/sjmcl/dev)。
-* 歡迎透過 [Pull Request](https://github.com/UNIkeEN/SJMCL/pulls) 或 [GitHub Issues](https://github.com/UNIkeEN/SJMCL/issues) 分享您的想法。
+```bash
+pnpm tauri build
+```
 
-### 開發擴展
+## 開發與貢獻
 
-如果您希望為 SJMCL 開發擴展，歡迎查看 [擴展文件](https://mc.sjtu.cn/sjmcl/dev/extension/)。內含擴展系統的介紹、API 參考。我們還提供了腳手架，便於快速建立範本專案並上手。
+歡迎透過 [Issues](https://github.com/SARICE233/WTUMCL/issues) 與 [Pull Requests](https://github.com/SARICE233/WTUMCL/pulls) 參與本分支的開發。若變更同時涉及上游專案，請遵循上游的[貢獻指南](https://github.com/UNIkeEN/SJMCL/blob/main/CONTRIBUTING.md)。
 
-### 貢獻者
+### 開發擴充
+
+WTUMCL 沿用 SJMCL 的擴充系統與擴充包格式。現有擴充保持相容，新擴充也可以按相同方式面向 WTUMCL 開發。擴充 API 與腳手架請參閱上游倉庫。
+
+### 上游貢獻者
 
 ![貢獻者](https://contrib.rocks/image?repo=UNIkeEN/SJMCL "貢獻者")
 
-## 版權宣告
+## 版權與授權
 
 版權所有 © 2024-2026 SJMCL 團隊。
 
 本分支修改 © 2026 武漢紡織大學 MC 社群（WTUMC）。
 
-> 本軟體並非官方 Minecraft 服務。未獲得 Mojang 或 Microsoft 批准或關聯許可。
+> 本軟體並非官方 Minecraft 服務，未獲得 Mojang 或 Microsoft 批准或關聯。
+> NOT AN OFFICIAL MINECRAFT SERVICE. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
-本專案基於 [GNU 通用公眾授權條款 v3.0](../LICENSE) 釋出。
+本專案基於 [GNU 通用公眾授權條款 v3.0](../LICENSE) 發佈。
 
-依據 GPLv3 第 7 條款，當您分發本軟體的修改版本時，除遵守 GPLv3 外，還須遵守以下 [附加條款](../LICENSE.EXTRA)：
+依據 GPLv3 第 7 條款，當您分發本軟體的修改版本時，除遵守 GPLv3 外，還須遵守以下[附加條款](../LICENSE.EXTRA)：
 
 1. 必須更換軟體名稱，禁止使用 SJMCL 或 SJMC Launcher；
 2. 在您的專案 README、分發網站或相關文件、軟體的關於頁面中，須明確標註您的程式基於 SJMCL，並註明原專案連結。
@@ -170,36 +113,5 @@ pnpm tauri dev
 
 ## 聯絡我們
 
-SJMCL 使用者 QQ 交流群：860851380
-
-您還可以傳送郵件至 [launcher@sjmc.club](mailto:launcher@sjmc.club) 來聯絡我們。
-
-## 社群合作伙伴
-
-衷心感謝以下組織對 SJMCL 專案開發與社群的支援。
-
-[
-  <picture>
-    <source srcset="figs/partners/sjmc-dark.png" media="(prefers-color-scheme: dark)">
-    <source srcset="figs/partners/sjmc.png" media="(prefers-color-scheme: light)">
-    <img src="figs/partners/sjmc.png" alt="SJMC" style="height: 65px;">
-  </picture>
-](https://mc.sjtu.cn)
-&nbsp;&nbsp;
-[<img src="figs/partners/sues-mc.png" alt="SUES-MC" style="height: 65px;"/>](https://www.suesmc.ltd/)
-
-[
-  <picture>
-    <source srcset="figs/partners/mua-dark.png" media="(prefers-color-scheme: dark)">
-    <source srcset="figs/partners/mua.png" media="(prefers-color-scheme: light)">
-    <img src="figs/partners/mua.png" alt="MUA" style="height: 45px;">
-  </picture>
-](https://www.mualliance.cn)
-&nbsp;&nbsp;&nbsp;&nbsp;
-[
-  <picture>
-    <source srcset="figs/partners/gnwork-dark.png" media="(prefers-color-scheme: dark)">
-    <source srcset="figs/partners/gnwork.png" media="(prefers-color-scheme: light)">
-    <img src="figs/partners/gnwork.png" alt="GNWORK" style="height: 45px;">
-  </picture>
-](https://space.bilibili.com/403097853)
+* WTUMC 社群網站：https://wtumc.top:64053
+* 問題回報：[GitHub Issues](https://github.com/SARICE233/WTUMCL/issues)
