@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use sjmcl_types::error::SJMCLResult;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use zip::ZipArchive;
@@ -12,8 +11,11 @@ use zip::ZipArchive;
 use crate::instance::helpers::modpack::export::{
   ExportModpackOptions, ModpackExportBundle, normalize_mod_loader_version,
 };
-use crate::instance::helpers::modpack::import::{ModpackManifest, ModpackMetaInfo};
-use crate::instance::models::misc::{Instance, InstanceError, ModLoader, ModLoaderType};
+use crate::instance::helpers::modpack::import::{
+  ModpackManifest, ModpackMetaInfo, locate_pack_file, non_empty, parent_prefix, read_pack_text,
+  resolve_mod_loader,
+};
+use crate::instance::models::misc::{Instance, InstanceError, ModLoaderType};
 use crate::resource::models::OtherResourceSource;
 use crate::tasks::PTaskParam;
 
@@ -47,6 +49,8 @@ structstruck::strike! {
     pub cfg: HashMap<String, String>,
     #[serde(skip)]
     pub base_path: String,
+    #[serde(skip)]
+    pub overrides_path: String,
   }
 }
 
@@ -54,70 +58,59 @@ structstruck::strike! {
 impl ModpackManifest for MultiMcManifest {
   fn from_archive(file: &File) -> SJMCLResult<Self> {
     let mut archive = ZipArchive::new(file)?;
+    let manifest_path = locate_pack_file(&mut archive, "mmc-pack.json")
+      .ok_or(InstanceError::ModpackManifestParseError)?;
+    let base_path = parent_prefix(&manifest_path);
 
-    let base_path = if archive.by_name("mmc-pack.json").is_ok() {
-      String::new()
+    let manifest_content = read_pack_text(&mut archive, &manifest_path)?;
+    let mut manifest: Self = serde_json::from_str(&manifest_content)?;
+
+    // Some packs ship without instance.cfg; the pack is still installable, only the
+    // display name falls back to a default.
+    let cfg_path = format!("{}instance.cfg", base_path);
+    let cfg_str = read_pack_text(&mut archive, &cfg_path).unwrap_or_default();
+    let cfg = if cfg_str.trim().is_empty() {
+      HashMap::new()
     } else {
-      let mut found_path = None;
-      for i in 0..archive.len() {
-        let file = archive.by_index(i)?;
-        let name = file.name();
-
-        if name.ends_with("mmc-pack.json")
-          && let Some(last_slash) = name.rfind('/')
-        {
-          let dir_path = &name[..=last_slash];
-          let depth = name[..last_slash].matches('/').count();
-          if depth <= 1 {
-            found_path = Some(dir_path.to_string());
-            break;
-          }
-        }
-      }
-      found_path.ok_or(InstanceError::ModpackManifestParseError)?
+      Config::builder()
+        .add_source(config::File::from_str(&cfg_str, config::FileFormat::Ini))
+        .build()?
+        .try_deserialize::<HashMap<String, String>>()?
     };
 
-    let mut manifest: MultiMcManifest;
-    {
-      let manifest_path = format!("{}mmc-pack.json", base_path);
-      let mut manifest_file = archive.by_name(&manifest_path)?;
-      let mut manifest_content = String::new();
-      manifest_file.read_to_string(&mut manifest_content)?;
-      manifest = serde_json::from_str(&manifest_content)?;
-    }
-
-    let cfg_path = format!("{}instance.cfg", base_path);
-    let mut cfg_file = archive.by_name(&cfg_path)?;
-    let mut cfg_str = String::new();
-    cfg_file.read_to_string(&mut cfg_str)?;
-
-    let config = Config::builder()
-      .add_source(config::File::from_str(&cfg_str, config::FileFormat::Ini))
-      .build()?;
+    // PCL/Prism prefer "minecraft/" and only use ".minecraft/" when the former is absent.
+    let minecraft_prefix = format!("{}minecraft/", base_path);
+    let legacy_prefix = format!("{}.minecraft/", base_path);
+    let has_minecraft = archive
+      .file_names()
+      .any(|name| name.replace('\\', "/").starts_with(&minecraft_prefix));
+    let overrides_path = if has_minecraft {
+      minecraft_prefix
+    } else {
+      legacy_prefix
+    };
 
     manifest.base_path = base_path;
-    manifest.cfg = config.try_deserialize::<HashMap<String, String>>()?;
+    manifest.cfg = cfg;
+    manifest.overrides_path = overrides_path;
 
     Ok(manifest)
   }
 
   async fn get_meta_info(&self, app: &AppHandle) -> SJMCLResult<ModpackMetaInfo> {
     let client_version = self.get_client_version()?;
-    let mod_loader = if let Ok((loader_type, version)) = self.get_mod_loader_type_version() {
-      Some(
-        ModLoader {
-          loader_type,
-          version,
-          ..Default::default()
-        }
-        .with_branch(app, client_version.clone())
-        .await?,
-      )
-    } else {
-      None
+    let mod_loader = match self.get_mod_loader_type_version() {
+      Ok((loader_type, version)) => {
+        Some(resolve_mod_loader(app, loader_type, version, client_version.clone()).await)
+      }
+      Err(_) => None,
     };
     Ok(ModpackMetaInfo {
-      name: self.cfg.get("name").cloned().unwrap_or_default(),
+      name: self
+        .cfg
+        .get("name")
+        .and_then(|name| non_empty(name))
+        .unwrap_or_else(|| "MultiMC Modpack".to_string()),
       version: None,
       description: None,
       author: None,
@@ -146,6 +139,7 @@ impl ModpackManifest for MultiMcManifest {
           return Ok((ModLoaderType::Fabric, get_version(component)?));
         }
         "net.neoforged" => return Ok((ModLoaderType::NeoForge, get_version(component)?)),
+        "org.quiltmc.quilt-loader" => return Ok((ModLoaderType::Quilt, get_version(component)?)),
         _ => continue,
       }
     }
@@ -162,7 +156,11 @@ impl ModpackManifest for MultiMcManifest {
   }
 
   fn get_overrides_path(&self) -> String {
-    format!("{}.minecraft/", self.base_path)
+    if self.overrides_path.is_empty() {
+      format!("{}.minecraft/", self.base_path)
+    } else {
+      self.overrides_path.clone()
+    }
   }
 }
 
@@ -171,7 +169,7 @@ fn get_version(component: &MultiMcComponent) -> SJMCLResult<String> {
     .version
     .as_ref()
     .or(component.cached_version.as_ref())
-    .cloned()
+    .and_then(|version| non_empty(version))
     .ok_or(InstanceError::ModpackManifestParseError.into())
 }
 
@@ -240,6 +238,7 @@ fn generate_multimc_manifest(instance: &Instance) -> MultiMcManifest {
     components,
     cfg: HashMap::new(),
     base_path: String::new(),
+    overrides_path: String::new(),
   }
 }
 

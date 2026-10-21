@@ -2,24 +2,31 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sjmcl_types::error::{SJMCLError, SJMCLResult};
 use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 use zip::ZipArchive;
 
-use crate::instance::helpers::modpack::import::{ModpackManifest, ModpackMetaInfo};
-use crate::instance::models::misc::{InstanceError, ModLoader, ModLoaderType};
+use crate::instance::helpers::modpack::import::{
+  ModpackManifest, ModpackMetaInfo, locate_pack_file, non_empty, parent_prefix, read_pack_text,
+  resolve_mod_loader,
+};
+use crate::instance::models::misc::{InstanceError, ModLoaderType};
 use crate::resource::helpers::curseforge::misc::{CURSEFORGE_API_KEY, CurseForgeProject};
 use crate::resource::models::OtherResourceSource;
 use crate::tasks::PTaskParam;
 use crate::tasks::download::DownloadParam;
 
+fn default_overrides() -> String {
+  "overrides".to_string()
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CurseForgeModLoader {
   pub id: String,
+  #[serde(default)]
   pub primary: bool,
 }
 
@@ -30,6 +37,7 @@ pub struct CurseForgeFiles {
   pub project_id: u64,
   #[serde(rename = "fileID")]
   pub file_id: u64,
+  #[serde(default)]
   pub required: bool,
 }
 
@@ -37,15 +45,23 @@ structstruck::strike! {
 #[strikethrough[derive(Deserialize, Serialize, Debug, Clone)]]
 #[strikethrough[serde(rename_all = "camelCase")]]
   pub struct CurseForgeManifest {
+    #[serde(default)]
     pub name: String,
     pub version: Option<String>,
+    #[serde(default)]
     pub author: String,
+    #[serde(default = "default_overrides")]
     pub overrides: String,
-    pub minecraft: struct {
+    pub minecraft: Option<pub struct {
+      #[serde(default)]
       pub version: String,
+      #[serde(default)]
       pub mod_loaders: Vec<CurseForgeModLoader>,
-    },
+    }>,
+    #[serde(default)]
     pub files: Vec<CurseForgeFiles>,
+    #[serde(skip)]
+    pub base_path: String,
   }
 }
 
@@ -74,36 +90,28 @@ pub struct CurseForgeProjectRes {
 impl ModpackManifest for CurseForgeManifest {
   fn from_archive(file: &File) -> SJMCLResult<Self> {
     let mut archive = ZipArchive::new(file)?;
-    let mut manifest_file = archive.by_name("manifest.json")?;
-    let mut manifest_content = String::new();
-    manifest_file.read_to_string(&mut manifest_content)?;
-    let manifest: Self = serde_json::from_str(&manifest_content).inspect_err(|e| {
-      eprintln!("{:?}", e);
-    })?;
+    let manifest_path = locate_pack_file(&mut archive, "manifest.json")
+      .ok_or(InstanceError::ModpackManifestParseError)?;
+    let manifest_content = read_pack_text(&mut archive, &manifest_path)?;
+    let mut manifest: Self = serde_json::from_str(&manifest_content)?;
+    manifest.base_path = parent_prefix(&manifest_path);
 
     Ok(manifest)
   }
 
   async fn get_meta_info(&self, app: &AppHandle) -> SJMCLResult<ModpackMetaInfo> {
     let client_version = self.get_client_version()?;
-    let mod_loader = if let Ok((loader_type, version)) = self.get_mod_loader_type_version() {
-      Some(
-        ModLoader {
-          loader_type,
-          version,
-          ..Default::default()
-        }
-        .with_branch(app, client_version.clone())
-        .await?,
-      )
-    } else {
-      None
+    let mod_loader = match self.get_mod_loader_type_version() {
+      Ok((loader_type, version)) => {
+        Some(resolve_mod_loader(app, loader_type, version, client_version.clone()).await)
+      }
+      Err(_) => None,
     };
     Ok(ModpackMetaInfo {
-      name: self.name.clone(),
-      version: self.version.clone(),
+      name: non_empty(&self.name).unwrap_or_else(|| "CurseForge Modpack".to_string()),
+      version: self.version.clone().and_then(|version| non_empty(&version)),
       description: None,
-      author: Some(self.author.clone()),
+      author: non_empty(&self.author),
       modpack_source: OtherResourceSource::CurseForge,
       client_version,
       mod_loader,
@@ -111,15 +119,23 @@ impl ModpackManifest for CurseForgeManifest {
   }
 
   fn get_client_version(&self) -> SJMCLResult<String> {
-    Ok(self.minecraft.version.clone())
+    self
+      .minecraft
+      .as_ref()
+      .and_then(|minecraft| non_empty(&minecraft.version))
+      .ok_or_else(|| InstanceError::ModpackManifestParseError.into())
   }
 
   fn get_mod_loader_type_version(&self) -> SJMCLResult<(ModLoaderType, String)> {
-    let loader = self
-      .minecraft
+    let Some(minecraft) = self.minecraft.as_ref() else {
+      return Err(InstanceError::ModpackManifestParseError.into());
+    };
+
+    let loader = minecraft
       .mod_loaders
       .iter()
-      .find(|l| l.primary)
+      .find(|loader| loader.primary)
+      .or_else(|| minecraft.mod_loaders.first())
       .ok_or(InstanceError::ModLoaderVersionParseError)?;
 
     let Some((loader_type, version)) = loader.id.split_once('-') else {
@@ -221,6 +237,11 @@ impl ModpackManifest for CurseForgeManifest {
   }
 
   fn get_overrides_path(&self) -> String {
-    self.overrides.clone()
+    let overrides = self.overrides.trim().replace('\\', "/");
+    let overrides = overrides.trim_matches('/');
+    if overrides.is_empty() || overrides == "." {
+      return self.base_path.clone();
+    }
+    format!("{}{}/", self.base_path, overrides)
   }
 }

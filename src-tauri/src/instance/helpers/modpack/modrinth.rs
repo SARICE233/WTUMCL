@@ -6,7 +6,6 @@ use sjmcl_types::error::SJMCLResult;
 use smart_default::SmartDefault;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::AppHandle;
@@ -16,7 +15,10 @@ use zip::ZipArchive;
 use crate::instance::helpers::modpack::export::{
   ExportModpackOptions, ModpackExportBundle, normalize_mod_loader_version,
 };
-use crate::instance::helpers::modpack::import::{ModpackManifest, ModpackMetaInfo};
+use crate::instance::helpers::modpack::import::{
+  ModpackManifest, ModpackMetaInfo, locate_pack_file, non_empty, parent_prefix, read_pack_text,
+  resolve_mod_loader, safe_relative_path,
+};
 use crate::instance::models::misc::{Instance, InstanceError, ModLoader, ModLoaderType};
 use crate::resource::helpers::{
   curseforge::fetch_remote_resource_by_local_curseforge,
@@ -26,21 +28,39 @@ use crate::resource::models::OtherResourceSource;
 use crate::tasks::PTaskParam;
 use crate::tasks::download::DownloadParam;
 
+fn default_env_value() -> String {
+  "required".to_string()
+}
+
+fn default_format_version() -> u64 {
+  1
+}
+
+fn default_game() -> String {
+  "minecraft".to_string()
+}
+
 structstruck::strike! {
 #[strikethrough[serialize_skip_none]]
 #[strikethrough[derive(Deserialize, Serialize, Debug, Clone)]]
 #[strikethrough[serde(rename_all = "camelCase")]]
 pub struct ModrinthFile {
   pub path: String,
-  pub hashes: struct ModrinthFileHashes {
+  pub hashes: Option<pub struct ModrinthFileHashes {
+    #[serde(default)]
     pub sha1: String,
+    #[serde(default)]
     pub sha512: String,
-  },
+  }>,
   pub env: Option<pub struct ModrinthFileEnv {
+    #[serde(default = "default_env_value")]
     pub client: String,
+    #[serde(default = "default_env_value")]
     pub server: String,
   }>,
+  #[serde(default)]
   pub downloads: Vec<String>,
+  #[serde(default)]
   pub file_size: u64,
 }
 }
@@ -50,48 +70,48 @@ pub struct ModrinthFile {
 #[serde(rename_all = "camelCase")]
 pub struct ModrinthManifest {
   #[default = 1]
+  #[serde(default = "default_format_version")]
   pub format_version: u64,
   #[default = "minecraft"]
+  #[serde(default = "default_game")]
   pub game: String,
+  #[serde(default)]
   pub version_id: String,
+  #[serde(default)]
   pub name: String,
   pub summary: Option<String>,
+  #[serde(default)]
   pub files: Vec<ModrinthFile>,
+  #[serde(default)]
   pub dependencies: HashMap<String, String>,
+  #[serde(skip)]
+  pub base_path: String,
 }
 
-#[async_trait]
-impl ModpackManifest for ModrinthManifest {
-  fn from_archive(file: &File) -> SJMCLResult<Self> {
-    let mut archive = ZipArchive::new(file)?;
-    let mut manifest_file = archive.by_name("modrinth.index.json")?;
-    let mut manifest_content = String::new();
-    manifest_file.read_to_string(&mut manifest_content)?;
-    let manifest: Self = serde_json::from_str(&manifest_content).inspect_err(|e| {
-      eprintln!("{:?}", e);
-    })?;
-    Ok(manifest)
+impl ModrinthManifest {
+  fn display_name(&self) -> String {
+    non_empty(&self.name)
+      .or_else(|| non_empty(&self.version_id))
+      .unwrap_or_else(|| "Modrinth Modpack".to_string())
   }
 
-  async fn get_meta_info(&self, app: &AppHandle) -> SJMCLResult<ModpackMetaInfo> {
+  /// Build metadata without any network access, so format recognition never depends
+  /// on remote loader metadata being reachable.
+  pub(crate) fn to_meta_info(&self) -> SJMCLResult<ModpackMetaInfo> {
     let client_version = self.get_client_version()?;
-    let mod_loader = if let Ok((loader_type, version)) = self.get_mod_loader_type_version() {
-      Some(
-        ModLoader {
-          loader_type,
-          version,
-          ..Default::default()
-        }
-        .with_branch(app, client_version.clone())
-        .await?,
-      )
-    } else {
-      None
-    };
+    let mod_loader = self
+      .get_mod_loader_type_version()
+      .ok()
+      .map(|(loader_type, version)| ModLoader {
+        loader_type,
+        version,
+        ..Default::default()
+      });
+
     Ok(ModpackMetaInfo {
-      name: self.name.clone(),
-      version: Some(self.version_id.clone()),
-      description: self.summary.clone(),
+      name: self.display_name(),
+      version: non_empty(&self.version_id),
+      description: self.summary.as_deref().and_then(non_empty),
       author: None,
       modpack_source: OtherResourceSource::Modrinth,
       client_version,
@@ -99,25 +119,98 @@ impl ModpackManifest for ModrinthManifest {
     })
   }
 
+  /// Translate the manifest file list into download tasks, skipping entries that
+  /// cannot be downloaded safely (unsupported client env, no usable URL, or a path
+  /// that would escape the instance directory).
+  pub(crate) fn download_params_from_files(&self, instance_path: &Path) -> Vec<PTaskParam> {
+    self
+      .files
+      .iter()
+      .filter_map(|file| {
+        if file
+          .env
+          .as_ref()
+          .is_some_and(|env| env.client.eq_ignore_ascii_case("unsupported"))
+        {
+          return None;
+        }
+
+        let dest = safe_relative_path(&file.path)?;
+        let src = file.downloads.iter().find_map(|download| {
+          url::Url::parse(download)
+            .ok()
+            .filter(|url| matches!(url.scheme(), "http" | "https"))
+        })?;
+
+        Some(PTaskParam::Download(DownloadParam {
+          src,
+          sha1: file
+            .hashes
+            .as_ref()
+            .and_then(|hashes| non_empty(&hashes.sha1)),
+          dest: instance_path.join(dest),
+          filename: None,
+        }))
+      })
+      .collect()
+  }
+}
+
+#[async_trait]
+impl ModpackManifest for ModrinthManifest {
+  fn from_archive(file: &File) -> SJMCLResult<Self> {
+    let mut archive = ZipArchive::new(file)?;
+    let manifest_path = locate_pack_file(&mut archive, "modrinth.index.json")
+      .ok_or(InstanceError::ModpackManifestParseError)?;
+    let manifest_content = read_pack_text(&mut archive, &manifest_path)?;
+    let mut manifest: Self = serde_json::from_str(&manifest_content)?;
+    manifest.base_path = parent_prefix(&manifest_path);
+    Ok(manifest)
+  }
+
+  async fn get_meta_info(&self, app: &AppHandle) -> SJMCLResult<ModpackMetaInfo> {
+    let mut meta = self.to_meta_info()?;
+    if let Some(loader) = meta.mod_loader.take() {
+      meta.mod_loader = Some(
+        resolve_mod_loader(
+          app,
+          loader.loader_type,
+          loader.version,
+          meta.client_version.clone(),
+        )
+        .await,
+      );
+    }
+    Ok(meta)
+  }
+
   fn get_client_version(&self) -> SJMCLResult<String> {
-    Ok(
-      self
-        .dependencies
-        .get("minecraft")
-        .ok_or(InstanceError::ModpackManifestParseError)?
-        .to_string(),
-    )
+    self
+      .dependencies
+      .get("minecraft")
+      .and_then(|version| non_empty(version))
+      .ok_or_else(|| InstanceError::ModpackManifestParseError.into())
   }
 
   fn get_mod_loader_type_version(&self) -> SJMCLResult<(ModLoaderType, String)> {
-    for (key, val) in &self.dependencies {
-      match key.as_str() {
-        "minecraft" => continue,
-        "forge" => return Ok((ModLoaderType::Forge, val.to_string())),
-        "fabric-loader" => return Ok((ModLoaderType::Fabric, val.to_string())),
-        "neoforge" => return Ok((ModLoaderType::NeoForge, val.to_string())),
-        "quilt-loader" => return Ok((ModLoaderType::Quilt, val.to_string())),
-        _ => return Err(InstanceError::UnsupportedModLoader.into()),
+    // Check loader keys in a fixed order instead of relying on HashMap iteration,
+    // which otherwise lets an unrelated dependency mask a supported loader.
+    const LOADER_KEYS: [(&str, ModLoaderType); 6] = [
+      ("forge", ModLoaderType::Forge),
+      ("neoforge", ModLoaderType::NeoForge),
+      ("neo-forge", ModLoaderType::NeoForge),
+      ("fabric-loader", ModLoaderType::Fabric),
+      ("fabric", ModLoaderType::Fabric),
+      ("quilt-loader", ModLoaderType::Quilt),
+    ];
+
+    for (key, loader_type) in LOADER_KEYS {
+      if let Some(version) = self
+        .dependencies
+        .get(key)
+        .and_then(|value| non_empty(value))
+      {
+        return Ok((loader_type, version));
       }
     }
     Err(InstanceError::ModpackManifestParseError.into())
@@ -128,26 +221,15 @@ impl ModpackManifest for ModrinthManifest {
     _app: &AppHandle,
     instance_path: &Path,
   ) -> SJMCLResult<Vec<PTaskParam>> {
-    self
-      .files
-      .iter()
-      .map(|file| {
-        let download_url = file
-          .downloads
-          .first()
-          .ok_or(InstanceError::InvalidSourcePath)?;
-        Ok(PTaskParam::Download(DownloadParam {
-          src: url::Url::parse(download_url).map_err(|_| InstanceError::InvalidSourcePath)?,
-          sha1: Some(file.hashes.sha1.clone()),
-          dest: instance_path.join(&file.path),
-          filename: None,
-        }))
-      })
-      .collect::<SJMCLResult<Vec<_>>>()
+    Ok(self.download_params_from_files(instance_path))
   }
 
   fn get_overrides_path(&self) -> String {
-    "overrides/".to_string()
+    format!("{}overrides/", self.base_path)
+  }
+
+  fn get_extra_overrides_paths(&self) -> Vec<String> {
+    vec![format!("{}client-overrides/", self.base_path)]
   }
 }
 
@@ -257,7 +339,7 @@ async fn build_modrinth_remote_file(
 
   Ok(Some(ModrinthFile {
     path: manifest_path,
-    hashes: ModrinthFileHashes { sha1, sha512 },
+    hashes: Some(ModrinthFileHashes { sha1, sha512 }),
     env,
     downloads,
     file_size,
