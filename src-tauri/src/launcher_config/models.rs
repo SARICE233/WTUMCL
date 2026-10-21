@@ -133,6 +133,19 @@ pub struct ProxyConfig {
 // assert_eq!(result_game, Ok(()));
 // assert!(config.access("114514").is_err())
 //
+// Current default discover source endpoints.
+// This is the single source of truth for both the default configuration and the
+// legacy-config migration in `migrations.rs`.
+pub const DEFAULT_DISCOVER_SOURCE_ENDPOINTS: &[(&str, bool)] =
+  &[("https://wtumc.top:64053/api/news", true)];
+
+pub fn default_discover_source_endpoints() -> Vec<(String, bool)> {
+  DEFAULT_DISCOVER_SOURCE_ENDPOINTS
+    .iter()
+    .map(|(url, enabled)| (url.to_string(), *enabled))
+    .collect()
+}
+
 structstruck::strike! {
   #[strikethrough[derive(Partial, Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]]
   #[strikethrough[serde(rename_all = "camelCase")]]
@@ -294,7 +307,7 @@ structstruck::strike! {
         deserialize_with = "deserialize_background"
       )]
       pub background: struct AppearanceBackgroundConfig {
-        #[default = "%built-in:Florwyn"]
+        #[default = "%built-in:WTUMC"]
         pub choice: String,
         pub random_custom: bool,
         pub auto_darken: bool,
@@ -371,7 +384,7 @@ structstruck::strike! {
       default,
       deserialize_with = "deserialize_discover_sources"
     )]
-    #[default(_code="vec![(\"https://wtumc.top:64053/api/news\".to_string(), true)]")]
+    #[default(_code = "default_discover_source_endpoints()")]
     pub discover_source_endpoints: Vec<(String, bool)>,
     pub extra_java_paths: Vec<String>,
     pub suppressed_dialogs: Vec<String>,

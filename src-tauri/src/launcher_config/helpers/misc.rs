@@ -2,6 +2,8 @@ use rand::Rng;
 use sjmcl_types::error::SJMCLResult;
 use sjmcl_types::partial::{PartialAccess, PartialUpdate};
 use std::fs;
+#[cfg(not(target_os = "macos"))]
+use std::path::Path;
 use std::path::{MAIN_SEPARATOR, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
@@ -17,6 +19,10 @@ use crate::utils::portable::extract_assets;
 use crate::{APP_DATA_DIR, EXE_PATH, IS_PORTABLE};
 
 const DOWNLOAD_CACHE_RETENTION_DAYS: u64 = 30;
+
+// Name of the portable game directory created next to the launcher executable.
+#[cfg(not(target_os = "macos"))]
+const DEFAULT_PORTABLE_GAME_DIR_NAME: &str = "WTUMCL";
 
 impl LauncherConfig {
   pub fn setup_with_app(&mut self, app: &AppHandle) -> SJMCLResult<()> {
@@ -77,28 +83,19 @@ impl LauncherConfig {
       }
 
       #[cfg(not(target_os = "macos"))]
-      {
-        if *IS_PORTABLE || cfg!(debug_assertions) {
-          dirs.push(GameDirectory {
-            name: "CURRENT_DIR".to_string(),
-            dir: PathBuf::new(), // place holder, will be set later
-          });
-        } else {
-          dirs.push(GameDirectory {
-            name: "APP_DATA_SUBDIR".to_string(),
-            dir: APP_DATA_DIR.get().unwrap().join(".minecraft"),
-          });
-        }
-      }
+      dirs.push(default_game_directory(
+        crate::EXE_DIR.as_path(),
+        APP_DATA_DIR
+          .get()
+          .expect("APP_DATA_DIR initialization failed"),
+        is_directory_writable,
+      ));
 
       dirs.push(get_official_minecraft_directory(app));
       self.local_game_directories = dirs;
     }
 
     for game_dir in &mut self.local_game_directories {
-      if game_dir.name == "CURRENT_DIR" {
-        game_dir.dir = crate::EXE_DIR.join(".minecraft");
-      }
       if (game_dir.name == "CURRENT_DIR" || game_dir.name == "APP_DATA_SUBDIR")
         && !game_dir.dir.exists()
       {
@@ -187,6 +184,53 @@ fn get_official_minecraft_directory(app: &AppHandle) -> GameDirectory {
     name: "OFFICIAL_DIR".to_string(),
     dir: minecraft_dir,
   }
+}
+
+// Resolve the default game directory for non-macOS platforms: a portable
+// `WTUMCL` folder next to the running executable (i.e. `current_exe().parent()`),
+// so that new users do not end up with a game directory under their user profile.
+// If the executable directory cannot be written to (e.g. the launcher is installed
+// under `Program Files`), fall back to the existing app data subdirectory.
+// This is only used when no game directory is configured yet, so existing
+// configurations are never migrated or overwritten.
+#[cfg(not(target_os = "macos"))]
+fn default_game_directory(
+  exe_dir: &Path,
+  app_data_dir: &Path,
+  is_writable: impl Fn(&Path) -> bool,
+) -> GameDirectory {
+  let portable_dir = exe_dir.join(DEFAULT_PORTABLE_GAME_DIR_NAME);
+
+  if is_writable(&portable_dir) {
+    GameDirectory {
+      name: "CURRENT_DIR".to_string(),
+      dir: portable_dir,
+    }
+  } else {
+    log::warn!(
+      "Game directory next to the executable is not writable, falling back to app data: {:?}",
+      app_data_dir
+    );
+    GameDirectory {
+      name: "APP_DATA_SUBDIR".to_string(),
+      dir: app_data_dir.join(".minecraft"),
+    }
+  }
+}
+
+// Create `dir` if needed and verify that files can actually be written into it.
+// Errors are treated as "not writable" so that the caller can fall back instead
+// of failing the launcher startup.
+#[cfg(not(target_os = "macos"))]
+fn is_directory_writable(dir: &Path) -> bool {
+  if fs::create_dir_all(dir).is_err() {
+    return false;
+  }
+
+  let probe = dir.join(format!(".wtumcl-write-probe-{}", std::process::id()));
+  let writable = fs::write(&probe, []).is_ok();
+  let _ = fs::remove_file(&probe);
+  writable
 }
 
 pub fn get_global_game_config(app: &AppHandle) -> GameConfig {
@@ -289,4 +333,103 @@ pub async fn auto_clear_download_cache(app: &AppHandle) -> SJMCLResult<()> {
   }
 
   Ok(())
+}
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod tests {
+  use super::*;
+  use std::cell::RefCell;
+  use std::time::{SystemTime, UNIX_EPOCH};
+
+  fn temp_path(tag: &str) -> PathBuf {
+    let unique = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .map(|duration| duration.as_nanos())
+      .unwrap_or_default();
+    std::env::temp_dir().join(format!(
+      "wtumcl-game-dir-{tag}-{}-{unique}",
+      std::process::id()
+    ))
+  }
+
+  #[test]
+  fn default_game_directory_joins_exe_directory_with_wtumcl() {
+    let exe_dir = Path::new("/opt/wtumcl");
+    let app_data_dir = Path::new("/home/user/.local/share/wtumcl");
+
+    let game_dir = default_game_directory(exe_dir, app_data_dir, |_| true);
+
+    assert_eq!(game_dir.name, "CURRENT_DIR");
+    assert_eq!(game_dir.dir, exe_dir.join(DEFAULT_PORTABLE_GAME_DIR_NAME));
+    assert_eq!(game_dir.dir, exe_dir.join("WTUMCL"));
+  }
+
+  #[test]
+  fn writability_of_exe_adjacent_wtumcl_directory_is_probed() {
+    let exe_dir = Path::new("/opt/wtumcl");
+    let app_data_dir = Path::new("/home/user/.local/share/wtumcl");
+    let probed = RefCell::new(None);
+
+    default_game_directory(exe_dir, app_data_dir, |candidate| {
+      *probed.borrow_mut() = Some(candidate.to_path_buf());
+      false
+    });
+
+    assert_eq!(
+      probed.into_inner(),
+      Some(exe_dir.join(DEFAULT_PORTABLE_GAME_DIR_NAME))
+    );
+  }
+
+  #[test]
+  fn falls_back_to_app_data_when_exe_adjacent_directory_is_not_writable() {
+    let exe_dir = Path::new("/opt/wtumcl");
+    let app_data_dir = Path::new("/home/user/.local/share/wtumcl");
+
+    let game_dir = default_game_directory(exe_dir, app_data_dir, |_| false);
+
+    assert_eq!(game_dir.name, "APP_DATA_SUBDIR");
+    assert_eq!(game_dir.dir, app_data_dir.join(".minecraft"));
+    assert!(!game_dir.dir.starts_with(exe_dir));
+  }
+
+  #[test]
+  fn writable_directory_is_created_and_probed_without_leftovers() {
+    let dir = temp_path("writable");
+
+    assert!(is_directory_writable(&dir));
+    assert!(dir.is_dir());
+    assert_eq!(fs::read_dir(&dir).unwrap().count(), 0);
+
+    let _ = fs::remove_dir_all(&dir);
+  }
+
+  #[test]
+  fn directory_path_blocked_by_a_file_is_not_writable() {
+    let dir = temp_path("blocked");
+    fs::write(&dir, b"not a directory").unwrap();
+
+    assert!(!is_directory_writable(&dir));
+
+    let _ = fs::remove_file(&dir);
+  }
+
+  #[test]
+  fn falls_back_when_exe_adjacent_wtumcl_path_is_a_file() {
+    let exe_dir = temp_path("exe");
+    fs::create_dir_all(&exe_dir).unwrap();
+    fs::write(
+      exe_dir.join(DEFAULT_PORTABLE_GAME_DIR_NAME),
+      b"not a directory",
+    )
+    .unwrap();
+    let app_data_dir = temp_path("app-data");
+
+    let game_dir = default_game_directory(&exe_dir, &app_data_dir, is_directory_writable);
+
+    assert_eq!(game_dir.name, "APP_DATA_SUBDIR");
+    assert_eq!(game_dir.dir, app_data_dir.join(".minecraft"));
+
+    let _ = fs::remove_dir_all(&exe_dir);
+  }
 }
