@@ -82,6 +82,11 @@ package-lock.json
 # local orchestration artifacts (not shared via git)
 /.owv/
 
+# design sources and development reports (local only, not shared via git)
+/design/
+/docs/dev/
+/src-tauri/tests/*report*.md
+
 # design tool caches
 design/**/__pycache__/
 *.pyc
