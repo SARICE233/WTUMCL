@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::task::{Context, Waker};
-use tokio::time::{Duration, Interval, interval};
+use std::task::Waker;
+use tokio::time::Duration;
 
 use crate::tasks::streams::desc::{PDesc, PStatus};
 use crate::tasks::streams::reporter::{Reporter, Sink};
@@ -11,10 +11,15 @@ where
   S: Sink,
   P: Clone + Serialize + for<'de> Deserialize<'de>,
 {
-  pub interval: Interval,
   pub desc: PDesc<P>,
   pub path: PathBuf,
   pub reporter: Reporter<S>,
+  /// Minimum interval between two persisted / emitted progress reports.
+  ///
+  /// Progress bytes are accumulated per chunk and only flushed when this
+  /// interval has elapsed, so the download hot loop never serializes JSON or
+  /// emits an IPC event for every chunk.
+  pub report_interval: Duration,
   pub waker: Option<Waker>,
 }
 
@@ -23,12 +28,17 @@ where
   S: Sink,
   P: Clone + Serialize + for<'de> Deserialize<'de>,
 {
-  pub fn new(desc: PDesc<P>, duration: Duration, path: PathBuf, reporter: Reporter<S>) -> Self {
+  pub fn new(
+    desc: PDesc<P>,
+    report_interval: Duration,
+    path: PathBuf,
+    reporter: Reporter<S>,
+  ) -> Self {
     Self {
-      interval: interval(duration),
       desc,
       path,
       reporter,
+      report_interval,
       waker: None,
     }
   }
@@ -106,15 +116,35 @@ where
     }
   }
 
-  pub fn report_progress(&mut self, cx: &mut Context<'_>, incr: i64) {
+  /// Accumulates already received bytes to be reported later.
+  ///
+  /// Unlike flush_progress, this neither writes the task descriptor to disk
+  /// nor emits an event, so it is cheap enough to be called for every
+  /// downloaded chunk.
+  pub fn add_progress(&mut self, incr: i64) {
     self.desc.increment_progress(incr);
-    if self.interval.poll_tick(cx).is_ready() {
-      self.desc.save(&self.path).unwrap();
-      self.reporter.report_progress(
-        self.desc.task_id,
-        self.desc.task_group.as_deref(),
-        self.desc.current,
-      );
+  }
+
+  /// Records bytes that were already written to the destination file but not
+  /// reported yet, even though the task is no longer in progress.
+  ///
+  /// This is used when a pause is observed, so a later resume or restart starts
+  /// from the exact byte offset instead of up to one report interval earlier.
+  pub fn store_unreported_progress(&mut self, incr: i64) {
+    if incr <= 0 {
+      return;
     }
+    self.desc.current += incr;
+    self.desc.save(&self.path).unwrap();
+  }
+
+  /// Persists the accumulated progress and emits exactly one progress event.
+  pub fn flush_progress(&mut self) {
+    self.desc.save(&self.path).unwrap();
+    self.reporter.report_progress(
+      self.desc.task_id,
+      self.desc.task_group.as_deref(),
+      self.desc.current,
+    );
   }
 }

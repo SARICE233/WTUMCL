@@ -37,6 +37,19 @@ pub struct TaskMonitor {
   pub download_rate_limiter: Option<Limiter>,
 }
 
+/// Concurrency used when the download transmission mode is "automatic".
+///
+/// Downloads are I/O-bound: a task spends almost all of its time waiting on the
+/// socket, so binding the number of parallel files to the CPU count under-uses
+/// the link on low-core machines. PCL2 ships a 64-slot download thread pool
+/// (`ModNet.vb:311-314`) and PCL2-CE defaults to 7 concurrent file connections
+/// (`PCL.Core/App/Config.cs:80`); 2x the visible cores clamped to [8, 32] is a
+/// middle ground that still bounds the number of open sockets and the memory
+/// used by per-task 64 KiB copy buffers.
+fn auto_concurrency_for(cores: usize) -> usize {
+  cores.saturating_mul(2).clamp(8, 32)
+}
+
 impl TaskMonitor {
   pub fn new(app_handle: AppHandle) -> Self {
     let config = retrieve_launcher_config(app_handle.clone()).unwrap();
@@ -49,9 +62,13 @@ impl TaskMonitor {
       tasks: Arc::new(Mutex::new(HashMap::new())),
       concurrency: Arc::new(Semaphore::new(
         if config.download.transmission.auto_concurrent {
-          std::thread::available_parallelism().unwrap().into()
+          auto_concurrency_for(
+            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get),
+          )
         } else {
-          config.download.transmission.concurrent_count
+          // A zero-permit semaphore would stall every download forever; clamp
+          // a hand-edited config value to at least one connection.
+          config.download.transmission.concurrent_count.max(1)
         },
       )),
       tx,
@@ -511,5 +528,21 @@ impl TaskMonitor {
       }
     }
     false
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::auto_concurrency_for;
+
+  #[test]
+  fn auto_concurrency_scales_with_cores_and_is_bounded() {
+    assert_eq!(auto_concurrency_for(0), 8);
+    assert_eq!(auto_concurrency_for(1), 8);
+    assert_eq!(auto_concurrency_for(4), 8);
+    assert_eq!(auto_concurrency_for(8), 16);
+    assert_eq!(auto_concurrency_for(16), 32);
+    assert_eq!(auto_concurrency_for(64), 32);
+    assert_eq!(auto_concurrency_for(usize::MAX), 32);
   }
 }

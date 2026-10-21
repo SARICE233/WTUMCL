@@ -12,6 +12,12 @@ import { responseHandler } from "@/utils/response";
 export const TASK_PROGRESS_UPDATE_EVENT = "task:progress-update";
 export const TASK_GROUP_UPDATE_EVENT = "task:group-update";
 
+// Progressive task events arrive per task and can burst (a large download
+// schedules one created event per file). Buffer them and dispatch in one go so
+// React batches a single re-render per tick instead of one per event.
+const TASK_PROGRESS_BATCH_INTERVAL_MS = 16;
+const TASK_PROGRESS_BATCH_MAX_SIZE = 256;
+
 /**
  * Service class for managing tasks.
  */
@@ -142,15 +148,49 @@ export class TaskService {
   static onProgressiveTaskUpdate(
     callback: (payload: PTaskEventPayload) => void
   ): () => void {
+    let pending: PTaskEventPayload[] = [];
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const flush = () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (pending.length === 0) return;
+      const batch = pending;
+      pending = [];
+      for (const payload of batch) {
+        try {
+          callback(payload);
+        } catch (error) {
+          logger.error("Failed to handle task progress event:", error);
+        }
+      }
+    };
+
     const unlisten = getCurrentWebview().listen<PTaskEventPayload>(
       TASK_PROGRESS_UPDATE_EVENT,
       (event) => {
-        callback(event.payload);
+        pending.push(event.payload);
+        // Bulk scheduling (e.g. thousands of download tasks created at once)
+        // must not grow the buffer without bound or delay the UI too long.
+        if (pending.length >= TASK_PROGRESS_BATCH_MAX_SIZE) {
+          flush();
+          return;
+        }
+        if (timer === null) {
+          timer = setTimeout(flush, TASK_PROGRESS_BATCH_INTERVAL_MS);
+        }
       }
     );
 
     return () => {
       unlisten.then((f) => f());
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      pending = [];
     };
   }
 
