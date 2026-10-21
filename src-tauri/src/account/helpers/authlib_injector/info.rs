@@ -1,10 +1,13 @@
 use sjmcl_types::error::SJMCLResult;
+use sjmcl_types::storage::Storage;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 use url::Url;
 
-use crate::account::helpers::authlib_injector::constants::CLIENT_IDS;
+use crate::account::helpers::authlib_injector::constants::{
+  CLIENT_IDS, fill_missing_preset_auth_servers, find_preset_auth_server,
+};
 use crate::account::models::{AccountError, AccountInfo, AuthServerInfo};
 use crate::utils::web::normalize_url;
 
@@ -80,7 +83,14 @@ pub async fn fetch_auth_url(app: &AppHandle, root: Url) -> SJMCLResult<String> {
 
 pub async fn refresh_and_update_auth_servers(app: &AppHandle) -> SJMCLResult<()> {
   let account_binding = app.state::<Mutex<AccountInfo>>();
-  let cloned_account_state = account_binding.lock()?.clone();
+
+  // Upgraded installations may not have the current preset auth servers yet:
+  // fill them in before re-fetching metadata so that they are refreshed too.
+  let cloned_account_state = {
+    let mut account_state = account_binding.lock()?;
+    fill_missing_preset_auth_servers(&mut account_state.auth_servers);
+    account_state.clone()
+  };
 
   let mut refreshed_auth_server_info_list =
     futures::future::join_all(cloned_account_state.auth_servers.iter().map(|info| async {
@@ -92,10 +102,16 @@ pub async fn refresh_and_update_auth_servers(app: &AppHandle) -> SJMCLResult<()>
     }))
     .await;
 
-  refreshed_auth_server_info_list.retain(|info| !info.metadata.is_null()); // remove invalid servers
+  // remove invalid servers, but keep presets even when they cannot be reached
+  // right now, so that they stay visible with their static display info
+  refreshed_auth_server_info_list
+    .retain(|info| !info.metadata.is_null() || find_preset_auth_server(&info.auth_url).is_some());
 
   let mut account_state = account_binding.lock()?;
-  account_state.auth_servers = refreshed_auth_server_info_list;
+  if account_state.auth_servers != refreshed_auth_server_info_list {
+    account_state.auth_servers = refreshed_auth_server_info_list;
+    account_state.save()?;
+  }
 
   Ok(())
 }

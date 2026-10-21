@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 
 use crate::account::helpers::authlib_injector::jar::get_jar_path as get_authlib_injector_jar_path;
+use crate::account::helpers::authlib_injector::metadata::normalize_authlib_metadata;
 use crate::account::models::{AccountError, PlayerType};
 use crate::instance::helpers::client_json::FeaturesInfo;
 use crate::instance::helpers::game_version::compare_game_versions;
@@ -378,7 +379,7 @@ pub async fn generate_launch_command(
     cmd.push("-Dauthlibinjector.side=client".to_string());
     cmd.push(format!(
       "-Dauthlibinjector.yggdrasil.prefetched={}",
-      general_purpose::STANDARD.encode(auth_server_meta)
+      general_purpose::STANDARD.encode(normalize_authlib_metadata(auth_server_meta))
     ));
   }
 
