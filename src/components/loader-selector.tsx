@@ -343,6 +343,28 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
     return () => cancelAnimationFrame(frame);
   }, [selectedModLoader.loaderType, selectedOptiFine?.filename, selectedType]);
 
+  // The card body is the primary click target; the chevron / cancel buttons
+  // inside SelectableCard keep their own handlers, so ignore bubbled clicks
+  // from them to avoid selecting twice.
+  const handleCardClick =
+    (item: SelectableCardProps) =>
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!(event.target instanceof Element)) return;
+      if (event.target.closest("button")) return;
+      if (item.isDisabled || item.isLoading) return;
+      item.onSelect();
+    };
+
+  const handleCardKeyDown =
+    (item: SelectableCardProps) =>
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.target !== event.currentTarget) return;
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      if (item.isDisabled || item.isLoading) return;
+      item.onSelect();
+    };
+
   return (
     <HStack {...props} w="100%" h="100%" spacing={4} overflow="hidden">
       {mode !== "optifine" && (
@@ -360,6 +382,18 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
               {...item}
               minW="3xs"
               w="100%"
+              role="button"
+              tabIndex={item.isDisabled ? -1 : 0}
+              aria-pressed={item.isSelected}
+              aria-disabled={item.isDisabled || undefined}
+              cursor={item.isDisabled ? "not-allowed" : "pointer"}
+              _focusVisible={{
+                outline: "2px solid",
+                outlineColor: `${primaryColor}.500`,
+                outlineOffset: "2px",
+              }}
+              onClick={handleCardClick(item)}
+              onKeyDown={handleCardKeyDown(item)}
               data-loader-selected={item.isSelected ? "true" : undefined}
             />
           ))}

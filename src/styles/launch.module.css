@@ -24,12 +24,30 @@
 }
 
 .selected-user-card {
+  --player-card-width: 14.5rem;
+  /* Mirrors the AdvancedCard radius: Card size md by default, xl for the
+     liquid-glass wrapper. */
+  --card-quarter-radius: var(--chakra-radii-md);
+  position: relative;
+  overflow: hidden;
   height: 4.5rem !important;
-  width: 10.5rem !important;
+  width: var(--player-card-width) !important;
+}
+
+/* Keep the widened card from forcing the launch group to wrap on the
+   launcher's minimum window width. */
+@media (max-width: 54rem) {
+  .selected-user-card {
+    --player-card-width: 12rem;
+  }
 }
 
 .selected-user-card[data-liquid="false"] {
   backdrop-filter: blur(7px);
+}
+
+.selected-user-card[data-liquid="true"] {
+  --card-quarter-radius: var(--chakra-radii-xl);
 }
 
 .launch-button[data-liquid="true"],
@@ -40,4 +58,343 @@
   border-radius: var(--chakra-radii-xl);
   background: transparent;
   backdrop-filter: none;
+}
+
+/* Launch button: hover-revealed "add instance" zone in the right quarter. */
+.launch-button-shell {
+  /* Half of one quarter: keeps the label centered in the left 3/4. */
+  --launch-label-shift: -1.8125rem;
+  /* Same md radius as the Chakra Button hosting this overlay. */
+  --card-quarter-radius: var(--chakra-radii-md);
+}
+
+.launch-button-shell[data-liquid="true"] {
+  /* Liquid glass cards use the xl radius. */
+  --card-quarter-radius: var(--chakra-radii-xl);
+}
+
+/* Shared right-quarter hover overlay. The radius is driven by the host card
+   so the surface can never out-curve (or under-curve) the card it sits on. */
+.card-quarter-zone {
+  border-radius: 0 var(--card-quarter-radius) var(--card-quarter-radius) 0;
+}
+
+.launch-button-label {
+  transform: translateX(0);
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.launch-button-shell[data-add-active="true"] .launch-button-label {
+  transform: translateX(var(--launch-label-shift));
+}
+
+.launch-add-zone {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 25%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.launch-add-surface {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+  will-change: opacity;
+}
+
+.launch-add-surface {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.14) 100%
+  );
+}
+
+/* A single left-to-right tint keeps the junction at the divider continuous:
+   the gradient starts fully transparent, so no shadow band can stack up as a
+   second edge next to the divider. */
+.launch-add-zone[data-active="true"] .launch-add-surface {
+  opacity: 1;
+}
+
+.launch-divider {
+  position: absolute;
+  top: 0.7rem;
+  bottom: 0.7rem;
+  left: 75%;
+  width: 1px;
+  opacity: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(0.75rem) scaleY(0.15);
+  transform-origin: center;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease;
+  pointer-events: none;
+  z-index: 4;
+  will-change: transform, opacity;
+}
+
+.launch-button-shell[data-add-active="true"] .launch-divider {
+  opacity: 1;
+  transform: translateX(0) scaleY(1);
+}
+
+.launch-add-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  opacity: 0;
+  transform: scale(0.55) rotate(-90deg);
+  filter: blur(2px);
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    filter 0.3s ease;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+
+.launch-add-zone[data-active="true"] .launch-add-icon {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+  filter: blur(0);
+}
+
+.launch-add-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.launch-add-icon circle {
+  fill: rgba(255, 255, 255, 0.06);
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+.launch-add-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.launch-add-zone:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.72);
+  outline-offset: -4px;
+}
+
+/* Avatar + name group. At rest it stays at the left padding; when the divider
+   is out it slides to the center of the remaining left three quarters. The
+   fixed-length term positions the group center, and the -50% term (relative
+   to the group's own width) cancels out any content width. */
+.player-card-group {
+  max-width: calc(var(--player-card-width) * 0.75 - 1.5rem);
+  transform: translateX(0);
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.selected-user-card[data-player-active="true"] .player-card-group {
+  transform: translateX(calc(var(--player-card-width) * 0.375 - 0.75rem))
+    translateX(-50%);
+}
+
+/* Empty state keeps its centered label; shifting it by half of one quarter
+   centers it inside the left three quarters instead. */
+.player-card-empty {
+  transform: translateX(0);
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.selected-user-card[data-player-active="true"] .player-card-empty {
+  transform: translateX(calc(var(--player-card-width) * -0.125));
+}
+
+.player-card-zone {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 25%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--chakra-colors-gray-700);
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:global([data-theme="dark"]) .player-card-zone {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.player-card-surface {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+  will-change: opacity;
+}
+
+.player-card-surface {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.16) 100%
+  );
+}
+
+/* Same rule as the launch overlay: one continuous tint, no inset shadow band
+   under the divider, so there is no transparency step or double edge. */
+.player-card-zone[data-active="true"] .player-card-surface {
+  opacity: 1;
+}
+
+.player-card-divider {
+  position: absolute;
+  top: 0.7rem;
+  bottom: 0.7rem;
+  left: 75%;
+  width: 1px;
+  opacity: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.32) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  transform: translateX(0.75rem) scaleY(0.15);
+  transform-origin: center;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease;
+  pointer-events: none;
+  z-index: 4;
+  will-change: transform, opacity;
+}
+
+:global([data-theme="dark"]) .player-card-divider {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.selected-user-card[data-player-active="true"] .player-card-divider {
+  opacity: 1;
+  transform: translateX(0) scaleY(1);
+}
+
+.player-card-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  opacity: 0;
+  transform: scale(0.55) rotate(-90deg);
+  filter: blur(2px);
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    filter 0.3s ease;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+
+.player-card-zone[data-active="true"] .player-card-icon {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+  filter: blur(0);
+}
+
+.player-card-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.player-card-icon circle {
+  fill: rgba(0, 0, 0, 0.04);
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+:global([data-theme="dark"]) .player-card-icon circle {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+.player-card-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.player-card-zone:focus-visible {
+  outline: 2px solid var(--chakra-colors-gray-500);
+  outline-offset: -4px;
+}
+
+:global([data-theme="dark"]) .player-card-zone:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.72);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-button,
+  .launch-button-label,
+  .launch-add-surface,
+  .launch-divider,
+  .launch-add-icon,
+  .player-card-group,
+  .player-card-empty,
+  .player-card-surface,
+  .player-card-divider,
+  .player-card-icon {
+    transition: none;
+  }
+
+  .launch-divider,
+  .player-card-divider {
+    transform: translateX(0);
+  }
+
+  .launch-add-icon,
+  .player-card-icon {
+    transform: none;
+    filter: none;
+  }
 }

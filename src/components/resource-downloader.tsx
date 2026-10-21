@@ -80,6 +80,7 @@ interface ResourceDownloaderMenuProps {
 interface ResourceDownloaderListProps {
   list: OtherResourceInfo[];
   curInstance?: InstanceSummary;
+  gameVersion?: string;
   hasMore: boolean;
   loadMore: () => void;
 }
@@ -94,13 +95,21 @@ const tagLists: Record<string, any> = {
 };
 
 const downloadSourceLists: Record<string, OtherResourceSource[]> = {
-  mod: [OtherResourceSource.CurseForge, OtherResourceSource.Modrinth],
+  mod: [OtherResourceSource.Modrinth, OtherResourceSource.CurseForge],
+  // Modrinth doesn't host worlds, so world downloads remain CurseForge-only.
   world: [OtherResourceSource.CurseForge],
-  resourcepack: [OtherResourceSource.CurseForge, OtherResourceSource.Modrinth],
-  shader: [OtherResourceSource.CurseForge, OtherResourceSource.Modrinth],
-  modpack: [OtherResourceSource.CurseForge, OtherResourceSource.Modrinth],
-  datapack: [OtherResourceSource.CurseForge, OtherResourceSource.Modrinth],
+  resourcepack: [OtherResourceSource.Modrinth, OtherResourceSource.CurseForge],
+  shader: [OtherResourceSource.Modrinth, OtherResourceSource.CurseForge],
+  modpack: [OtherResourceSource.Modrinth, OtherResourceSource.CurseForge],
+  datapack: [OtherResourceSource.Modrinth, OtherResourceSource.CurseForge],
 };
+
+const getAvailableDownloadSources = (
+  resourceType: string
+): OtherResourceSource[] => downloadSourceLists[resourceType] || [];
+
+const getDefaultSortBy = (source: OtherResourceSource) =>
+  source === OtherResourceSource.CurseForge ? "Popularity" : "relevance";
 
 const ResourceDownloaderMenu: React.FC<ResourceDownloaderMenuProps> = ({
   label,
@@ -148,6 +157,7 @@ const ResourceDownloaderMenu: React.FC<ResourceDownloaderMenuProps> = ({
 const ResourceDownloaderList: React.FC<ResourceDownloaderListProps> = ({
   list,
   curInstance,
+  gameVersion,
   hasMore,
   loadMore,
 }) => {
@@ -278,6 +288,9 @@ const ResourceDownloaderList: React.FC<ResourceDownloaderListProps> = ({
           isOpen={isOpen}
           onClose={onClose}
           resource={selectedItem}
+          filterGameVersion={
+            gameVersion && gameVersion !== "All" ? gameVersion : undefined
+          }
           {...(selectedItem.type !== OtherResourceType.ModPack && {
             curInstanceMajorVersion: curInstance?.majorVersion,
             curInstanceVersion: curInstance?.version,
@@ -295,7 +308,7 @@ const ResourceDownloaderList: React.FC<ResourceDownloaderListProps> = ({
 const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
   resourceType,
   initialSearchQuery = "",
-  initialDownloadSource = OtherResourceSource.CurseForge,
+  initialDownloadSource = OtherResourceSource.Modrinth,
   curInstance,
   displayInModal = true,
 }) => {
@@ -316,13 +329,16 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery);
   const [gameVersion, setGameVersion] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<string>("All");
-  const [sortBy, setSortBy] = useState<string>(
-    initialDownloadSource === OtherResourceSource.CurseForge
-      ? "Popularity"
-      : "relevance"
-  );
   const [downloadSource, setDownloadSource] = useState<OtherResourceSource>(
-    initialDownloadSource
+    () => {
+      const availableSources = getAvailableDownloadSources(resourceType);
+      return availableSources.includes(initialDownloadSource)
+        ? initialDownloadSource
+        : availableSources[0] || OtherResourceSource.Modrinth;
+    }
+  );
+  const [sortBy, setSortBy] = useState<string>(
+    getDefaultSortBy(downloadSource)
   );
 
   const searchQueryRef = useRef(searchQuery);
@@ -346,9 +362,10 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
   );
 
   const onDownloadSourceChange = (e: string) => {
-    setDownloadSource(e as OtherResourceSource);
+    const source = e as OtherResourceSource;
+    setDownloadSource(source);
     setSelectedTag("All");
-    setSortBy(e === "CurseForge" ? "Popularity" : "relevance");
+    setSortBy(getDefaultSortBy(source));
   };
 
   const handleFetchResourceListByName = useCallback(
@@ -477,11 +494,11 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
   }, [curInstance?.version, gameVersionList]);
 
   useEffect(() => {
-    if (
-      resourceType &&
-      !(downloadSourceLists[resourceType] || []).includes(downloadSource)
-    ) {
-      onDownloadSourceChange(OtherResourceSource.CurseForge);
+    const availableSources = getAvailableDownloadSources(resourceType);
+    if (!availableSources.includes(downloadSource)) {
+      onDownloadSourceChange(
+        availableSources[0] || OtherResourceSource.Modrinth
+      );
     }
     setSelectedTag("All");
   }, [resourceType, downloadSource]);
@@ -579,12 +596,14 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
           displayText={downloadSource}
           onChange={onDownloadSourceChange}
           value={downloadSource}
-          defaultValue={OtherResourceSource.CurseForge}
-          options={downloadSourceLists[resourceType].map((item, index) => (
-            <MenuItemOption key={index} value={item} fontSize="xs">
-              {item}
-            </MenuItemOption>
-          ))}
+          defaultValue={downloadSource}
+          options={getAvailableDownloadSources(resourceType).map(
+            (item, index) => (
+              <MenuItemOption key={index} value={item} fontSize="xs">
+                {item}
+              </MenuItemOption>
+            )
+          )}
           width={menuWidths.source}
         />
 
@@ -595,11 +614,7 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
           )}
           onChange={setSortBy}
           value={sortBy}
-          defaultValue={
-            downloadSource === OtherResourceSource.CurseForge
-              ? "Popularity"
-              : "relevance"
-          }
+          defaultValue={getDefaultSortBy(downloadSource)}
           options={sortByList.map((item, index) => (
             <MenuItemOption key={index} value={item} fontSize="xs">
               {t(`ResourceDownloader.sortByList.${downloadSource}.${item}`)}
@@ -641,6 +656,7 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
           <ResourceDownloaderList
             list={resourceList}
             curInstance={curInstance}
+            gameVersion={gameVersion}
             hasMore={hasMore}
             loadMore={loadMore}
           />

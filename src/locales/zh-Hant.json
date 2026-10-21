@@ -332,8 +332,8 @@
         }
       },
       "presetBgList": {
-        "Florwyn": {
-          "name": "櫻滿集"
+        "Meridian": {
+          "name": "經緯"
         },
         "WTUMC": {
           "name": "WTUMC"
@@ -856,11 +856,6 @@
     },
     "top": {
       "settings": {
-        "extensionDocs": {
-          "title": "擴充套件開發文件",
-          "description": "閱讀擴充套件系統介紹與 API 文件，使用腳手架快速上手",
-          "url": "https://mc.sjtu.cn/sjmcl/dev/extension/"
-        },
         "awesomeExtensions": {
           "title": "探索社群擴充套件",
           "description": "前往 GitHub 瀏覽社群開發的擴充套件列表",
@@ -1447,10 +1442,6 @@
     },
     "top": {
       "settings": {
-        "LauncherDocs": {
-          "title": "WTUMCL 文件",
-          "url": "https://github.com/SARICE233/WTUMCL"
-        },
         "UserGroup": {
           "title": "使用者社群",
           "description": "歡迎加入 QQ 群或 GitHub Discussions，回報問題、請求功能或取得協助",
@@ -1689,11 +1680,6 @@
           "title": "啟動器 MCP 服務",
           "description": "啟用本機 MCP 服務，以連線外部 Agent 應用並自動化控制啟動器。"
         },
-        "docs": {
-          "title": "使用指南",
-          "description": "了解如何將啟動器連線到外部 Agent 應用（例如 Claude、Cherry Studio 等）。",
-          "url": "https://mc.sjtu.cn/sjmcl/docs/intelligence/launcher-mcp"
-        },
         "port": {
           "title": "連接埠",
           "description": "啟動器 MCP 服務使用的固定本機連接埠。"
@@ -1746,6 +1732,44 @@
     "button": {
       "launch": "啟動遊戲",
       "instanceSettings": "實例設定"
+    },
+    "guide": {
+      "title": "三步開始遊戲",
+      "subtitle": "還沒有遊戲實例，按下面的步驟快速開始。",
+      "account": {
+        "title": "登入帳號",
+        "desc": "新增 Microsoft 或第三方帳號"
+      },
+      "game": {
+        "title": "下載遊戲或匯入整合包",
+        "desc": "取得遊戲版本，或匯入既有的整合包"
+      },
+      "launch": {
+        "title": "啟動遊戲",
+        "desc": "選擇實例，開始新的冒險"
+      }
+    },
+    "greeting": {
+      "morning": "早安，{{name}}",
+      "afternoon": "午安，{{name}}",
+      "evening": "晚安，{{name}}",
+      "night": "夜深了，{{name}}",
+      "friend": "冒險家",
+      "subtitle": "準備好展開新的冒險了嗎？"
+    },
+    "news": {
+      "title": "WTUMC 社群新聞",
+      "more": "更多社群新聞",
+      "empty": "暫無社群新聞",
+      "previous": "上一則新聞",
+      "next": "下一則新聞"
+    },
+    "recentInstance": {
+      "title": "最近實例",
+      "viewAll": "檢視全部實例",
+      "playtime": "已遊玩 {{time}}",
+      "launch": "啟動遊戲",
+      "details": "實例詳情"
     },
     "SwitchButton": {
       "tooltip": {

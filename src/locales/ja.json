@@ -332,8 +332,8 @@
         }
       },
       "presetBgList": {
-        "Florwyn": {
-          "name": "Florwyn"
+        "Meridian": {
+          "name": "経緯"
         },
         "WTUMC": {
           "name": "WTUMC"
@@ -856,11 +856,6 @@
     },
     "top": {
       "settings": {
-        "extensionDocs": {
-          "title": "拡張機能開発ドキュメント",
-          "description": "拡張機能システムの紹介と API ドキュメントを読み、スキャフォールドですばやく開発を始められます。",
-          "url": "https://mc.sjtu.cn/sjmcl/en/dev/extension/"
-        },
         "awesomeExtensions": {
           "title": "コミュニティ拡張機能を探す",
           "description": "GitHub でコミュニティ製の拡張機能一覧を閲覧します。",
@@ -1447,10 +1442,6 @@
     },
     "top": {
       "settings": {
-        "LauncherDocs": {
-          "title": "WTUMCL ドキュメント",
-          "url": "https://github.com/SARICE233/WTUMCL"
-        },
         "UserGroup": {
           "title": "ユーザーコミュニティ",
           "description": "QQ グループや GitHub Discussions に参加して、問題報告、機能要望、サポートの相談ができます",
@@ -1689,11 +1680,6 @@
           "title": "ランチャー MCP サービス",
           "description": "外部エージェントアプリと接続してランチャー操作を自動化するため、ローカル MCP サービスを有効化します。"
         },
-        "docs": {
-          "title": "ユーザーガイド",
-          "description": "ランチャーを外部エージェントアプリ（Claude、Cherry Studio など）に接続する方法を確認します。",
-          "url": "https://mc.sjtu.cn/sjmcl/en/docs/intelligence/launcher-mcp"
-        },
         "port": {
           "title": "ポート",
           "description": "ランチャー MCP サービスで使用する固定ローカルポートです。"
@@ -1746,6 +1732,44 @@
     "button": {
       "launch": "ゲーム起動",
       "instanceSettings": "インスタンス設定"
+    },
+    "guide": {
+      "title": "3ステップで始める",
+      "subtitle": "ゲームインスタンスがありません。次の手順で準備しましょう。",
+      "account": {
+        "title": "アカウントにログイン",
+        "desc": "Microsoft またはサードパーティのアカウントを追加"
+      },
+      "game": {
+        "title": "ゲームをダウンロードまたはインポート",
+        "desc": "バージョンを取得するか Modpack をインポート"
+      },
+      "launch": {
+        "title": "ゲームを起動",
+        "desc": "インスタンスを選んでプレイ開始"
+      }
+    },
+    "greeting": {
+      "morning": "おはようございます、{{name}}",
+      "afternoon": "こんにちは、{{name}}",
+      "evening": "こんばんは、{{name}}",
+      "night": "夜更かしですね、{{name}}",
+      "friend": "冒険者",
+      "subtitle": "新しい冒険を始めましょう。"
+    },
+    "news": {
+      "title": "WTUMC コミュニティニュース",
+      "more": "コミュニティニュースをもっと見る",
+      "empty": "コミュニティニュースはまだありません",
+      "previous": "前のニュース",
+      "next": "次のニュース"
+    },
+    "recentInstance": {
+      "title": "最近のインスタンス",
+      "viewAll": "すべてのインスタンス",
+      "playtime": "プレイ時間 {{time}}",
+      "launch": "ゲーム起動",
+      "details": "インスタンス詳細"
     },
     "SwitchButton": {
       "tooltip": {

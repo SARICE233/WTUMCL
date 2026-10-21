@@ -50,7 +50,18 @@ const customGraySolidButtonTheme = {
   },
 };
 
+const baseFontFamily =
+  '"JetBrains Mono", -apple-system, Sinter, ui-sans-serif, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"';
+
+const monoFontFamily =
+  '"JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
+
 const chakraExtendTheme = extendTheme({
+  fonts: {
+    heading: baseFontFamily,
+    body: baseFontFamily,
+    mono: monoFontFamily,
+  },
   initialColorMode: "dark",
   useSystemColorMode: false,
   components: {

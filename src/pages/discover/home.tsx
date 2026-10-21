@@ -591,8 +591,8 @@ export const DiscoverHomePage = () => {
   useEffect(() => {
     fetchCommunityNews();
     fetchMinecraftNews();
-    fetchHotModpacks(OtherResourceSource.CurseForge);
     fetchHotModpacks(OtherResourceSource.Modrinth);
+    fetchHotModpacks(OtherResourceSource.CurseForge);
   }, [fetchCommunityNews, fetchMinecraftNews, fetchHotModpacks]);
 
   return (
@@ -619,17 +619,17 @@ export const DiscoverHomePage = () => {
 
         <VStack spacing={6} align="stretch">
           <HotModpackGrid
-            title={t("DiscoverHomePage.hotModpacks", { source: "CurseForge" })}
-            items={cfModpacks}
-            loading={isLoadingCfModpacks}
-            onRefresh={() => fetchHotModpacks(OtherResourceSource.CurseForge)}
-            accentColor={primaryColor}
-          />
-          <HotModpackGrid
             title={t("DiscoverHomePage.hotModpacks", { source: "Modrinth" })}
             items={mrModpacks}
             loading={isLoadingMrModpacks}
             onRefresh={() => fetchHotModpacks(OtherResourceSource.Modrinth)}
+            accentColor={primaryColor}
+          />
+          <HotModpackGrid
+            title={t("DiscoverHomePage.hotModpacks", { source: "CurseForge" })}
+            items={cfModpacks}
+            loading={isLoadingCfModpacks}
+            onRefresh={() => fetchHotModpacks(OtherResourceSource.CurseForge)}
             accentColor={primaryColor}
           />
         </VStack>

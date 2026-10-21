@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 import {
   LuDownload,
   LuExternalLink,
+  LuInfo,
   LuPackage,
   LuRefreshCw,
   LuUpload,
@@ -79,6 +80,7 @@ interface DownloadSpecificResourceModalProps extends Omit<
   curInstanceMajorVersion?: string;
   curInstanceVersion?: string;
   curInstanceModLoader?: ModLoaderType;
+  filterGameVersion?: string;
 }
 
 // Resource version list with single-select; action buttons vary by type.
@@ -91,6 +93,7 @@ const DownloadSpecificResourceModal: React.FC<
   curInstanceMajorVersion,
   curInstanceVersion,
   curInstanceModLoader,
+  filterGameVersion,
   ...modalProps
 }) => {
   const { t } = useTranslation();
@@ -137,6 +140,12 @@ const DownloadSpecificResourceModal: React.FC<
   }, [router.query.id]);
 
   const isModpack = resource.type === OtherResourceType.ModPack;
+  // game version chosen in the resource list filter, used to surface the
+  // matching version pack (and its files) at the top of the list
+  const filterVersion =
+    filterGameVersion && filterGameVersion !== "All"
+      ? filterGameVersion
+      : undefined;
 
   const resourceTypeToDirType = useMemo<Record<string, InstanceSubdirType>>(
     () => ({
@@ -212,6 +221,29 @@ const DownloadSpecificResourceModal: React.FC<
     selectedVersionLabel,
     versionPacks,
   ]);
+
+  const hasFilterVersionPack = useMemo(
+    () =>
+      !!filterVersion &&
+      versionPacks.some((pack) => pack.name === filterVersion),
+    [filterVersion, versionPacks]
+  );
+
+  // Do not change the existing version-pack ordering, only move the pack that
+  // exactly matches the list filter to the front (stable for the rest).
+  const prioritizedVersionPacks = useMemo(() => {
+    if (!filterVersion) return filteredVersionPacks;
+
+    const matchedPacks = filteredVersionPacks.filter(
+      (pack) => pack.name === filterVersion
+    );
+    if (matchedPacks.length === 0) return filteredVersionPacks;
+
+    return [
+      ...matchedPacks,
+      ...filteredVersionPacks.filter((pack) => pack.name !== filterVersion),
+    ];
+  }, [filterVersion, filteredVersionPacks]);
 
   const buildVersionLabelItem = (version: string) => {
     return version !== "All"
@@ -779,6 +811,21 @@ const DownloadSpecificResourceModal: React.FC<
                 }}
                 isDisabled={isGameVersionListLoading || isVersionPacksLoading}
               />
+              {filterVersion &&
+                !hasFilterVersionPack &&
+                versionPacks.length > 0 && (
+                  <HStack
+                    spacing={1}
+                    fontSize="xs"
+                    className="secondary-text"
+                    whiteSpace="nowrap"
+                  >
+                    <LuInfo size={12} />
+                    <Text>
+                      {filterVersion} · {t("SpotlightSearchModal.empty")}
+                    </Text>
+                  </HStack>
+                )}
             </HStack>
 
             <Box>
@@ -807,7 +854,7 @@ const DownloadSpecificResourceModal: React.FC<
             </VStack>
           ) : (
             (() => {
-              const normalPacks = filteredVersionPacks;
+              const normalPacks = prioritizedVersionPacks;
               const recommendedPacks = shouldShowRecommendedSection()
                 ? [
                     {
@@ -824,11 +871,15 @@ const DownloadSpecificResourceModal: React.FC<
                 <Empty withIcon size="sm" />
               ) : (
                 [...recommendedPacks, ...normalPacks].map((pack, index) =>
-                  // recommended pack initially open
+                  // recommended pack and the version matching the list filter
+                  // are initially open
                   renderSection(
                     pack,
                     index,
-                    index === 0 && shouldShowRecommendedSection()
+                    (index === 0 && shouldShowRecommendedSection()) ||
+                      (!!filterVersion &&
+                        hasFilterVersionPack &&
+                        pack.name === filterVersion)
                   )
                 )
               );

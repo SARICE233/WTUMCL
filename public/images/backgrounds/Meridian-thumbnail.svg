@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="270" viewBox="0 0 480 270">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f1a28"/>
+      <stop offset="0.5" stop-color="#0b1521"/>
+      <stop offset="1" stop-color="#121827"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3f8fd6" stop-opacity="0.62"/>
+      <stop offset="0.55" stop-color="#3f8fd6" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#3f8fd6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2fa79a" stop-opacity="0.5"/>
+      <stop offset="0.55" stop-color="#2fa79a" stop-opacity="0.17"/>
+      <stop offset="1" stop-color="#2fa79a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowC" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7e62c8" stop-opacity="0.38"/>
+      <stop offset="0.6" stop-color="#7e62c8" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#7e62c8" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grille" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(-7)">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#96c7ec" stroke-opacity="0.2" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="fade" cx="0.5" cy="0.45" r="0.62">
+      <stop offset="0.32" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="gridMask">
+      <rect width="480" height="270" fill="url(#fade)"/>
+    </mask>
+  </defs>
+  <rect width="480" height="270" fill="url(#base)"/>
+  <ellipse cx="80" cy="20" rx="250" ry="210" fill="url(#glowA)"/>
+  <ellipse cx="430" cy="245" rx="220" ry="200" fill="url(#glowB)"/>
+  <ellipse cx="360" cy="40" rx="190" ry="170" fill="url(#glowC)"/>
+  <rect width="480" height="270" fill="url(#grille)" mask="url(#gridMask)"/>
+  <rect width="480" height="270" fill="none" stroke="#96c7ec" stroke-opacity="0.12" stroke-width="2"/>
+</svg>

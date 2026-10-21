@@ -332,8 +332,8 @@
         }
       },
       "presetBgList": {
-        "Florwyn": {
-          "name": "Florwyn"
+        "Meridian": {
+          "name": "Méridien"
         },
         "WTUMC": {
           "name": "WTUMC"
@@ -856,11 +856,6 @@
     },
     "top": {
       "settings": {
-        "extensionDocs": {
-          "title": "Documentation de développement des extensions",
-          "description": "Découvrez le système d'extensions et la documentation de l'API, puis démarrez rapidement avec le scaffold.",
-          "url": "https://mc.sjtu.cn/sjmcl/en/dev/extension/"
-        },
         "awesomeExtensions": {
           "title": "Découvrir les extensions de la communauté",
           "description": "Parcourez sur GitHub la liste des extensions développées par la communauté.",
@@ -1447,10 +1442,6 @@
     },
     "top": {
       "settings": {
-        "LauncherDocs": {
-          "title": "Documentation de WTUMCL",
-          "url": "https://github.com/SARICE233/WTUMCL"
-        },
         "UserGroup": {
           "title": "Communauté des utilisateurs",
           "description": "Rejoignez le groupe QQ ou GitHub Discussions pour signaler des problèmes, demander des fonctionnalités ou obtenir de l'aide",
@@ -1689,11 +1680,6 @@
           "title": "Service MCP du lanceur",
           "description": "Activez le service MCP local pour connecter des applications d'agent externes et automatiser le contrôle du lanceur."
         },
-        "docs": {
-          "title": "Guide d'utilisation",
-          "description": "Découvrez comment connecter le lanceur à des applications d'agent externes (comme Claude, Cherry Studio, etc.).",
-          "url": "https://mc.sjtu.cn/sjmcl/en/docs/intelligence/launcher-mcp"
-        },
         "port": {
           "title": "Port",
           "description": "Port local fixe utilisé par le service MCP du lanceur."
@@ -1746,6 +1732,44 @@
     "button": {
       "launch": "Lancer le jeu",
       "instanceSettings": "Configuration de l'instance"
+    },
+    "guide": {
+      "title": "Commencez en trois étapes",
+      "subtitle": "Aucune instance de jeu. Suivez ces étapes pour commencer.",
+      "account": {
+        "title": "Connectez-vous à votre compte",
+        "desc": "Ajoutez un compte Microsoft ou tiers"
+      },
+      "game": {
+        "title": "Téléchargez ou importez un jeu",
+        "desc": "Obtenez une version ou importez un modpack"
+      },
+      "launch": {
+        "title": "Lancez le jeu",
+        "desc": "Choisissez une instance et jouez"
+      }
+    },
+    "greeting": {
+      "morning": "Bonjour, {{name}}",
+      "afternoon": "Bon après-midi, {{name}}",
+      "evening": "Bonsoir, {{name}}",
+      "night": "Bonne nuit, {{name}}",
+      "friend": "aventurier",
+      "subtitle": "Prêt pour une nouvelle aventure ?"
+    },
+    "news": {
+      "title": "Actualités de la communauté WTUMC",
+      "more": "Plus d'actualités",
+      "empty": "Aucune actualité communautaire",
+      "previous": "Actualité précédente",
+      "next": "Actualité suivante"
+    },
+    "recentInstance": {
+      "title": "Instance récente",
+      "viewAll": "Toutes les instances",
+      "playtime": "Temps de jeu {{time}}",
+      "launch": "Lancer le jeu",
+      "details": "Détails de l'instance"
     },
     "SwitchButton": {
       "tooltip": {

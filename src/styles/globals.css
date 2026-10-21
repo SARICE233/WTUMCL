@@ -9,7 +9,10 @@ html {
 /* root */
 body {
   margin: 0;
-  font-family: -apple-system, Sinter, ui-sans-serif, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol" !important;
+  /* Latin letters and digits use JetBrains Mono; CJK glyphs fall back to the
+     platform Chinese fonts listed after it. */
+  font-family: "JetBrains Mono", -apple-system, Sinter, ui-sans-serif, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol" !important;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden !important;
@@ -19,6 +22,17 @@ body {
 
 body[use-custom-font] {
   font-family: var(--custom-global-font-family, inherit) !important;
+}
+
+/* Numeric data (versions, sizes, progress) keeps fixed-width digits so values
+   do not jitter when they update. */
+.chakra-stat__number,
+.chakra-progress,
+.chakra-code,
+code,
+kbd,
+samp {
+  font-variant-numeric: tabular-nums !important;
 }
 
 body img {

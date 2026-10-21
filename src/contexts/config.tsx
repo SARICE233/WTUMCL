@@ -9,6 +9,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import BackgroundPreset from "@/contexts/background-preset";
 import { useToast } from "@/contexts/toast";
 import { useGetState } from "@/hooks/get-state";
 import { localeResources } from "@/locales";
@@ -21,6 +22,13 @@ import {
 import { JavaInfo } from "@/models/misc";
 import { ConfigService } from "@/services/config";
 import { updateByKeyPath } from "@/utils/partial";
+
+const animatedBuiltInBackgroundKeys = ["Meridian"] as const;
+
+const isAnimatedBuiltInBackground = (key: string) =>
+  animatedBuiltInBackgroundKeys.includes(
+    key as (typeof animatedBuiltInBackgroundKeys)[number]
+  );
 
 interface LauncherConfigContextType {
   config: LauncherConfig;
@@ -52,6 +60,7 @@ export const LauncherConfigContextProvider: React.FC<{
   const userSelectedColorMode = config.appearance.theme.colorMode;
 
   const [bgImageSrc, setBgImageSrc] = useState("");
+  const [bgPresetKey, setBgPresetKey] = useState<string | null>(null);
   const isBgDarken =
     colorMode === "dark" && config.appearance.background.autoDarken;
 
@@ -156,16 +165,27 @@ export const LauncherConfigContextProvider: React.FC<{
     const constructBgImageSrc = async () => {
       const choice = config.appearance.background.choice;
       let src: string;
+      let presetKey: string | null = null;
       if (choice.startsWith("%built-in:")) {
         const builtInKey = choice.replace("%built-in:", "");
-        src = `/images/backgrounds/${builtInKey}-${colorMode}.jpg`;
+        if (isAnimatedBuiltInBackground(builtInKey)) {
+          // CSS-rendered presets have no wallpaper image; the provider paints
+          // a fixed decorative layer behind the app instead.
+          src = "";
+          presetKey = builtInKey;
+        } else {
+          src = `/images/backgrounds/${builtInKey}-${colorMode}.jpg`;
+        }
       } else {
         const directory = await appDataDir();
         src =
           convertFileSrc(`${directory}/UserContent/Backgrounds/${choice}`) +
           `?t=${Date.now()}`;
       }
-      if (!cancelled) setBgImageSrc(src);
+      if (!cancelled) {
+        setBgImageSrc(src);
+        setBgPresetKey(presetKey);
+      }
     };
     constructBgImageSrc();
     return () => {
@@ -224,6 +244,9 @@ export const LauncherConfigContextProvider: React.FC<{
         handleCheckLauncherUpdate,
       }}
     >
+      {bgPresetKey && (
+        <BackgroundPreset presetKey={bgPresetKey} colorMode={colorMode} fixed />
+      )}
       <ColorModeScript initialColorMode={userSelectedColorMode} />
       {children}
     </LauncherConfigContext.Provider>

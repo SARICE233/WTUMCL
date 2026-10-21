@@ -1,10 +1,11 @@
-import { Flex, HStack, Image, Text, useColorModeValue } from "@chakra-ui/react";
+import { Flex, HStack, Text, useColorModeValue } from "@chakra-ui/react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LuMaximize2, LuMinimize2, LuMinus, LuX } from "react-icons/lu";
 import { CommonIconButton } from "@/components/common/common-icon-button";
+import { BrandLogo } from "@/components/logo-title";
 import { useLauncherConfig } from "@/contexts/config";
 import { useExtensionHost } from "@/contexts/extension/host";
 
@@ -235,13 +236,7 @@ const WindowTitlebar = () => {
         h="100%"
         align="center"
       >
-        {(isWindows || isLinux) && (
-          <Image
-            src="/images/icons/Logo_32x32.png"
-            alt="WTUMCL"
-            boxSize="16px"
-          />
-        )}
+        {(isWindows || isLinux) && <BrandLogo boxSize="16px" />}
         {!isMainWindow && windowTitle && (
           <Text
             ml={isMac ? 16 : 2}

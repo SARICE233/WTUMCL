@@ -1,5 +1,5 @@
 {
-  "identifier": "SJMCL",
+  "identifier": "cn.wtu.wtumcl",
   "bundle": {
     "windows": {
       "nsis": {
@@ -21,7 +21,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "SJMC Launcher",
+        "title": "WTUMC Launcher",
         "url": "/",
         "width": 820,
         "height": 550,

@@ -20,13 +20,12 @@ import {
 import { useRouter } from "next/router";
 import { cloneElement, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LuArrowLeftRight, LuPlus, LuSettings } from "react-icons/lu";
+import { LuArrowLeftRight, LuSettings } from "react-icons/lu";
 import AdvancedCard from "@/components/common/advanced-card";
 import { CommonIconButton } from "@/components/common/common-icon-button";
 import { CompactButtonGroup } from "@/components/common/compact-button-group";
 import InstancesView from "@/components/instances-view";
 import PlayerAvatar from "@/components/player-avatar";
-import PlayersView from "@/components/players-view";
 import LiquidGlassEffect from "@/components/special/liquid-glass-effect";
 import { useLauncherConfig } from "@/contexts/config";
 import { useGlobalData } from "@/contexts/global-data";
@@ -38,16 +37,12 @@ interface CustomButtonProps extends Omit<IconButtonProps, "onClick"> {
   tooltip: string;
   onClick: () => void;
   popoverContent: React.ReactElement;
-  showAdd?: boolean;
-  onAddClick?: () => void;
 }
 
 const ButtonWithPopover: React.FC<CustomButtonProps> = ({
   tooltip,
   popoverContent,
   onClick,
-  showAdd = false,
-  onAddClick,
   ...props
 }) => {
   const { config } = useLauncherConfig();
@@ -63,7 +58,7 @@ const ButtonWithPopover: React.FC<CustomButtonProps> = ({
 
   return (
     <Popover
-      isOpen={showAdd ? false : isOpen}
+      isOpen={isOpen}
       onClose={handleClose}
       placement="top-end"
       gutter={12}
@@ -73,10 +68,9 @@ const ButtonWithPopover: React.FC<CustomButtonProps> = ({
           <PopoverTrigger>
             <IconButton
               size="xs"
-              icon={showAdd ? <LuPlus /> : <LuArrowLeftRight />}
+              icon={<LuArrowLeftRight />}
               {...props}
               onClick={() => {
-                if (showAdd) return (onAddClick ?? onClick)();
                 quickSwitch ? onToggle() : onClick();
               }}
             />
@@ -84,17 +78,15 @@ const ButtonWithPopover: React.FC<CustomButtonProps> = ({
         </Box>
       </Tooltip>
 
-      {!showAdd && (
-        <Portal>
-          <PopoverContent maxH="3xs" overflow="auto">
-            <PopoverBody p={0}>
-              {cloneElement(popoverContent, {
-                onSelectCallback: () => setTimeout(handleClose, 100),
-              })}
-            </PopoverBody>
-          </PopoverContent>
-        </Portal>
-      )}
+      <Portal>
+        <PopoverContent maxH="3xs" overflow="auto">
+          <PopoverBody p={0}>
+            {cloneElement(popoverContent, {
+              onSelectCallback: () => setTimeout(handleClose, 100),
+            })}
+          </PopoverBody>
+        </PopoverContent>
+      </Portal>
     </Popover>
   );
 };
@@ -106,6 +98,7 @@ const HomeButtonGroup = () => {
   const { config } = useLauncherConfig();
   const useLiquidGlass = config.appearance.theme.useLiquidGlassDesign;
   const subtitleColor = useColorModeValue("gray.600", "gray.400");
+  const compactButtonGroupColorScheme = useColorModeValue("blackAlpha", "gray");
   const { selectedPlayer, selectedInstance, getPlayerList, getInstanceList } =
     useGlobalData();
 
@@ -114,45 +107,60 @@ const HomeButtonGroup = () => {
   const hasPlayers = playerList.length > 0;
   const hasInstances = instanceList.length > 0;
 
+  const [isAddZoneHovered, setIsAddZoneHovered] = useState(false);
+  const [isAddZoneFocused, setIsAddZoneFocused] = useState(false);
+  const isAddZoneActive = isAddZoneHovered || isAddZoneFocused;
+
+  const [isPlayerZoneHovered, setIsPlayerZoneHovered] = useState(false);
+  const [isPlayerZoneFocused, setIsPlayerZoneFocused] = useState(false);
+  const isPlayerZoneActive = isPlayerZoneHovered || isPlayerZoneFocused;
+
+  // Mirror the launch button: only the right quarter reveals the switch target.
+  const handlePlayerPointerMove = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (event.pointerType === "touch") return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setIsPlayerZoneHovered(event.clientX - rect.left >= rect.width * 0.75);
+  };
+
+  // Track the pointer against the whole button so the right quarter stays
+  // active while it travels over the floating instance controls above it.
+  const handleLaunchPointerMove = (
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (event.pointerType === "touch") return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setIsAddZoneHovered(event.clientX - rect.left >= rect.width * 0.75);
+  };
+
   return (
     <Flex wrap="wrap" justify="flex-end" align="flex-end" gap={4}>
       <AdvancedCard
         className={styles["selected-user-card"]}
+        position="relative"
         data-liquid={useLiquidGlass}
+        data-player-active={isPlayerZoneActive}
+        onPointerMove={handlePlayerPointerMove}
+        onPointerLeave={() => setIsPlayerZoneHovered(false)}
       >
         <Box h="100%" p={3}>
-          <Box position="absolute" top={1} right={1}>
-            <ButtonWithPopover
-              tooltip={t(
-                `LaunchPage.SwitchButton.tooltip.${hasPlayers ? "switchPlayer" : "addPlayer"}`
-              )}
-              aria-label="player"
-              variant="subtle"
-              popoverContent={
-                <PlayersView
-                  players={playerList}
-                  selectedPlayer={selectedPlayer}
-                  viewType="list"
-                  withMenu={false}
-                />
-              }
-              onClick={() => router.push("/accounts")}
-              showAdd={!hasPlayers}
-              onAddClick={() => router.push("/accounts?add=true")}
-            />
-          </Box>
-
-          <HStack spacing={2.5} h="100%" w="100%">
-            {selectedPlayer ? (
-              <>
+          {selectedPlayer ? (
+            <Flex h="100%" w="100%" align="center">
+              <HStack
+                spacing={2.5}
+                h="100%"
+                minW={0}
+                className={styles["player-card-group"]}
+              >
                 <PlayerAvatar
-                  boxSize="32px"
+                  boxSize="36px"
                   objectFit="cover"
                   avatar={selectedPlayer.avatar}
                 />
                 <VStack spacing={0} align="left" mt={-2} minW={0}>
                   <Text
-                    fontSize="xs-sm"
+                    fontSize="sm"
                     fontWeight="bold"
                     maxW="100%"
                     mt={2}
@@ -160,29 +168,63 @@ const HomeButtonGroup = () => {
                   >
                     {selectedPlayer.name}
                   </Text>
-                  <Text fontSize="2xs" color={subtitleColor} lineHeight={4}>
+                  <Text fontSize="xs" color={subtitleColor} lineHeight={4}>
                     {t(
                       `Enums.playerTypes.${selectedPlayer.playerType === PlayerType.ThirdParty ? "3rdpartyShort" : selectedPlayer.playerType}`
                     )}
                   </Text>
-                  <Text fontSize="2xs" color={subtitleColor} lineHeight={4}>
+                  <Text fontSize="xs" color={subtitleColor} lineHeight={4}>
                     {selectedPlayer.playerType === PlayerType.ThirdParty &&
                       selectedPlayer.authServer?.name}
                   </Text>
                 </VStack>
-              </>
-            ) : (
-              <Center w="100%" h="100%">
-                <Text fontSize="sm" className="secondary-text">
-                  {t("LaunchPage.Text.noSelectedPlayer")}
-                </Text>
-              </Center>
-            )}
-          </HStack>
+              </HStack>
+            </Flex>
+          ) : (
+            <Center w="100%" h="100%" className={styles["player-card-empty"]}>
+              <Text fontSize="sm" className="secondary-text">
+                {t("LaunchPage.Text.noSelectedPlayer")}
+              </Text>
+            </Center>
+          )}
         </Box>
+
+        <button
+          type="button"
+          aria-label={t(
+            `LaunchPage.SwitchButton.tooltip.${hasPlayers ? "switchPlayer" : "addPlayer"}`
+          )}
+          title={t(
+            `LaunchPage.SwitchButton.tooltip.${hasPlayers ? "switchPlayer" : "addPlayer"}`
+          )}
+          className={`${styles["card-quarter-zone"]} ${styles["player-card-zone"]}`}
+          data-active={isPlayerZoneActive}
+          onFocus={() => setIsPlayerZoneFocused(true)}
+          onBlur={() => setIsPlayerZoneFocused(false)}
+          onClick={() =>
+            router.push(hasPlayers ? "/accounts" : "/accounts?add=true")
+          }
+        >
+          <span className={styles["player-card-surface"]} aria-hidden="true" />
+          <span className={styles["player-card-icon"]} aria-hidden="true">
+            <svg viewBox="0 0 28 28" focusable="false">
+              <circle cx="14" cy="14" r="11.25" />
+              <path d="M14 8.5v11M8.5 14h11" />
+            </svg>
+          </span>
+        </button>
+
+        <span className={styles["player-card-divider"]} aria-hidden="true" />
       </AdvancedCard>
 
-      <Box position="relative">
+      <Box
+        position="relative"
+        className={styles["launch-button-shell"]}
+        data-liquid={useLiquidGlass}
+        data-add-active={isAddZoneActive}
+        onPointerMove={handleLaunchPointerMove}
+        onPointerLeave={() => setIsAddZoneHovered(false)}
+      >
         <Button
           id="main-launch-button"
           data-liquid={useLiquidGlass}
@@ -203,6 +245,7 @@ const HomeButtonGroup = () => {
             color="white"
             position="relative"
             zIndex={useLiquidGlass ? 3 : undefined}
+            className={styles["launch-button-label"]}
           >
             <Text fontSize="lg" fontWeight="bold">
               {t("LaunchPage.button.launch")}
@@ -215,44 +258,65 @@ const HomeButtonGroup = () => {
           </VStack>
         </Button>
 
-        <Box position="absolute" top={1} right={1}>
-          <CompactButtonGroup
-            colorScheme={useColorModeValue("blackAlpha", "gray")}
-            size="xs"
-          >
-            {selectedInstance && hasInstances && (
-              <CommonIconButton
-                icon={LuSettings}
-                label={t("LaunchPage.button.instanceSettings")}
-                tooltipPlacement="top"
-                onClick={() =>
-                  router.push({
-                    pathname: "/instances/details/[id]/settings",
-                    query: { id: selectedInstance.id },
-                  })
-                }
-              />
-            )}
+        {/* The old standalone add-instance icon button was removed from the
+            compact control group; this quarter is now its whole click target. */}
+        <button
+          type="button"
+          aria-label={t("LaunchPage.SwitchButton.tooltip.addInstance")}
+          title={t("LaunchPage.SwitchButton.tooltip.addInstance")}
+          className={`${styles["card-quarter-zone"]} ${styles["launch-add-zone"]}`}
+          data-active={isAddZoneActive}
+          onFocus={() => setIsAddZoneFocused(true)}
+          onBlur={() => setIsAddZoneFocused(false)}
+          onClick={() => router.push("/instances/add-import")}
+        >
+          <span className={styles["launch-add-surface"]} aria-hidden="true" />
+          <span className={styles["launch-add-icon"]} aria-hidden="true">
+            <svg viewBox="0 0 28 28" focusable="false">
+              <circle cx="14" cy="14" r="11.25" />
+              <path d="M14 8.5v11M8.5 14h11" />
+            </svg>
+          </span>
+        </button>
 
-            <ButtonWithPopover
-              tooltip={t(
-                `LaunchPage.SwitchButton.tooltip.${hasInstances ? "switchInstance" : "addInstance"}`
-              )}
-              aria-label="instance"
-              popoverContent={
-                <InstancesView
-                  instances={instanceList}
-                  selectedInstance={selectedInstance}
-                  viewType="list"
-                  withMenu={false}
+        <span className={styles["launch-divider"]} aria-hidden="true" />
+
+        {hasInstances && (
+          <Box position="absolute" top={1} right={1} zIndex={5}>
+            <CompactButtonGroup
+              colorScheme={compactButtonGroupColorScheme}
+              size="xs"
+            >
+              {selectedInstance && (
+                <CommonIconButton
+                  icon={LuSettings}
+                  label={t("LaunchPage.button.instanceSettings")}
+                  tooltipPlacement="top"
+                  onClick={() =>
+                    router.push({
+                      pathname: "/instances/details/[id]/settings",
+                      query: { id: selectedInstance.id },
+                    })
+                  }
                 />
-              }
-              onClick={() => router.push("/instances/list")}
-              showAdd={!hasInstances}
-              onAddClick={() => router.push("/instances/add-import")}
-            />
-          </CompactButtonGroup>
-        </Box>
+              )}
+
+              <ButtonWithPopover
+                tooltip={t("LaunchPage.SwitchButton.tooltip.switchInstance")}
+                aria-label="instance"
+                popoverContent={
+                  <InstancesView
+                    instances={instanceList}
+                    selectedInstance={selectedInstance}
+                    viewType="list"
+                    withMenu={false}
+                  />
+                }
+                onClick={() => router.push("/instances/list")}
+              />
+            </CompactButtonGroup>
+          </Box>
+        )}
       </Box>
     </Flex>
   );

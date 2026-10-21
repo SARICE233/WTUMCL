@@ -332,8 +332,8 @@
         }
       },
       "presetBgList": {
-        "Florwyn": {
-          "name": "Florwyn"
+        "Meridian": {
+          "name": "Meridian"
         },
         "WTUMC": {
           "name": "WTUMC"
@@ -856,11 +856,6 @@
     },
     "top": {
       "settings": {
-        "extensionDocs": {
-          "title": "Extension Development Documentation",
-          "description": "Read the introduction to the extension system and API docs, and get started quickly with the scaffold.",
-          "url": "https://mc.sjtu.cn/sjmcl/en/dev/extension/"
-        },
         "awesomeExtensions": {
           "title": "Discover Community Extensions",
           "description": "Visit GitHub to browse a list of extensions developed by the community.",
@@ -1447,10 +1442,6 @@
     },
     "top": {
       "settings": {
-        "LauncherDocs": {
-          "title": "WTUMCL Documentation",
-          "url": "https://github.com/SARICE233/WTUMCL"
-        },
         "UserGroup": {
           "title": "User Community",
           "description": "Join the QQ group or GitHub Discussions to report issues, request features, or get help",
@@ -1689,11 +1680,6 @@
           "title": "Launcher MCP Service",
           "description": "Enable the local MCP service to connect external agent applications for automated launcher control."
         },
-        "docs": {
-          "title": "User Guide",
-          "description": "Learn how to connect the launcher to external agent applications (such as Claude, Cherry Studio, and more).",
-          "url": "https://mc.sjtu.cn/sjmcl/en/docs/intelligence/launcher-mcp"
-        },
         "port": {
           "title": "Port",
           "description": "The fixed local port used by the launcher MCP service."
@@ -1746,6 +1732,44 @@
     "button": {
       "launch": "Launch Game",
       "instanceSettings": "Instance Settings"
+    },
+    "guide": {
+      "title": "Get started in three steps",
+      "subtitle": "No game instance yet. Finish these steps to jump in.",
+      "account": {
+        "title": "Sign in to your account",
+        "desc": "Add a Microsoft or third-party account"
+      },
+      "game": {
+        "title": "Download or import a game",
+        "desc": "Get a game version or import a modpack"
+      },
+      "launch": {
+        "title": "Launch the game",
+        "desc": "Pick an instance and start playing"
+      }
+    },
+    "greeting": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}",
+      "night": "Good night, {{name}}",
+      "friend": "adventurer",
+      "subtitle": "Ready for another adventure?"
+    },
+    "news": {
+      "title": "WTUMC community news",
+      "more": "More community news",
+      "empty": "No community news yet",
+      "previous": "Previous news",
+      "next": "Next news"
+    },
+    "recentInstance": {
+      "title": "Recent instance",
+      "viewAll": "View all instances",
+      "playtime": "Playtime {{time}}",
+      "launch": "Launch game",
+      "details": "Instance details"
     },
     "SwitchButton": {
       "tooltip": {

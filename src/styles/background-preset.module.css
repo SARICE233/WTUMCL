@@ -1,0 +1,257 @@
+/* Animated "Meridian" built-in background preset. */
+.layer {
+  --meridian-line: rgba(48, 92, 132, 0.11);
+  --meridian-cell: 5.5rem;
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #e9f0f6;
+}
+
+.layer.fixed {
+  position: fixed;
+  z-index: -1;
+}
+
+.layer[data-theme="dark"] {
+  --meridian-line: rgba(150, 199, 236, 0.1);
+
+  background: #0d141d;
+}
+
+.canvas {
+  position: absolute;
+  inset: -12%;
+}
+
+.base {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      120% 90% at 18% 10%,
+      rgba(191, 221, 245, 0.96),
+      transparent 62%
+    ),
+    radial-gradient(
+      105% 85% at 84% 16%,
+      rgba(207, 235, 228, 0.92),
+      transparent 64%
+    ),
+    radial-gradient(
+      115% 95% at 52% 102%,
+      rgba(230, 219, 245, 0.88),
+      transparent 70%
+    ),
+    linear-gradient(135deg, #eef5fb 0%, #e5eef7 46%, #edf1f7 100%);
+}
+
+.layer[data-theme="dark"] .base {
+  background:
+    radial-gradient(
+      120% 90% at 18% 10%,
+      rgba(25, 59, 92, 0.92),
+      transparent 62%
+    ),
+    radial-gradient(
+      105% 85% at 84% 16%,
+      rgba(18, 68, 70, 0.78),
+      transparent 64%
+    ),
+    radial-gradient(
+      115% 95% at 52% 102%,
+      rgba(52, 36, 86, 0.82),
+      transparent 70%
+    ),
+    linear-gradient(135deg, #0d1621 0%, #0b131c 46%, #111722 100%);
+}
+
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.6;
+  will-change: transform, opacity;
+}
+
+.aurora-a {
+  top: -28vmax;
+  left: -18vmax;
+  width: 62vmax;
+  height: 62vmax;
+  background: radial-gradient(
+    circle,
+    rgba(96, 170, 232, 0.42) 0%,
+    rgba(96, 170, 232, 0.16) 40%,
+    transparent 68%
+  );
+  animation: meridian-drift-a 26s ease-in-out infinite alternate;
+}
+
+.aurora-b {
+  right: -18vmax;
+  bottom: -30vmax;
+  width: 58vmax;
+  height: 58vmax;
+  background: radial-gradient(
+    circle,
+    rgba(84, 194, 176, 0.34) 0%,
+    rgba(84, 194, 176, 0.13) 42%,
+    transparent 70%
+  );
+  animation: meridian-drift-b 34s ease-in-out infinite alternate;
+}
+
+.aurora-c {
+  top: 24%;
+  right: 8%;
+  width: 42vmax;
+  height: 42vmax;
+  background: radial-gradient(
+    circle,
+    rgba(164, 138, 220, 0.24) 0%,
+    rgba(164, 138, 220, 0.1) 44%,
+    transparent 72%
+  );
+  animation: meridian-drift-c 30s ease-in-out infinite alternate;
+}
+
+.layer[data-theme="dark"] .aurora-a {
+  background: radial-gradient(
+    circle,
+    rgba(54, 132, 206, 0.4) 0%,
+    rgba(54, 132, 206, 0.14) 40%,
+    transparent 68%
+  );
+}
+
+.layer[data-theme="dark"] .aurora-b {
+  background: radial-gradient(
+    circle,
+    rgba(43, 166, 152, 0.3) 0%,
+    rgba(43, 166, 152, 0.1) 42%,
+    transparent 70%
+  );
+}
+
+.layer[data-theme="dark"] .aurora-c {
+  background: radial-gradient(
+    circle,
+    rgba(120, 92, 200, 0.28) 0%,
+    rgba(120, 92, 200, 0.1) 44%,
+    transparent 72%
+  );
+}
+
+.grille {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-7deg) scale(1.22);
+}
+
+.grid {
+  position: absolute;
+  inset: -24%;
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--meridian-line) 0 1px,
+      transparent 1px var(--meridian-cell)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--meridian-line) 0 1px,
+      transparent 1px var(--meridian-cell)
+    );
+  opacity: 0.85;
+  mask-image: radial-gradient(
+    ellipse 82% 76% at 50% 44%,
+    #000 30%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 82% 76% at 50% 44%,
+    #000 30%,
+    transparent 100%
+  );
+  animation: meridian-grid-pan 38s linear infinite;
+  will-change: transform;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 52%,
+    rgba(24, 49, 76, 0.14) 100%
+  );
+}
+
+.layer[data-theme="dark"] .vignette {
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 46%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+@keyframes meridian-drift-a {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.62;
+  }
+  50% {
+    opacity: 0.44;
+  }
+  100% {
+    transform: translate3d(9vmax, 7vmax, 0) scale(1.14);
+    opacity: 0.6;
+  }
+}
+
+@keyframes meridian-drift-b {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.06);
+    opacity: 0.56;
+  }
+  55% {
+    opacity: 0.38;
+  }
+  100% {
+    transform: translate3d(-8vmax, -6vmax, 0) scale(1);
+    opacity: 0.54;
+  }
+}
+
+@keyframes meridian-drift-c {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate3d(-7vmax, 5vmax, 0) scale(1.18);
+    opacity: 0.34;
+  }
+}
+
+@keyframes meridian-grid-pan {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(
+      calc(-1 * var(--meridian-cell)),
+      var(--meridian-cell),
+      0
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora,
+  .grid {
+    animation: none;
+  }
+}

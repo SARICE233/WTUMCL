@@ -332,8 +332,8 @@
         }
       },
       "presetBgList": {
-        "Florwyn": {
-          "name": "櫻滿集"
+        "Meridian": {
+          "name": "經緯"
         },
         "WTUMC": {
           "name": "WTUMC"
@@ -856,11 +856,6 @@
     },
     "top": {
       "settings": {
-        "extensionDocs": {
-          "title": "擴充開發案文",
-          "description": "讀擴充之制介紹與介面用法，以腳手架速上手",
-          "url": "https://mc.sjtu.cn/sjmcl/dev/extension/"
-        },
         "awesomeExtensions": {
           "title": "覽社群擴充",
           "description": "往群碼之匯覽社群所開發之擴充列表",
@@ -1447,10 +1442,6 @@
     },
     "top": {
       "settings": {
-        "LauncherDocs": {
-          "title": "WTUMCL 文書",
-          "url": "https://github.com/SARICE233/WTUMCL"
-        },
         "UserGroup": {
           "title": "使用者社群",
           "description": "歡迎加入 QQ 群或于群碼之匯清談，擧陳疏漏，請益功用，以求襄助",
@@ -1689,11 +1680,6 @@
           "title": "啟者 MCP 服務",
           "description": "啟本地 MCP 服務，以連線外部 Agent 應用實現啟者的自調化控制"
         },
-        "docs": {
-          "title": "用法之指南",
-          "description": "瞭解如何將啟者連線到外部 Agent 應用（如 Claude, Cherry Studio 等）",
-          "url": "https://mc.sjtu.cn/sjmcl/docs/intelligence/launcher-mcp"
-        },
         "port": {
           "title": "埠",
           "description": "啟者 MCP 服務使用的固定本地埠"
@@ -1746,6 +1732,44 @@
     "button": {
       "launch": "啟戲",
       "instanceSettings": "例置設"
+    },
+    "guide": {
+      "title": "三步啟戲",
+      "subtitle": "尚無戲例，循此三步以入戲。",
+      "account": {
+        "title": "登入帳號",
+        "desc": "增 Microsoft 或他方帳號"
+      },
+      "game": {
+        "title": "下載戲或匯入整合包",
+        "desc": "取戲版本，或匯入既有整合包"
+      },
+      "launch": {
+        "title": "啟戲",
+        "desc": "擇戲例，啟新程"
+      }
+    },
+    "greeting": {
+      "morning": "晨安，{{name}}",
+      "afternoon": "午安，{{name}}",
+      "evening": "暮安，{{name}}",
+      "night": "夜闌，{{name}}",
+      "friend": "行者",
+      "subtitle": "可備啟新程乎？"
+    },
+    "news": {
+      "title": "WTUMC 社聞",
+      "more": "廣聞",
+      "empty": "暫無社聞",
+      "previous": "前聞",
+      "next": "後聞"
+    },
+    "recentInstance": {
+      "title": "近戲例",
+      "viewAll": "覽諸戲例",
+      "playtime": "已戲 {{time}}",
+      "launch": "啟戲",
+      "details": "戲例詳情"
     },
     "SwitchButton": {
       "tooltip": {

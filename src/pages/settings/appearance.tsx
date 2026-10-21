@@ -144,7 +144,7 @@ const AppearanceSettingsPage = () => {
 
           let newSelectedBgKey;
           if (customBgList.length === 1) {
-            newSelectedBgKey = `${builtInBgPrefix}Florwyn`;
+            newSelectedBgKey = `${builtInBgPrefix}WTUMC`;
             if (appearanceConfigs.background.randomCustom)
               update("appearance.background.randomCustom", false);
           } else {
@@ -319,7 +319,7 @@ const AppearanceSettingsPage = () => {
   };
 
   const PresetBackgroundList = () => {
-    const presetBgList = ["Florwyn", "WTUMC"];
+    const presetBgList = ["WTUMC", "Meridian"];
 
     return (
       <Wrap spacing={3.5} justify="right">
