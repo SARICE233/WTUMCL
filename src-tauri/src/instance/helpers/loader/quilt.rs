@@ -142,6 +142,7 @@ pub async fn install_quilt_loader(
             dest: lib_dir.join(&rel),
             filename: None,
             sha1: None,
+            size: None,
           }));
         }
       }
@@ -179,6 +180,7 @@ pub async fn install_quilt_loader(
       dest: lib_dir.join(&rel),
       filename: None,
       sha1: None,
+      size: None,
     }));
   }
 

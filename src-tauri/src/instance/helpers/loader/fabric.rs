@@ -116,6 +116,7 @@ pub async fn install_fabric_loader(
         dest: lib_dir.join(&rel),
         filename: None,
         sha1: None,
+        size: None,
       }));
     }
     Ok(())

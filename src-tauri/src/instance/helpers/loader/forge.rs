@@ -113,6 +113,7 @@ pub async fn install_forge_loader(
     dest: installer_path.clone(),
     filename: None,
     sha1: None,
+    size: None,
   }));
 
   Ok(())
@@ -251,6 +252,9 @@ pub async fn download_forge_libraries(
             dest: lib_dir.join(mojmaps),
             filename: None,
             sha1: Some(client_mappings.sha1.clone()),
+            size: u64::try_from(client_mappings.size)
+              .ok()
+              .filter(|&size| size > 0),
           }));
         }
         processor.args.clear();
@@ -327,6 +331,12 @@ pub async fn download_forge_libraries(
         dest: lib_dir.join(&convert_library_name_to_path(name, None)?),
         filename: None,
         sha1: None,
+        size: lib
+          .downloads
+          .as_ref()
+          .and_then(|downloads| downloads.artifact.as_ref())
+          .and_then(|artifact| u64::try_from(artifact.size).ok())
+          .filter(|&size| size > 0),
       }));
     }
 
@@ -376,6 +386,12 @@ pub async fn download_forge_libraries(
         dest: lib_dir.join(&rel),
         filename: None,
         sha1: None,
+        size: lib
+          .downloads
+          .as_ref()
+          .and_then(|downloads| downloads.artifact.as_ref())
+          .and_then(|artifact| u64::try_from(artifact.size).ok())
+          .filter(|&size| size > 0),
       }));
     }
   } else {
@@ -448,6 +464,7 @@ pub async fn download_forge_libraries(
         dest: lib_dir.join(&rel),
         filename: None,
         sha1: None,
+        size: None,
       }));
     }
     client_info.patches.push(new_patch);

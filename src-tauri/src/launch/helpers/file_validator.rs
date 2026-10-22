@@ -113,6 +113,7 @@ pub async fn get_invalid_library_files(
         dest: file_path,
         filename: None,
         sha1: Some(artifact.sha1.clone()),
+        size: u64::try_from(artifact.size).ok().filter(|&size| size > 0),
       })))
     }
   });
@@ -200,6 +201,7 @@ pub async fn get_invalid_windows_mesa_loader_file(
     dest: file_path,
     filename: None,
     sha1: Some(artifact.sha1),
+    size: u64::try_from(artifact.size).ok().filter(|&size| size > 0),
   })])
 }
 
@@ -514,6 +516,7 @@ pub async fn get_invalid_assets(
           dest,
           filename: None,
           sha1: Some(item.hash.clone()),
+          size: u64::try_from(item.size).ok().filter(|&size| size > 0),
         })))
       }
     }

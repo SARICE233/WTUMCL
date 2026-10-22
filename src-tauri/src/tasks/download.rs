@@ -1,6 +1,4 @@
 use async_speed_limit::Limiter;
-use futures::StreamExt;
-use futures::stream::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use sjmcl_types::error::{SJMCLError, SJMCLResult};
 use std::future::Future;
@@ -9,71 +7,42 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, Url};
-use tauri_plugin_http::reqwest;
-use tauri_plugin_http::reqwest::header::{ACCEPT_ENCODING, HeaderMap, HeaderValue, RANGE};
-use tauri_plugin_http::reqwest::{Client, ClientBuilder, Proxy, StatusCode};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt};
-use tokio_util::bytes;
-use tokio_util::compat::FuturesAsyncReadCompatExt;
+use tauri_plugin_http::reqwest::header::{HeaderMap, HeaderValue};
+use tauri_plugin_http::reqwest::{Client, ClientBuilder, Proxy};
 
 use crate::launcher_config::models::{LauncherConfig, ProxyType};
-use crate::resource::helpers::curseforge::misc::{
-  CURSEFORGE_API_KEY, is_curseforge_authenticated_url,
-};
 use crate::resource::helpers::source::candidates;
+use crate::tasks::engine::{
+  DownloadEngine, FetchOutcome, FetchPlan, NullProgressSink, ProgressSink, SequentialEngine,
+};
 use crate::tasks::source_health::{SourceHealth, source_health};
-use crate::tasks::streams::ProgressStream;
 use crate::tasks::streams::desc::{PDesc, PStatus};
 use crate::tasks::streams::reporter::Reporter;
 use crate::tasks::*;
-use crate::utils::fs::validate_sha1;
 
-/// Buffer size used when copying the response stream into the destination file.
-///
-/// The previous implementation used tokio::io::copy, whose internal buffer is
-/// only 8 KiB: every 8 KiB of payload caused one socket read, one file write
-/// and one progress-stream poll. 64 KiB matches the sequential download buffer
-/// used by PCL2 (80 KiB) and PCL2-CE (64 KiB) and divides the number of
-/// syscalls / stream polls per megabyte by 8.
-const DOWNLOAD_BUFFER_SIZE: usize = 64 * 1024;
+// Transfer-level helpers now live in `tasks::engine::sequential`; the tests
+// below still exercise them through their historical names.
+#[cfg(test)]
+use crate::tasks::engine::sequential::{
+  DOWNLOAD_BUFFER_SIZE, DOWNLOAD_SHA1_RETRIES, DownloadFailure, DownloadFailureClass,
+  DownloadRequestError, classify_download_failure, copy_to_file, ensure_resumed_response,
+  into_byte_stream, prepare_dest_file, send_with_retry_budget, validate_dest_sha1,
+};
+#[cfg(test)]
+use futures::StreamExt;
+#[cfg(test)]
+use tauri_plugin_http::reqwest::StatusCode;
+#[cfg(test)]
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Timeout for establishing the TCP/TLS connection of a download.
 const DOWNLOAD_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// Maximum time to wait for the response headers (connect + TLS + redirects +
-/// time-to-first-byte). `send()` resolves as soon as the headers arrive, so this
-/// deadline never covers the body itself.
-const DOWNLOAD_HEADERS_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Maximum time to wait for the next body chunk before treating the transfer as
 /// stalled. Unlike a total deadline this resets on every successful read, so a
 /// huge file may take as long as it needs while a dead socket fails fast
 /// (PCL2-CE uses 15 s for the same purpose).
 const DOWNLOAD_READ_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// Total time the download path spends obtaining response headers before it
-/// gives up on a source, so the caller can switch to the next mirror.
-///
-/// This lives in the download path on purpose: `utils::web::with_retry` keeps
-/// its global budget for the other callers, but a mirror that cannot even
-/// connect or answer is better abandoned than retried for the one hour global
-/// budget (#1942). The value stays below the five second bound promised to the
-/// scheduler so the timeout/backoff overhead cannot push the attempt past it.
-const DOWNLOAD_FAST_FAIL_BUDGET: Duration = Duration::from_secs(4);
-
-/// Attempts allowed inside `DOWNLOAD_FAST_FAIL_BUDGET`, initial try included.
-const DOWNLOAD_FAST_FAIL_ATTEMPTS: usize = 3;
-
-/// Pause between two fast-fail attempts, itself bounded by the remaining budget.
-const DOWNLOAD_FAST_FAIL_BACKOFF: Duration = Duration::from_millis(200);
-
-/// How many times an interrupted body is resumed from the bytes already on disk.
-const DOWNLOAD_RESUME_RETRIES: usize = 2;
-
-/// How many times a file that fails SHA-1 validation (short body or corrupted
-/// transfer) is downloaded again. The partial artifact is deleted before every
-/// retry so a truncated file can never be resumed as if it were complete.
-const DOWNLOAD_SHA1_RETRIES: usize = 2;
 
 /// How long an idle connection stays in the download pool.
 ///
@@ -170,164 +139,6 @@ fn resume_offset(current: i64) -> u64 {
   current.max(0) as u64
 }
 
-/// A resumed download (`Range: bytes=N-`) must be answered with `206 Partial
-/// Content`. If a server or proxy ignores the header and returns `200 OK` with
-/// the whole file, appending it after the persisted prefix would corrupt the
-/// artifact, so fail explicitly instead of silently writing bad bytes.
-fn ensure_resumed_response(current: u64, status: StatusCode) -> SJMCLResult<()> {
-  if current > 0 && status != StatusCode::PARTIAL_CONTENT {
-    return Err(SJMCLError(format!(
-      "Server ignored the Range request while resuming (HTTP {}, expected 206)",
-      status.as_u16()
-    )));
-  }
-  Ok(())
-}
-
-/// Converts the response body into a byte stream that reports transport errors.
-///
-/// The previous version mapped every body error to an empty chunk, so a reset
-/// or timeout in the middle of a file looked like a clean EOF. Callers could
-/// then "complete" a truncated file (only a SHA1 check would catch it). The
-/// error is propagated so the task fails and can be resumed from the persisted
-/// offset instead of keeping corrupted bytes.
-fn into_byte_stream(
-  response: reqwest::Response,
-) -> impl Stream<Item = Result<bytes::Bytes, std::io::Error>> + Send + use<> {
-  response.bytes_stream().map(|chunk| {
-    chunk.map_err(|error| std::io::Error::new(std::io::ErrorKind::ConnectionReset, error))
-  })
-}
-
-/// A failure while obtaining the response headers.
-enum DownloadRequestError {
-  /// The fast-fail deadline elapsed before the headers arrived.
-  Timeout,
-  /// reqwest could not send the request or the server returned an error status.
-  Request(reqwest::Error),
-  /// The server answered in a way that makes resuming unsafe, for example by
-  /// ignoring a Range request and returning the whole file.
-  Protocol(String),
-}
-
-impl std::fmt::Display for DownloadRequestError {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Self::Timeout => write!(formatter, "Timed out waiting for download response headers"),
-      Self::Request(error) => write!(formatter, "{error}"),
-      Self::Protocol(reason) => write!(formatter, "{reason}"),
-    }
-  }
-}
-
-/// The retry policy a failed download attempt belongs to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DownloadFailureClass {
-  /// The mirror itself did not serve the request. Retrying the same URL only
-  /// delays the fallback, so attempts are confined to a short time budget.
-  FastFail,
-  /// The transfer started but the body was cut short. The bytes already on disk
-  /// are contiguous, so a Range request can resume the file.
-  Retryable,
-}
-
-/// The two failure surfaces of a download attempt.
-enum DownloadFailure<'a> {
-  /// The request never produced a usable body.
-  Request(&'a DownloadRequestError),
-  /// The response body stream failed after the transfer had started.
-  Body(&'a std::io::Error),
-}
-
-/// Classifies a failed download attempt into the retry policy it belongs to.
-///
-/// Connection and timeout problems mean the mirror is unreachable: the caller
-/// gets the error after the bounded fast-fail budget so it can switch source.
-/// A reset or short read in the middle of the body is the only failure worth a
-/// resume retry.
-fn classify_download_failure(failure: DownloadFailure<'_>) -> DownloadFailureClass {
-  match failure {
-    DownloadFailure::Request(error) => match error {
-      // The mirror never answered (or answered with an unusable status): it
-      // will not heal by waiting, so fail fast and let the caller switch source.
-      DownloadRequestError::Timeout | DownloadRequestError::Protocol(_) => {
-        DownloadFailureClass::FastFail
-      }
-      DownloadRequestError::Request(request_error) => {
-        if request_error.is_connect() || request_error.is_timeout() {
-          DownloadFailureClass::FastFail
-        } else if request_error.is_body() {
-          DownloadFailureClass::Retryable
-        } else {
-          DownloadFailureClass::FastFail
-        }
-      }
-    },
-    DownloadFailure::Body(error) => match error.kind() {
-      std::io::ErrorKind::ConnectionReset
-      | std::io::ErrorKind::ConnectionAborted
-      | std::io::ErrorKind::BrokenPipe
-      | std::io::ErrorKind::UnexpectedEof
-      | std::io::ErrorKind::TimedOut => DownloadFailureClass::Retryable,
-      _ => DownloadFailureClass::FastFail,
-    },
-  }
-}
-
-/// Sends a request with the download-specific fast-fail policy.
-///
-/// `budget` covers every attempt and the backoff between them, so an unreachable
-/// mirror cannot hold a download task for the one hour budget used by
-/// `utils::web::with_retry`. `attempt` is invoked once per try.
-async fn send_with_retry_budget<F, Fut>(
-  budget: Duration,
-  attempts: usize,
-  headers_timeout: Duration,
-  mut attempt: F,
-) -> Result<reqwest::Response, DownloadRequestError>
-where
-  F: FnMut() -> Fut,
-  Fut: Future<Output = Result<reqwest::Response, DownloadRequestError>>,
-{
-  let started = Instant::now();
-  let attempts = attempts.max(1);
-  let mut last_error = None;
-
-  for attempt_index in 1..=attempts {
-    let remaining = budget.saturating_sub(started.elapsed());
-    if remaining.is_zero() {
-      break;
-    }
-
-    let result = match tokio::time::timeout(
-      remaining.min(headers_timeout.min(DOWNLOAD_HEADERS_TIMEOUT)),
-      attempt(),
-    )
-    .await
-    {
-      Ok(result) => result,
-      Err(_) => Err(DownloadRequestError::Timeout),
-    };
-
-    match result {
-      Ok(response) => return Ok(response),
-      Err(error) => {
-        last_error = Some(error);
-        if attempt_index == attempts {
-          break;
-        }
-        let remaining = budget.saturating_sub(started.elapsed());
-        if remaining.is_zero() {
-          break;
-        }
-        tokio::time::sleep(DOWNLOAD_FAST_FAIL_BACKOFF.min(remaining)).await;
-      }
-    }
-  }
-
-  Err(last_error.unwrap_or(DownloadRequestError::Timeout))
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadParam {
@@ -335,6 +146,11 @@ pub struct DownloadParam {
   pub dest: PathBuf,
   pub filename: Option<String>,
   pub sha1: Option<String>,
+  // Size announced by the manifest, when the caller knows it. Sources whose
+  // announced Content-Length differs are rejected before the body is fetched.
+  // Older persisted task descriptors lack the field, hence the serde default.
+  #[serde(default)]
+  pub size: Option<u64>,
 }
 
 pub struct DownloadTask {
@@ -368,101 +184,8 @@ fn download_cache_dir(app_handle: &AppHandle) -> PathBuf {
     .clone()
 }
 
-/// Copies everything from the reader to the writer through a fixed
-/// DOWNLOAD_BUFFER_SIZE buffer, so one write covers up to 64 KiB instead of the
-/// 8 KiB chunks produced by tokio::io::copy.
-async fn copy_to_file<R, W>(reader: &mut R, writer: &mut W) -> std::io::Result<u64>
-where
-  R: AsyncRead + Unpin + ?Sized,
-  W: AsyncWrite + Unpin + ?Sized,
-{
-  let mut buffer = vec![0u8; DOWNLOAD_BUFFER_SIZE];
-  let mut copied = 0u64;
-  loop {
-    let read = reader.read(&mut buffer).await?;
-    if read == 0 {
-      break;
-    }
-    writer.write_all(&buffer[..read]).await?;
-    copied += read as u64;
-  }
-  Ok(copied)
-}
-
-/// Opens the destination file, either truncating it for a fresh download or
-/// seeking to the already persisted byte offset when resuming.
-async fn prepare_dest_file(dest_path: &Path, current: u64) -> std::io::Result<tokio::fs::File> {
-  if current == 0 {
-    tokio::fs::File::create(dest_path).await
-  } else {
-    let mut file = tokio::fs::OpenOptions::new()
-      .write(true)
-      .open(dest_path)
-      .await?;
-    file.seek(std::io::SeekFrom::Start(current)).await?;
-    Ok(file)
-  }
-}
-
-/// Validates the downloaded file hash on the blocking pool: hashing a large
-/// artifact is pure CPU + disk I/O and must not occupy an async worker thread.
-async fn validate_dest_sha1(dest_path: PathBuf, truth: String) -> SJMCLResult<()> {
-  tokio::task::spawn_blocking(move || validate_sha1(dest_path, truth))
-    .await
-    .map_err(|e| SJMCLError(format!("SHA1 validation task failed: {e}")))?
-}
-
-/// Copies one response body into `dest_path`, resuming at `current`.
-///
-/// When a task handle is present the body goes through `ProgressStream` so
-/// progress reporting, pause/resume and cancellation keep working; tests pass
-/// `None` to drive the same copy path without an `AppHandle`.
-async fn write_response_to_file(
-  response: reqwest::Response,
-  dest_path: &Path,
-  current: u64,
-  limiter: Option<Limiter>,
-  task_handle: Option<&Arc<RwLock<PTaskHandle>>>,
-) -> std::io::Result<()> {
-  if let Some(parent) = dest_path.parent() {
-    tokio::fs::create_dir_all(parent).await?;
-  }
-
-  let stream: Pin<Box<dyn Stream<Item = Result<bytes::Bytes, std::io::Error>> + Send>> =
-    match task_handle {
-      Some(handle) => Box::pin(ProgressStream::new(
-        into_byte_stream(response),
-        handle.clone(),
-      )),
-      None => Box::pin(into_byte_stream(response)),
-    };
-
-  let mut file = prepare_dest_file(dest_path, current).await?;
-  let reader = Box::pin(stream.into_async_read());
-  if let Some(limiter) = limiter {
-    let mut limited = limiter.limit(reader).compat();
-    copy_to_file(&mut limited, &mut file).await?;
-  } else {
-    let mut compatible = reader.compat();
-    copy_to_file(&mut compatible, &mut file).await?;
-  }
-  drop(file);
-  Ok(())
-}
-
-/// Result of trying one source (see `download_from_source`).
-enum SourceResult {
-  Success,
-  Cancelled,
-}
-
-/// Downloads one artifact, trying every candidate source in order.
-///
-/// The first source keeps the caller's resume offset; later ones restart from
-/// zero because a different mirror may not serve the same byte ranges. Each
-/// outcome feeds `SourceHealth`, so a mirror that has just failed three times in
-/// a row is skipped by the next task instead of costing it another timeout.
-/// Reads the launcher config and asks the source layer for alternatives to `src`.
+/// Reads the launcher config and asks the source layer for alternatives to
+/// `src` (the configured mirrors, in priority order).
 fn derive_alt_sources(app_handle: &AppHandle, src: &Url) -> Vec<Url> {
   let config = app_handle.state::<Mutex<LauncherConfig>>();
   let Ok(config) = config.lock() else {
@@ -489,7 +212,15 @@ fn candidates_for(param: &DownloadParam, alt_srcs: &[Url]) -> Vec<Url> {
   sources
 }
 
-async fn download_with_policy(
+/// Downloads one artifact, trying every candidate source in order.
+///
+/// The first source keeps the caller's resume offset; later ones restart from
+/// zero because a different mirror may not serve the same byte ranges. Each
+/// outcome feeds `SourceHealth`, so a mirror that has just failed three times in
+/// a row is skipped by the next task instead of costing it another timeout. The
+/// per-source transfer itself is delegated to [`DownloadEngine`]; this function
+/// only owns the failover policy.
+pub(crate) async fn download_with_policy(
   client: &Client,
   param: &DownloadParam,
   alt_srcs: &[Url],
@@ -517,25 +248,30 @@ async fn download_with_policy(
     let started = Instant::now();
     let headers_timeout = source_health().timeout_for(&host);
 
-    match download_from_source(
-      client,
-      param,
-      source,
-      dest_path,
-      offset,
-      headers_timeout,
-      limiter.clone(),
-      task_handle.clone(),
-      retry_same_source_on_sha1,
-      expected_size,
-    )
-    .await
-    {
-      Ok(SourceResult::Success) => {
+    // The engine receives one source per call: source order and health are the
+    // driver's responsibility, the transfer contract is the engine's.
+    let plan = FetchPlan {
+      dest: dest_path.to_path_buf(),
+      size: expected_size,
+      sha1: param.sha1.clone(),
+      sources: vec![source.clone()],
+      resume_offset: offset,
+    };
+    let engine = SequentialEngine::new()
+      .with_limiter(limiter.clone())
+      .with_headers_timeout(headers_timeout)
+      .with_sha1_retry_on_same_source(retry_same_source_on_sha1);
+    let mut sink: Box<dyn ProgressSink> = match task_handle.clone() {
+      Some(handle) => Box::new(TaskProgressSink::new(handle)),
+      None => Box::new(NullProgressSink::new()),
+    };
+
+    match engine.fetch(client, &plan, sink.as_mut()).await {
+      Ok(FetchOutcome::Completed) => {
         source_health().record_success(&host, started.elapsed());
         return Ok(());
       }
-      Ok(SourceResult::Cancelled) => return Ok(()),
+      Ok(FetchOutcome::Cancelled) => return Ok(()),
       Err(error) => {
         let failures = source_health().record_failure(&host);
         log::warn!(
@@ -564,148 +300,81 @@ async fn download_with_policy(
   }))
 }
 
-/// Runs the transfer against one source URL.
-#[allow(clippy::too_many_arguments)]
-async fn download_from_source(
-  client: &Client,
-  param: &DownloadParam,
-  source: &Url,
-  dest_path: &Path,
-  initial_offset: u64,
-  headers_timeout: Duration,
-  limiter: Option<Limiter>,
-  task_handle: Option<Arc<RwLock<PTaskHandle>>>,
-  retry_same_source_on_sha1: bool,
-  expected_size: Option<u64>,
-) -> SJMCLResult<SourceResult> {
-  let mut offset = initial_offset;
-  let mut resume_retries = 0usize;
-  let mut sha1_retries = 0usize;
-  let mut first_attempt = true;
+/// Bridges the engine's [`ProgressSink`] callbacks to a task handle.
+///
+/// This replaces the `ProgressStream` wrapper that used to sit inside the
+/// transfer path: it keeps the same report interval, pause parking and
+/// completion bookkeeping, so task events are emitted exactly as before. The
+/// engine reports only what happened to the bytes; this adapter is the one place
+/// that knows how a launcher task stores and publishes them.
+struct TaskProgressSink {
+  handle: Arc<RwLock<PTaskHandle>>,
+  report_interval: Duration,
+  next_report: tokio::time::Instant,
+  pending: i64,
+}
 
-  loop {
-    if task_handle
-      .as_ref()
-      .is_some_and(|handle| handle.read().unwrap().status().is_cancelled())
-    {
-      let _ = tokio::fs::remove_file(dest_path).await;
-      return Ok(SourceResult::Cancelled);
+impl TaskProgressSink {
+  fn new(handle: Arc<RwLock<PTaskHandle>>) -> Self {
+    let report_interval = handle.read().unwrap().report_interval;
+    Self {
+      handle,
+      report_interval,
+      // Report the first chunk immediately, like the previous interval
+      // implementation did, so the UI switches to "in progress" right away.
+      next_report: tokio::time::Instant::now(),
+      pending: 0,
     }
-
-    let response =
-      match DownloadTask::send_request(client, offset, source, param, headers_timeout).await {
-        Ok(response) => response,
-        Err(error) => {
-          let class = classify_download_failure(DownloadFailure::Request(&error));
-          log::warn!("Download request failed ({class:?}) for {source}: {error}");
-          return Err(SJMCLError(error.to_string()));
-        }
-      };
-
-    // Reject a wrong-sized body before paying for the transfer. A mirror that
-    // answers 200 with a different object would otherwise waste the whole
-    // download and only fail SHA-1 validation afterwards.
-    if offset == 0
-      && let (Some(expected), Some(actual)) = (expected_size, response.content_length())
-      && expected != actual
-    {
-      return Err(SJMCLError(format!(
-        "Size mismatch: expected {expected} bytes, the source announced {actual}"
-      )));
-    }
-
-    let total_progress = if offset == 0 {
-      response.content_length().map_or(-1, |length| length as i64)
-    } else {
-      -1
-    };
-
-    if let Some(handle) = task_handle.as_ref() {
-      let mut handle = handle.write().unwrap();
-      handle.set_total(total_progress);
-      if first_attempt {
-        handle.mark_started();
-      }
-    }
-    first_attempt = false;
-
-    if let Err(error) = write_response_to_file(
-      response,
-      dest_path,
-      offset,
-      limiter.clone(),
-      task_handle.as_ref(),
-    )
-    .await
-    {
-      if task_handle
-        .as_ref()
-        .is_some_and(|handle| handle.read().unwrap().status().is_cancelled())
-      {
-        let _ = tokio::fs::remove_file(dest_path).await;
-        return Ok(SourceResult::Cancelled);
-      }
-
-      if classify_download_failure(DownloadFailure::Body(&error)) == DownloadFailureClass::Retryable
-        && resume_retries < DOWNLOAD_RESUME_RETRIES
-      {
-        resume_retries += 1;
-        offset = tokio::fs::metadata(dest_path)
-          .await
-          .map_or(0, |metadata| metadata.len());
-        log::warn!(
-          "Download body interrupted ({error}), resuming at byte {offset} ({resume_retries}/{DOWNLOAD_RESUME_RETRIES})"
-        );
-        continue;
-      }
-
-      return Err(SJMCLError(format!("Download failed: {error}")));
-    }
-
-    if task_handle
-      .as_ref()
-      .is_some_and(|handle| handle.read().unwrap().status().is_cancelled())
-    {
-      tokio::fs::remove_file(dest_path).await?;
-      return Ok(SourceResult::Cancelled);
-    }
-
-    let validation = match &param.sha1 {
-      // Validate the file that was actually written (dest_path), not the raw
-      // manifest destination, which may be relative to the cache dir.
-      Some(truth) => validate_dest_sha1(dest_path.to_path_buf(), truth.clone()).await,
-      None => Ok(()),
-    };
-
-    if let Err(error) = validation {
-      // Never keep an unverified artifact: deleting it first guarantees the next
-      // attempt starts from scratch instead of resuming a truncated file.
-      tokio::fs::remove_file(dest_path)
-        .await
-        .map_err(|remove_error| {
-          SJMCLError(format!(
-            "Failed to remove the invalid download: {remove_error}"
-          ))
-        })?;
-
-      // With alternative sources available, a corrupted body is a source
-      // problem: let the failover loop pick a different one instead of paying
-      // for the same mirror again.
-      if !retry_same_source_on_sha1 || sha1_retries == DOWNLOAD_SHA1_RETRIES {
-        return Err(SJMCLError(format!("SHA1 validation failed: {}", error.0)));
-      }
-      sha1_retries += 1;
-      offset = 0;
-      log::warn!(
-        "SHA1 validation failed ({}), retrying from scratch ({sha1_retries}/{DOWNLOAD_SHA1_RETRIES})",
-        error.0
-      );
-      continue;
-    }
-
-    return Ok(SourceResult::Success);
   }
 }
+
+impl ProgressSink for TaskProgressSink {
+  fn on_bytes(&mut self, delta: u64) {
+    self.pending += delta as i64;
+    if self.next_report <= tokio::time::Instant::now() {
+      let incr = std::mem::take(&mut self.pending);
+      let mut handle = self.handle.write().unwrap();
+      handle.add_progress(incr);
+      handle.flush_progress();
+      self.next_report = tokio::time::Instant::now() + self.report_interval;
+    }
+  }
+
+  fn on_total(&mut self, total: i64) {
+    self.handle.write().unwrap().set_total(total);
+  }
+
+  fn on_started(&mut self) {
+    self.handle.write().unwrap().mark_started();
+  }
+
+  fn is_cancelled(&self) -> bool {
+    self.handle.read().unwrap().status().is_cancelled()
+  }
+
+  fn wait_if_paused(&mut self) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
+    Box::pin(std::future::poll_fn(|cx| {
+      let mut handle = self.handle.write().unwrap();
+      if !handle.status().is_stopped() {
+        return std::task::Poll::Ready(());
+      }
+      // Persist bytes received since the last report before parking, then store
+      // the waker so `mark_resumed` can wake the transfer.
+      let incr = std::mem::take(&mut self.pending);
+      handle.store_unreported_progress(incr);
+      handle.store_waker(cx.waker().clone());
+      std::task::Poll::Pending
+    }))
+  }
+
+  fn on_complete(&mut self) {
+    let incr = std::mem::take(&mut self.pending);
+    let mut handle = self.handle.write().unwrap();
+    handle.add_progress(incr);
+    handle.mark_completed();
+  }
+}
+
 impl DownloadTask {
   pub fn new(
     app_handle: AppHandle,
@@ -733,9 +402,8 @@ impl DownloadTask {
         ),
       ),
       alt_srcs: derive_alt_sources(&app_handle, &param.src),
-      // No manifest size is available on this path yet; the size check stays off
-      // instead of guessing one.
-      expected_size: None,
+      // A manifest size is only present when the caller could supply one.
+      expected_size: param.size,
       param: param.clone(),
       dest_path: cache_dir.clone().join(param.dest.clone()),
       report_interval,
@@ -778,62 +446,12 @@ impl DownloadTask {
         ),
       ),
       alt_srcs: derive_alt_sources(&app_handle, &param.src),
-      // No manifest size is available on this path yet; the size check stays off
-      // instead of guessing one.
-      expected_size: None,
+      // A manifest size is only present when the caller could supply one.
+      expected_size: param.size,
       param: param.clone(),
       dest_path: cache_dir.clone().join(param.dest.clone()),
       report_interval,
     }
-  }
-
-  async fn send_request(
-    client: &Client,
-    current: u64,
-    source: &Url,
-    param: &DownloadParam,
-    headers_timeout: Duration,
-  ) -> Result<reqwest::Response, DownloadRequestError> {
-    let response = send_with_retry_budget(
-      DOWNLOAD_FAST_FAIL_BUDGET,
-      DOWNLOAD_FAST_FAIL_ATTEMPTS,
-      headers_timeout,
-      || {
-        let mut request = if current == 0 {
-          client.get(source.clone())
-        } else {
-          client
-            .get(source.clone())
-            .header(RANGE, format!("bytes={current}-"))
-        };
-
-        // Never negotiate a compressed body: it hides the real byte offsets from
-        // Range/resume handling and adds decompression work. PCL2-CE sends the same
-        // header for its Range downloads.
-        request = request.header(ACCEPT_ENCODING, "identity");
-
-        // add api key header for CurseForge download urls (#1679)
-        // ref: https://blog.curseforge.com/introducing-api-key-authentication-for-curseforge-file-downloads
-        if is_curseforge_authenticated_url(&param.src) {
-          request = request.header("x-api-key", CURSEFORGE_API_KEY.as_str());
-        }
-
-        async move {
-          let response = request
-            .send()
-            .await
-            .map_err(DownloadRequestError::Request)?;
-          response
-            .error_for_status()
-            .map_err(DownloadRequestError::Request)
-        }
-      },
-    )
-    .await?;
-
-    ensure_resumed_response(current, response.status())
-      .map_err(|error| DownloadRequestError::Protocol(error.0))?;
-    Ok(response)
   }
 
   async fn future_impl(
@@ -853,6 +471,9 @@ impl DownloadTask {
     Ok((
       async move {
         let client = download_client(&app_handle);
+        // Failover stays here; the per-source transfer is delegated by
+        // `download_with_policy` to `SequentialEngine`, so no transfer loop
+        // lives in the task itself.
         download_with_policy(
           client,
           &param,
@@ -882,7 +503,7 @@ impl DownloadTask {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
   use super::*;
   use sha1::{Digest, Sha1};
   use std::pin::Pin;
@@ -914,7 +535,7 @@ mod tests {
     }
   }
 
-  fn unique_temp_path(tag: &str) -> PathBuf {
+  pub(crate) fn unique_temp_path(tag: &str) -> PathBuf {
     let nanos = std::time::SystemTime::now()
       .duration_since(std::time::UNIX_EPOCH)
       .unwrap()
@@ -1343,11 +964,12 @@ mod tests {
       dest: PathBuf::from("unreachable.bin"),
       filename: None,
       sha1: None,
+      size: None,
     };
 
     let started = std::time::Instant::now();
     let result =
-      DownloadTask::send_request(&client, 0, &param.src, &param, Duration::from_secs(30)).await;
+      SequentialEngine::send_request(&client, 0, &param.src, Duration::from_secs(30)).await;
     let elapsed = started.elapsed();
 
     // #1942 evidence: a refused mirror must not consume the one hour global
@@ -1360,14 +982,14 @@ mod tests {
     );
   }
 
-  fn sha1_hex(bytes: &[u8]) -> String {
+  pub(crate) fn sha1_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha1::new();
     hasher.update(bytes);
     hex::encode(hasher.finalize())
   }
 
   /// One canned HTTP/1.1 reply, served on its own TCP connection.
-  enum FakeReply {
+  pub(crate) enum FakeReply {
     /// Advertise the full body length but write only `sent` bytes before
     /// closing: the client sees a short read / connection reset.
     TruncatedBody { body: Vec<u8>, sent: usize },
@@ -1380,15 +1002,15 @@ mod tests {
     Status { code: u16, reason: &'static str },
   }
 
-  struct FakeHttpServer {
-    url: String,
-    request_heads: Arc<Mutex<Vec<String>>>,
+  pub(crate) struct FakeHttpServer {
+    pub(crate) url: String,
+    pub(crate) request_heads: Arc<Mutex<Vec<String>>>,
     stop: Arc<std::sync::atomic::AtomicBool>,
     handle: Option<std::thread::JoinHandle<()>>,
   }
 
   impl FakeHttpServer {
-    fn spawn(replies: Vec<FakeReply>) -> Self {
+    pub(crate) fn spawn(replies: Vec<FakeReply>) -> Self {
       let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
       let address = listener.local_addr().unwrap();
       listener.set_nonblocking(true).unwrap();
@@ -1508,6 +1130,7 @@ mod tests {
       dest: PathBuf::from("file.bin"),
       filename: None,
       sha1: Some(truth.clone()),
+      size: None,
     };
 
     download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
@@ -1544,6 +1167,7 @@ mod tests {
       dest: PathBuf::from("file.bin"),
       filename: None,
       sha1: Some(truth.clone()),
+      size: None,
     };
     let alt = [Url::parse(&alive.url).unwrap()];
 
@@ -1575,6 +1199,7 @@ mod tests {
       dest: PathBuf::from("file.bin"),
       filename: None,
       sha1: None,
+      size: None,
     };
     let alt = [Url::parse(&second.url).unwrap()];
 
@@ -1607,6 +1232,7 @@ mod tests {
       dest: PathBuf::from("file.bin"),
       filename: None,
       sha1: Some(truth),
+      size: None,
     };
 
     let result = download_with_policy(&client, &param, &[], None, &dest, 0, None, None).await;
@@ -1641,6 +1267,7 @@ mod tests {
       dest: PathBuf::from("file.bin"),
       filename: None,
       sha1: Some(truth),
+      size: None,
     };
 
     download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
@@ -1656,6 +1283,137 @@ mod tests {
       heads[1]
     );
     println!("body resume: second request used Range: bytes=2048-");
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn wrong_content_length_is_rejected_and_the_next_source_is_used() {
+    let payload: Vec<u8> = (0..4096).map(|index| (index % 251) as u8).collect();
+    let truth = sha1_hex(&payload);
+    // The first source announces 8192 bytes for a 4096-byte artifact and does
+    // send a body: the precheck must reject it before any byte is written.
+    let wrong_size = FakeHttpServer::spawn(vec![FakeReply::TruncatedBody {
+      body: vec![0xee; 8192],
+      sent: 8192,
+    }]);
+    let healthy = FakeHttpServer::spawn(vec![FakeReply::TruncatedBody {
+      body: payload.clone(),
+      sent: payload.len(),
+    }]);
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("size-mismatch");
+    let param = DownloadParam {
+      src: Url::parse(&wrong_size.url).unwrap(),
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: Some(truth.clone()),
+      size: Some(payload.len() as u64),
+    };
+    let alt = [Url::parse(&healthy.url).unwrap()];
+
+    download_with_policy(&client, &param, &alt[..], param.size, &dest, 0, None, None)
+      .await
+      .expect("a source with a wrong announced size must fall over to the next one");
+
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
+    // The rejected source was contacted exactly once and none of its bytes
+    // reached the file: failover happened at the header stage.
+    assert_eq!(wrong_size.request_heads.lock().unwrap().len(), 1);
+    assert_eq!(healthy.request_heads.lock().unwrap().len(), 1);
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn size_none_disables_the_content_length_check() {
+    let payload: Vec<u8> = (0..1024).map(|index| (index % 241) as u8).collect();
+    let server = FakeHttpServer::spawn(vec![
+      FakeReply::TruncatedBody {
+        body: payload.clone(),
+        sent: payload.len(),
+      },
+      FakeReply::TruncatedBody {
+        body: payload.clone(),
+        sent: payload.len(),
+      },
+    ]);
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("size-unknown");
+    let param = DownloadParam {
+      src: Url::parse(&server.url).unwrap(),
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: None,
+      size: None,
+    };
+
+    // With no declared size there is nothing to compare against, so the
+    // announced 1024 bytes are accepted and the transfer proceeds.
+    download_with_policy(&client, &param, &[], param.size, &dest, 0, None, None)
+      .await
+      .expect("size: None must disable the Content-Length precheck");
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+
+    // The very same response is rejected once a size is declared, proving the
+    // previous success came from the disabled precheck rather than a missed
+    // comparison.
+    let mut declared = param.clone();
+    declared.size = Some(4096);
+    let error = download_with_policy(&client, &declared, &[], declared.size, &dest, 0, None, None)
+      .await
+      .expect_err("a declared size must reject the mismatching announcement");
+    assert!(
+      error
+        .0
+        .contains("Size mismatch: expected 4096 bytes, the source announced 1024"),
+      "{}",
+      error.0
+    );
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[test]
+  fn legacy_download_param_without_size_deserializes() {
+    // Persisted task descriptors created before the size field existed must
+    // still load: serde(default) turns the missing field into None.
+    let json =
+      r#"{"src":"http://127.0.0.1:1/file.bin","dest":"file.bin","filename":null,"sha1":null}"#;
+    let param: DownloadParam = serde_json::from_str(json).unwrap();
+    assert_eq!(param.size, None);
+  }
+
+  #[tokio::test]
+  async fn resumed_requests_are_not_size_checked() {
+    let payload: Vec<u8> = (0..8192).map(|index| (index % 251) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let server = FakeHttpServer::spawn(vec![FakeReply::RangeTail {
+      body: payload.clone(),
+      offset: 2048,
+    }]);
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("size-resume");
+    std::fs::write(&dest, &payload[..2048]).unwrap();
+    let param = DownloadParam {
+      src: Url::parse(&server.url).unwrap(),
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: Some(truth),
+      size: Some(payload.len() as u64),
+    };
+
+    // A 206 response announces only the tail (6144 bytes), not the whole
+    // artifact (8192), so the declared size must not be compared here.
+    download_with_policy(&client, &param, &[], param.size, &dest, 2048, None, None)
+      .await
+      .expect("a resumed request must not be rejected by the size precheck");
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    let heads = server.request_heads.lock().unwrap().clone();
+    assert_eq!(heads.len(), 1);
+    assert!(
+      heads[0].to_ascii_lowercase().contains("range: bytes=2048-"),
+      "the test must exercise the resumed path, got: {}",
+      heads[0]
+    );
     let _ = std::fs::remove_file(&dest);
   }
 }

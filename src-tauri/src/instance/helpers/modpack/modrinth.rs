@@ -150,6 +150,7 @@ impl ModrinthManifest {
             .and_then(|hashes| non_empty(&hashes.sha1)),
           dest: instance_path.join(dest),
           filename: None,
+          size: (file.file_size > 0).then_some(file.file_size),
         }))
       })
       .collect()

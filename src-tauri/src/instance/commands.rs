@@ -1238,6 +1238,9 @@ pub async fn create_instance(
     dest: instance.version_path.join(format!("{}.jar", name)),
     filename: None,
     sha1: Some(client_download_info.sha1.clone()),
+    size: u64::try_from(client_download_info.size)
+      .ok()
+      .filter(|&size| size > 0),
   }));
   let subdirs = get_instance_subdir_paths(
     &app,

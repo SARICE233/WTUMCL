@@ -44,6 +44,7 @@ pub async fn download_optifine_installer(
     dest: installer_path.clone(),
     filename: None,
     sha1: None,
+    size: None,
   }));
 
   Ok(())
@@ -151,6 +152,7 @@ pub async fn download_optifine_libraries(
     dest: lw_dest,
     filename: None,
     sha1: None,
+    size: None,
   }));
 
   if !has_launchwrapper {

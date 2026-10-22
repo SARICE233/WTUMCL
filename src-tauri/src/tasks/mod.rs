@@ -1,6 +1,7 @@
 pub mod background;
 pub mod commands;
 pub mod download;
+pub mod engine;
 pub mod events;
 pub mod monitor;
 pub mod source_health;
@@ -8,7 +9,6 @@ pub mod streams;
 
 use download::DownloadParam;
 use events::TauriEventSink;
-use futures::stream::Stream;
 use serde::{Deserialize, Serialize};
 use sjmcl_types::error::SJMCLResult;
 use std::future::Future;

@@ -43,6 +43,11 @@ where
   S: Sink,
   P: Clone + Serialize + for<'de> Deserialize<'de>,
 {
+  // The download engine now reports progress through `ProgressSink`, so the
+  // production transfer path no longer builds a `ProgressStream`. It stays as
+  // the reference streaming implementation and is still exercised by the task
+  // progress tests below (and available to future engines).
+  #[allow(dead_code)]
   pub fn new(stream: M, handle: Arc<RwLock<PHandle<S, P>>>) -> Self {
     let report_interval = handle.read().unwrap().report_interval;
     Self {
