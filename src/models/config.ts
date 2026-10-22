@@ -119,6 +119,7 @@ export interface LauncherConfig {
   download: {
     source: {
       strategy: string;
+      customMirrorUrl: string;
     };
     transmission: {
       autoConcurrent: boolean;
@@ -312,6 +313,7 @@ export const defaultConfig: LauncherConfig = {
   download: {
     source: {
       strategy: "auto",
+      customMirrorUrl: "",
     },
     transmission: {
       autoConcurrent: true,

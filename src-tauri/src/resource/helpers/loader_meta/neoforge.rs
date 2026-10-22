@@ -276,6 +276,9 @@ pub async fn get_neoforge_meta_by_game_version(
           return Ok(meta);
         }
       }
+      // The custom mirror provides no NeoForge meta endpoint; fall through to the
+      // next source in the priority list.
+      SourceType::CustomMirror => continue,
     }
     println!("{:?} failed, fallback", source_type);
   }

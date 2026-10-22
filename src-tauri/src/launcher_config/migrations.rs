@@ -304,6 +304,31 @@ mod tests {
   }
 
   #[test]
+  fn legacy_config_without_custom_mirror_url_loads_with_empty_default() {
+    let legacy: LauncherConfig = serde_json::from_value(serde_json::json!({
+      "download": { "source": { "strategy": "mirror" } },
+    }))
+    .expect("legacy launcher config without customMirrorUrl should deserialize");
+
+    assert_eq!(legacy.download.source.strategy, "mirror");
+    assert_eq!(legacy.download.source.custom_mirror_url, "");
+    assert!(
+      LauncherConfig::default()
+        .download
+        .source
+        .custom_mirror_url
+        .is_empty()
+    );
+
+    // The new field is serialized with the camelCase key the frontend writes.
+    let serialized = serde_json::to_value(LauncherConfig::default()).unwrap();
+    assert_eq!(
+      serialized["download"]["source"]["customMirrorUrl"],
+      serde_json::json!("")
+    );
+  }
+
+  #[test]
   fn migration_is_idempotent() {
     let legacy = serde_json::json!([
       ["https://mc.sjtu.cn/api-sjmcl/article", true],

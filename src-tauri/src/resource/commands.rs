@@ -17,7 +17,9 @@ use crate::resource::helpers::loader_meta::forge::get_forge_meta_by_game_version
 use crate::resource::helpers::loader_meta::neoforge::get_neoforge_meta_by_game_version;
 use crate::resource::helpers::loader_meta::optifine::get_optifine_meta_by_game_version;
 use crate::resource::helpers::loader_meta::quilt::get_quilt_meta_by_game_version;
-use crate::resource::helpers::misc::{get_source_priority_list, resolve_mod_update_paths};
+use crate::resource::helpers::misc::{
+  convert_url_to_primary_source, get_source_priority_list, resolve_mod_update_paths,
+};
 use crate::resource::helpers::modrinth::{
   fetch_remote_resource_by_id_modrinth, fetch_remote_resource_by_local_modrinth,
   fetch_resource_list_by_name_modrinth, fetch_resource_version_packs_modrinth,
@@ -27,6 +29,7 @@ use crate::resource::models::{
   GameClientResourceInfo, ModLoaderResourceInfo, ModUpdateQuery, OptiFineResourceInfo,
   OtherResourceFileInfo, OtherResourceInfo, OtherResourceSearchQuery, OtherResourceSearchRes,
   OtherResourceSource, OtherResourceVersionPack, OtherResourceVersionPackQuery, ResourceError,
+  ResourceType,
 };
 use crate::tasks::PTaskParam;
 use crate::tasks::commands::schedule_progressive_task_group;
@@ -135,8 +138,19 @@ pub async fn download_game_server(
   resource_info: GameClientResourceInfo,
   dest: String,
 ) -> SJMCLResult<()> {
+  let priority_list = {
+    let launcher_config_state = app.state::<Mutex<LauncherConfig>>();
+    let launcher_config = launcher_config_state.lock()?;
+    get_source_priority_list(&launcher_config)
+  };
+
+  let version_details_url = convert_url_to_primary_source(
+    &url::Url::parse(&resource_info.url).map_err(|_| ResourceError::ParseError)?,
+    &[ResourceType::PistonMeta, ResourceType::LauncherMeta],
+    &priority_list,
+  );
   let version_details = client
-    .get(&resource_info.url)
+    .get(version_details_url)
     .send()
     .await
     .map_err(|_| ResourceError::NetworkError)?
@@ -149,11 +163,17 @@ pub async fn download_game_server(
     .get("server")
     .ok_or(ResourceError::ParseError)?;
 
+  let download_url = convert_url_to_primary_source(
+    &url::Url::parse(&download_info.url).map_err(|_| ResourceError::ParseError)?,
+    &[ResourceType::PistonData],
+    &priority_list,
+  );
+
   schedule_progressive_task_group(
     app,
     format!("game-server?{}", resource_info.id),
     vec![PTaskParam::Download(DownloadParam {
-      src: url::Url::parse(&download_info.url.clone()).map_err(|_| ResourceError::ParseError)?,
+      src: download_url,
       dest: dest.clone().into(),
       filename: None,
       sha1: Some(download_info.sha1.clone()),

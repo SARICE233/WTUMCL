@@ -321,6 +321,11 @@ structstruck::strike! {
       pub source: struct {
         #[default = "auto"]
         pub strategy: String,
+        // BaseUrl of an optional PCL-style custom mirror. Empty means "not configured".
+        // The field-level serde default keeps old configs (written before this field
+        // existed) loadable; the whole struct chain also carries #[serde(default)].
+        #[serde(default)]
+        pub custom_mirror_url: String,
       },
       pub transmission: struct {
         #[default = true]

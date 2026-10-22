@@ -63,13 +63,13 @@ use crate::launch::models::LaunchError;
 use crate::launcher_config::helpers::java::build_mojang_java_download_params;
 use crate::launcher_config::helpers::misc::get_global_game_config;
 use crate::launcher_config::models::{GameConfig, GameDirectory, LauncherConfig};
-use crate::resource::helpers::misc::get_source_priority_list;
+use crate::resource::helpers::misc::{convert_url_to_primary_source, get_source_priority_list};
 use crate::resource::helpers::translation::{
   LOCAL_MOD_TRANSLATION_CACHE_EXPIRY_HOURS, LocalModTranslationEntry, LocalModTranslationsCache,
   add_local_mod_translations,
 };
 use crate::resource::models::{
-  GameClientResourceInfo, ModLoaderResourceInfo, OptiFineResourceInfo,
+  GameClientResourceInfo, ModLoaderResourceInfo, OptiFineResourceInfo, ResourceType,
 };
 use crate::tasks::PTaskParam;
 use crate::tasks::commands::schedule_progressive_task_group;
@@ -1106,9 +1106,14 @@ pub async fn create_instance(
     modpack_version: modpack_version.clone(),
   };
 
-  // Download version info
+  // Download version info (routed through the custom mirror when configured).
+  let version_info_url = convert_url_to_primary_source(
+    &Url::parse(&game.url).map_err(|_| InstanceError::ClientJsonParseError)?,
+    &[ResourceType::PistonMeta, ResourceType::LauncherMeta],
+    &priority_list,
+  );
   let mut version_info = client
-    .get(&game.url)
+    .get(version_info_url)
     .send()
     .await
     .map_err(|_| InstanceError::NetworkError)?
@@ -1154,9 +1159,13 @@ pub async fn create_instance(
     .get("client")
     .ok_or(InstanceError::ClientJsonParseError)?;
 
+  let client_download_url = convert_url_to_primary_source(
+    &Url::parse(&client_download_info.url).map_err(|_| InstanceError::ClientJsonParseError)?,
+    &[ResourceType::PistonData],
+    &priority_list,
+  );
   task_params.push(PTaskParam::Download(DownloadParam {
-    src: Url::parse(&client_download_info.url.clone())
-      .map_err(|_| InstanceError::ClientJsonParseError)?,
+    src: client_download_url,
     dest: instance.version_path.join(format!("{}.jar", name)),
     filename: None,
     sha1: Some(client_download_info.sha1.clone()),

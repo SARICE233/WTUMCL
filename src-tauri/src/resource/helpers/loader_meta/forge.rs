@@ -80,6 +80,9 @@ pub async fn get_forge_meta_by_game_version(
           return Ok(meta);
         }
       }
+      // The custom mirror provides no Forge meta endpoint; fall through to the next
+      // source in the priority list.
+      SourceType::CustomMirror => continue,
     }
   }
   Err(ResourceError::NetworkError.into())

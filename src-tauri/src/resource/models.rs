@@ -32,12 +32,16 @@ pub enum ResourceType {
   CleanroomMaven,
   CleanroomMeta,
   CleanroomInstall,
+  PistonMeta,
+  PistonData,
 }
 
 #[derive(Eq, Hash, PartialEq, Clone, Copy, Debug, EnumIter)]
 pub enum SourceType {
   Official,
   BMCLAPIMirror,
+  /// User-configured, PCL-style mirror defined by a BaseUrl (opt-in, default off).
+  CustomMirror,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize, Default)]

@@ -18,7 +18,9 @@ use crate::instance::helpers::loader::common::add_library_entry;
 use crate::instance::helpers::misc::get_instance_subdir_paths;
 use crate::instance::models::misc::{Instance, InstanceError, InstanceSubdirType, ModLoader};
 use crate::launch::helpers::file_validator::convert_library_name_to_path;
-use crate::resource::helpers::misc::{convert_url_to_target_source, get_download_api};
+use crate::resource::helpers::misc::{
+  convert_url_to_primary_source, convert_url_to_target_source, get_download_api,
+};
 use crate::resource::models::{ResourceType, SourceType};
 use crate::tasks::PTaskParam;
 use crate::tasks::commands::schedule_progressive_task_group;
@@ -83,6 +85,9 @@ pub async fn install_forge_loader(
           .await?;
           Ok(Url::parse(&s)?)
         }
+        // A user-provided custom mirror has no Forge installer endpoint; skip this
+        // source and let the next one in the priority list provide the installer.
+        SourceType::CustomMirror => continue,
       };
       if let Ok(url) = url_res {
         installer_url_opt = Some(url);
@@ -234,7 +239,11 @@ pub async fn download_forge_libraries(
           && let Some(client_mappings) = client_info.downloads.get("client_mappings")
         {
           task_params.push(PTaskParam::Download(DownloadParam {
-            src: client_mappings.url.parse()?,
+            src: convert_url_to_primary_source(
+              &client_mappings.url.parse()?,
+              &[ResourceType::PistonData],
+              priority,
+            ),
             dest: lib_dir.join(mojmaps),
             filename: None,
             sha1: Some(client_mappings.sha1.clone()),

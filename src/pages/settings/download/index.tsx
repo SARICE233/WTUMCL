@@ -3,6 +3,7 @@ import {
   Button,
   HStack,
   Icon,
+  Input,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInput,
@@ -66,7 +67,7 @@ const DownloadSettingsPage = () => {
   const [isClearingDownloadCache, setIsClearingDownloadCache] =
     useState<boolean>(false);
 
-  const sourceStrategyTypes = ["auto", "official", "mirror"];
+  const sourceStrategyTypes = ["auto", "official", "mirror", "custom"];
 
   const handleSelectDirectory = async () => {
     const selectedDirectory = await open({
@@ -147,6 +148,34 @@ const DownloadSettingsPage = () => {
             />
           ),
         },
+        ...(downloadConfigs.source.strategy === "custom"
+          ? [
+              {
+                title: t(
+                  "DownloadSettingPage.source.settings.customMirrorUrl.title"
+                ),
+                description: t(
+                  "DownloadSettingPage.source.settings.customMirrorUrl.description"
+                ),
+                children: (
+                  <Input
+                    size="xs"
+                    w={64}
+                    maxW="full"
+                    focusBorderColor={`${primaryColor}.500`}
+                    placeholder="https://example.com/mirror/"
+                    value={downloadConfigs.source.customMirrorUrl}
+                    onChange={(event) =>
+                      update(
+                        "download.source.customMirrorUrl",
+                        event.target.value
+                      )
+                    }
+                  />
+                ),
+              },
+            ]
+          : []),
       ],
     },
     {
