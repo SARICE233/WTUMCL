@@ -75,6 +75,14 @@ export interface GameDirectory {
   dir: string;
 }
 
+export type DownloadMirrorKind = "pclPrefix" | "bmclapiFlat";
+
+export interface DownloadMirrorConfig {
+  url: string;
+  kind: DownloadMirrorKind;
+  enabled: boolean;
+}
+
 export interface LauncherConfig {
   basicInfo: {
     launcherVersion: string;
@@ -87,8 +95,8 @@ export interface LauncherConfig {
     isExePathAvailable: boolean;
     isChinaMainlandIp: boolean;
     allowFullLoginFeature: boolean;
-  allowThirdPartyLogin: boolean;
-  allowOfflineLogin: boolean;
+    allowThirdPartyLogin: boolean;
+    allowOfflineLogin: boolean;
     // Build metadata, sourced from compile-time constants injected by build.rs.
     buildType: BuildType;
     buildCommitSha: string;
@@ -121,7 +129,10 @@ export interface LauncherConfig {
   download: {
     source: {
       strategy: string;
+      // Legacy single BaseUrl; kept for configs written by older builds.
       customMirrorUrl: string;
+      // Ordered mirrors. Empty means "fall back to customMirrorUrl".
+      mirrors: DownloadMirrorConfig[];
     };
     transmission: {
       autoConcurrent: boolean;
@@ -318,6 +329,7 @@ export const defaultConfig: LauncherConfig = {
     source: {
       strategy: "auto",
       customMirrorUrl: "",
+      mirrors: [],
     },
     transmission: {
       autoConcurrent: true,

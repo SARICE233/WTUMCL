@@ -558,16 +558,26 @@
     "source": {
       "title": "Fuente",
       "settings": {
+        "customMirrorUrl": {
+          "title": "BaseUrl del Espejo Personalizado",
+          "description": "Solo se aplica cuando se selecciona la estrategia de espejo personalizado. Déjalo vacío para volver a las fuentes predeterminadas. Los archivos que el espejo no proporciona recurren a las demás fuentes."
+        },
+        "mirrors": {
+          "title": "Espejos personalizados",
+          "description": "Se prueban en orden; las entradas superiores tienen prioridad. Los archivos que un espejo no sirve pasan al siguiente.",
+          "add": "Añadir espejo",
+          "remove": "Eliminar espejo",
+          "kind": {
+            "pclPrefix": "Prefijo (estilo PCL)",
+            "bmclapiFlat": "Plano (estilo BMCLAPI)"
+          }
+        },
         "strategy": {
           "title": "Estrategia de Selección de Fuente de Descarga",
           "auto": "Selección Automática",
           "official": "Priorizar Fuente Oficial",
           "mirror": "Priorizar Fuente Espejo",
           "custom": "Usar Espejo Personalizado"
-        },
-        "customMirrorUrl": {
-          "title": "BaseUrl del Espejo Personalizado",
-          "description": "Solo se aplica cuando se selecciona la estrategia de espejo personalizado. Déjalo vacío para volver a las fuentes predeterminadas. Los archivos que el espejo no proporciona recurren a las demás fuentes."
         }
       }
     },

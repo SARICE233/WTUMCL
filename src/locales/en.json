@@ -558,16 +558,26 @@
     "source": {
       "title": "Source",
       "settings": {
+        "customMirrorUrl": {
+          "title": "Custom Mirror BaseUrl",
+          "description": "Only applied when the custom mirror strategy is selected. Leave it empty to fall back to the default sources. Files the mirror does not provide fall back to the other sources."
+        },
+        "mirrors": {
+          "title": "Custom mirrors",
+          "description": "Tried in order; earlier entries win. Files a mirror cannot serve fall back to the next source.",
+          "add": "Add mirror",
+          "remove": "Remove mirror",
+          "kind": {
+            "pclPrefix": "Prefix (PCL style)",
+            "bmclapiFlat": "Flat (BMCLAPI style)"
+          }
+        },
         "strategy": {
           "title": "Download Source Selection Strategy",
           "auto": "Auto Select",
           "official": "Prioritize Official Source",
           "mirror": "Prioritize Mirror Source",
           "custom": "Use Custom Mirror"
-        },
-        "customMirrorUrl": {
-          "title": "Custom Mirror BaseUrl",
-          "description": "Only applied when the custom mirror strategy is selected. Leave it empty to fall back to the default sources. Files the mirror does not provide fall back to the other sources."
         }
       }
     },

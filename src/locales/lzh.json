@@ -558,16 +558,26 @@
     "source": {
       "title": "源",
       "settings": {
+        "customMirrorUrl": {
+          "title": "自定鏡源之位址",
+          "description": "唯擇自定鏡源之策時乃用；空則歸於舊源。請書 PCL 風格之鏡源位址，鏡像所無者，自歸他源。"
+        },
+        "mirrors": {
+          "title": "自定鏡像源",
+          "description": "依序試之，前列者先；鏡像所無者，退而下之。",
+          "add": "添鏡像源",
+          "remove": "去之",
+          "kind": {
+            "pclPrefix": "前綴式（PCL 之制）",
+            "bmclapiFlat": "平鋪式（BMCLAPI 之制）"
+          }
+        },
         "strategy": {
           "title": "引源選擇策略",
           "auto": "自調選擇",
           "official": "官源爲先",
           "mirror": "鏡源爲先",
           "custom": "自定鏡源"
-        },
-        "customMirrorUrl": {
-          "title": "自定鏡源之位址",
-          "description": "唯擇自定鏡源之策時乃用；空則歸於舊源。請書 PCL 風格之鏡源位址，鏡像所無者，自歸他源。"
         }
       }
     },

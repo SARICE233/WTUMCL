@@ -20,6 +20,8 @@ use crate::launcher_config::models::{LauncherConfig, ProxyType};
 use crate::resource::helpers::curseforge::misc::{
   CURSEFORGE_API_KEY, is_curseforge_authenticated_url,
 };
+use crate::resource::helpers::source::candidates;
+use crate::tasks::source_health::{SourceHealth, source_health};
 use crate::tasks::streams::ProgressStream;
 use crate::tasks::streams::desc::{PDesc, PStatus};
 use crate::tasks::streams::reporter::Reporter;
@@ -280,6 +282,7 @@ fn classify_download_failure(failure: DownloadFailure<'_>) -> DownloadFailureCla
 async fn send_with_retry_budget<F, Fut>(
   budget: Duration,
   attempts: usize,
+  headers_timeout: Duration,
   mut attempt: F,
 ) -> Result<reqwest::Response, DownloadRequestError>
 where
@@ -296,11 +299,15 @@ where
       break;
     }
 
-    let result =
-      match tokio::time::timeout(remaining.min(DOWNLOAD_HEADERS_TIMEOUT), attempt()).await {
-        Ok(result) => result,
-        Err(_) => Err(DownloadRequestError::Timeout),
-      };
+    let result = match tokio::time::timeout(
+      remaining.min(headers_timeout.min(DOWNLOAD_HEADERS_TIMEOUT)),
+      attempt(),
+    )
+    .await
+    {
+      Ok(result) => result,
+      Err(_) => Err(DownloadRequestError::Timeout),
+    };
 
     match result {
       Ok(response) => return Ok(response),
@@ -334,6 +341,14 @@ pub struct DownloadTask {
   p_handle: PTaskHandle,
   param: DownloadParam,
   dest_path: PathBuf,
+  // Sources to try after `param.src`, derived from the configured mirrors when
+  // the task is created (and again when a descriptor is restored, so a config
+  // change also applies to resumed tasks). Never persisted: it is a function of
+  // the URL and the launcher configuration.
+  alt_srcs: Vec<Url>,
+  // Size announced by the manifest, when the caller knows it. A source that
+  // announces a different length is rejected before the body is transferred.
+  expected_size: Option<u64>,
   // Kept so the existing constructors keep their signature; the reporter
   // currently uses a fixed interval instead of this value.
   #[allow(dead_code)]
@@ -435,24 +450,134 @@ async fn write_response_to_file(
   Ok(())
 }
 
-/// Downloads `param.src` into `dest_path` with the download-specific policy.
+/// Result of trying one source (see `download_from_source`).
+enum SourceResult {
+  Success,
+  Cancelled,
+}
+
+/// Downloads one artifact, trying every candidate source in order.
 ///
-/// * request failures (connect/timeout/status) are bounded by
-///   `DOWNLOAD_FAST_FAIL_BUDGET`, so an unreachable mirror fails fast enough for
-///   the caller to switch source (#1942);
-/// * a body interrupted mid-transfer is resumed from the bytes already on disk
-///   (`DOWNLOAD_RESUME_RETRIES`);
-/// * a file that fails SHA-1 validation (short body or corrupted transfer) is
-///   deleted and downloaded again from scratch (`DOWNLOAD_SHA1_RETRIES`), so a
-///   truncated body is never resumed as if it were complete.
+/// The first source keeps the caller's resume offset; later ones restart from
+/// zero because a different mirror may not serve the same byte ranges. Each
+/// outcome feeds `SourceHealth`, so a mirror that has just failed three times in
+/// a row is skipped by the next task instead of costing it another timeout.
+/// Reads the launcher config and asks the source layer for alternatives to `src`.
+fn derive_alt_sources(app_handle: &AppHandle, src: &Url) -> Vec<Url> {
+  let config = app_handle.state::<Mutex<LauncherConfig>>();
+  let Ok(config) = config.lock() else {
+    return Vec::new();
+  };
+  let mut resolved = candidates(src, &[], &config);
+  // `candidates` always returns the input URL first; it is already the task's
+  // primary source, so only the tail becomes the alternative list.
+  if resolved.first().is_some_and(|first| first == src) {
+    resolved.remove(0);
+  }
+  resolved
+}
+
+/// Ordered sources for one task: the param's own URL first, then the candidates
+/// derived from the configured mirrors.
+fn candidates_for(param: &DownloadParam, alt_srcs: &[Url]) -> Vec<Url> {
+  let mut sources: Vec<Url> = Vec::with_capacity(1 + alt_srcs.len());
+  for candidate in std::iter::once(&param.src).chain(alt_srcs.iter()) {
+    if !sources.iter().any(|existing| existing == candidate) {
+      sources.push(candidate.clone());
+    }
+  }
+  sources
+}
+
 async fn download_with_policy(
   client: &Client,
   param: &DownloadParam,
+  alt_srcs: &[Url],
+  expected_size: Option<u64>,
   dest_path: &Path,
   initial_offset: u64,
   limiter: Option<Limiter>,
   task_handle: Option<Arc<RwLock<PTaskHandle>>>,
 ) -> SJMCLResult<()> {
+  let sources = candidates_for(param, alt_srcs);
+  // A single source keeps the historical "retry the same URL" behaviour, which
+  // is what rescues truncation on an otherwise healthy official source.
+  let retry_same_source_on_sha1 = sources.len() == 1;
+  let mut attempts: Vec<String> = Vec::new();
+  let mut last_error: Option<String> = None;
+
+  for (index, source) in sources.iter().enumerate() {
+    let host = SourceHealth::host_key(source);
+    if source_health().is_disabled(&host) {
+      attempts.push(format!("{source} (skipped: marked unhealthy)"));
+      continue;
+    }
+
+    let offset = if index == 0 { initial_offset } else { 0 };
+    let started = Instant::now();
+    let headers_timeout = source_health().timeout_for(&host);
+
+    match download_from_source(
+      client,
+      param,
+      source,
+      dest_path,
+      offset,
+      headers_timeout,
+      limiter.clone(),
+      task_handle.clone(),
+      retry_same_source_on_sha1,
+      expected_size,
+    )
+    .await
+    {
+      Ok(SourceResult::Success) => {
+        source_health().record_success(&host, started.elapsed());
+        return Ok(());
+      }
+      Ok(SourceResult::Cancelled) => return Ok(()),
+      Err(error) => {
+        let failures = source_health().record_failure(&host);
+        log::warn!(
+          "Download source {source} failed ({failures} consecutive): {}",
+          error.0
+        );
+        attempts.push(format!("{source}: {}", error.0));
+        last_error = Some(error.0);
+        // Partial bytes belong to this source only; the next one may not honour
+        // the same range, so drop them instead of risking a spliced file.
+        let _ = tokio::fs::remove_file(dest_path).await;
+      }
+    }
+  }
+
+  Err(SJMCLError(match last_error {
+    Some(detail) => format!(
+      "Download failed after trying {} source(s): {detail}. Tried: {}",
+      attempts.len(),
+      attempts.join(" | ")
+    ),
+    None => format!(
+      "Download failed: every candidate source is currently marked unhealthy ({} attempted)",
+      attempts.len()
+    ),
+  }))
+}
+
+/// Runs the transfer against one source URL.
+#[allow(clippy::too_many_arguments)]
+async fn download_from_source(
+  client: &Client,
+  param: &DownloadParam,
+  source: &Url,
+  dest_path: &Path,
+  initial_offset: u64,
+  headers_timeout: Duration,
+  limiter: Option<Limiter>,
+  task_handle: Option<Arc<RwLock<PTaskHandle>>>,
+  retry_same_source_on_sha1: bool,
+  expected_size: Option<u64>,
+) -> SJMCLResult<SourceResult> {
   let mut offset = initial_offset;
   let mut resume_retries = 0usize;
   let mut sha1_retries = 0usize;
@@ -464,22 +589,30 @@ async fn download_with_policy(
       .is_some_and(|handle| handle.read().unwrap().status().is_cancelled())
     {
       let _ = tokio::fs::remove_file(dest_path).await;
-      return Ok(());
+      return Ok(SourceResult::Cancelled);
     }
 
-    let response = match DownloadTask::send_request(client, offset, param).await {
-      Ok(response) => response,
-      Err(error) => {
-        let class = classify_download_failure(DownloadFailure::Request(&error));
-        // `send_request` already applied the fast-fail budget; don't hold the task
-        // on the same unreachable mirror, let the caller switch source.
-        log::warn!(
-          "Download request failed ({class:?}) for {}: {error}",
-          param.src
-        );
-        return Err(SJMCLError(error.to_string()));
-      }
-    };
+    let response =
+      match DownloadTask::send_request(client, offset, source, param, headers_timeout).await {
+        Ok(response) => response,
+        Err(error) => {
+          let class = classify_download_failure(DownloadFailure::Request(&error));
+          log::warn!("Download request failed ({class:?}) for {source}: {error}");
+          return Err(SJMCLError(error.to_string()));
+        }
+      };
+
+    // Reject a wrong-sized body before paying for the transfer. A mirror that
+    // answers 200 with a different object would otherwise waste the whole
+    // download and only fail SHA-1 validation afterwards.
+    if offset == 0
+      && let (Some(expected), Some(actual)) = (expected_size, response.content_length())
+      && expected != actual
+    {
+      return Err(SJMCLError(format!(
+        "Size mismatch: expected {expected} bytes, the source announced {actual}"
+      )));
+    }
 
     let total_progress = if offset == 0 {
       response.content_length().map_or(-1, |length| length as i64)
@@ -510,7 +643,7 @@ async fn download_with_policy(
         .is_some_and(|handle| handle.read().unwrap().status().is_cancelled())
       {
         let _ = tokio::fs::remove_file(dest_path).await;
-        return Ok(());
+        return Ok(SourceResult::Cancelled);
       }
 
       if classify_download_failure(DownloadFailure::Body(&error)) == DownloadFailureClass::Retryable
@@ -534,7 +667,7 @@ async fn download_with_policy(
       .is_some_and(|handle| handle.read().unwrap().status().is_cancelled())
     {
       tokio::fs::remove_file(dest_path).await?;
-      return Ok(());
+      return Ok(SourceResult::Cancelled);
     }
 
     let validation = match &param.sha1 {
@@ -555,11 +688,11 @@ async fn download_with_policy(
           ))
         })?;
 
-      if sha1_retries == DOWNLOAD_SHA1_RETRIES {
-        return Err(SJMCLError(format!(
-          "SHA1 validation failed after {DOWNLOAD_SHA1_RETRIES} retries: {}",
-          error.0
-        )));
+      // With alternative sources available, a corrupted body is a source
+      // problem: let the failover loop pick a different one instead of paying
+      // for the same mirror again.
+      if !retry_same_source_on_sha1 || sha1_retries == DOWNLOAD_SHA1_RETRIES {
+        return Err(SJMCLError(format!("SHA1 validation failed: {}", error.0)));
       }
       sha1_retries += 1;
       offset = 0;
@@ -570,10 +703,9 @@ async fn download_with_policy(
       continue;
     }
 
-    return Ok(());
+    return Ok(SourceResult::Success);
   }
 }
-
 impl DownloadTask {
   pub fn new(
     app_handle: AppHandle,
@@ -600,6 +732,10 @@ impl DownloadTask {
           TauriEventSink::new(app_handle.clone()),
         ),
       ),
+      alt_srcs: derive_alt_sources(&app_handle, &param.src),
+      // No manifest size is available on this path yet; the size check stays off
+      // instead of guessing one.
+      expected_size: None,
       param: param.clone(),
       dest_path: cache_dir.clone().join(param.dest.clone()),
       report_interval,
@@ -641,6 +777,10 @@ impl DownloadTask {
           TauriEventSink::new(app_handle.clone()),
         ),
       ),
+      alt_srcs: derive_alt_sources(&app_handle, &param.src),
+      // No manifest size is available on this path yet; the size check stays off
+      // instead of guessing one.
+      expected_size: None,
       param: param.clone(),
       dest_path: cache_dir.clone().join(param.dest.clone()),
       report_interval,
@@ -650,17 +790,20 @@ impl DownloadTask {
   async fn send_request(
     client: &Client,
     current: u64,
+    source: &Url,
     param: &DownloadParam,
+    headers_timeout: Duration,
   ) -> Result<reqwest::Response, DownloadRequestError> {
     let response = send_with_retry_budget(
       DOWNLOAD_FAST_FAIL_BUDGET,
       DOWNLOAD_FAST_FAIL_ATTEMPTS,
+      headers_timeout,
       || {
         let mut request = if current == 0 {
-          client.get(param.src.clone())
+          client.get(source.clone())
         } else {
           client
-            .get(param.src.clone())
+            .get(source.clone())
             .header(RANGE, format!("bytes={current}-"))
         };
 
@@ -702,6 +845,8 @@ impl DownloadTask {
     Arc<RwLock<PTaskHandle>>,
   )> {
     let current = resume_offset(self.p_handle.desc.current);
+    let alt_srcs = self.alt_srcs.clone();
+    let expected_size = self.expected_size;
     let handle = Arc::new(RwLock::new(self.p_handle));
     let task_handle = handle.clone();
     let param = self.param.clone();
@@ -711,6 +856,8 @@ impl DownloadTask {
         download_with_policy(
           client,
           &param,
+          &alt_srcs,
+          expected_size,
           &self.dest_path,
           current,
           limiter,
@@ -1053,17 +1200,22 @@ mod tests {
 
     let client = download_client_builder().no_proxy().build().unwrap();
     let started = std::time::Instant::now();
-    let result = send_with_retry_budget(Duration::from_millis(150), 3, || {
-      let client = client.clone();
-      let url = url.clone();
-      async move {
-        client
-          .get(url)
-          .send()
-          .await
-          .map_err(DownloadRequestError::Request)
-      }
-    })
+    let result = send_with_retry_budget(
+      Duration::from_millis(150),
+      3,
+      Duration::from_secs(30),
+      || {
+        let client = client.clone();
+        let url = url.clone();
+        async move {
+          client
+            .get(url)
+            .send()
+            .await
+            .map_err(DownloadRequestError::Request)
+        }
+      },
+    )
     .await;
 
     println!(
@@ -1194,7 +1346,8 @@ mod tests {
     };
 
     let started = std::time::Instant::now();
-    let result = DownloadTask::send_request(&client, 0, &param).await;
+    let result =
+      DownloadTask::send_request(&client, 0, &param.src, &param, Duration::from_secs(30)).await;
     let elapsed = started.elapsed();
 
     // #1942 evidence: a refused mirror must not consume the one hour global
@@ -1223,6 +1376,8 @@ mod tests {
     BodyEndedByClose { body: Vec<u8> },
     /// `206 Partial Content` with the tail starting at `offset`.
     RangeTail { body: Vec<u8>, offset: usize },
+    /// An error status with an empty body, e.g. a dead mirror path.
+    Status { code: u16, reason: &'static str },
   }
 
   struct FakeHttpServer {
@@ -1313,6 +1468,11 @@ mod tests {
         let _ = socket.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
         let _ = socket.write_all(body);
       }
+      FakeReply::Status { code, reason } => {
+        let response =
+          format!("HTTP/1.1 {code} {reason}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+        let _ = socket.write_all(response.as_bytes());
+      }
       FakeReply::RangeTail { body, offset } => {
         let tail = &body[*offset..];
         let head = format!(
@@ -1350,7 +1510,7 @@ mod tests {
       sha1: Some(truth.clone()),
     };
 
-    download_with_policy(&client, &param, &dest, 0, None, None)
+    download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
       .await
       .expect("the truncated first body must be retried and succeed");
 
@@ -1363,6 +1523,68 @@ mod tests {
       "the retry must restart from scratch, not resume the truncated file"
     );
     println!("sha1 retry: succeeded after 2 attempts; retry had no Range header");
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn a_dead_first_source_falls_over_to_the_next_one() {
+    let payload: Vec<u8> = (0..4096).map(|index| (index % 241) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let dead = FakeHttpServer::spawn(vec![FakeReply::Status {
+      code: 404,
+      reason: "Not Found",
+    }]);
+    let alive = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("failover");
+    let param = DownloadParam {
+      src: Url::parse(&dead.url).unwrap(),
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: Some(truth.clone()),
+    };
+    let alt = [Url::parse(&alive.url).unwrap()];
+
+    download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
+      .await
+      .expect("the healthy second source must be used");
+
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
+    assert_eq!(dead.request_heads.lock().unwrap().len(), 1);
+    assert_eq!(alive.request_heads.lock().unwrap().len(), 1);
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn every_source_failing_reports_what_was_tried() {
+    let first = FakeHttpServer::spawn(vec![FakeReply::Status {
+      code: 500,
+      reason: "Internal Server Error",
+    }]);
+    let second = FakeHttpServer::spawn(vec![FakeReply::Status {
+      code: 404,
+      reason: "Not Found",
+    }]);
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("all-sources-fail");
+    let param = DownloadParam {
+      src: Url::parse(&first.url).unwrap(),
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: None,
+    };
+    let alt = [Url::parse(&second.url).unwrap()];
+
+    let error = download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
+      .await
+      .expect_err("both sources fail, so the task must fail");
+
+    assert!(error.0.contains("after trying 2 source(s)"), "{}", error.0);
+    assert!(error.0.contains(&first.url), "{}", error.0);
+    assert!(error.0.contains(&second.url), "{}", error.0);
     let _ = std::fs::remove_file(&dest);
   }
 
@@ -1387,7 +1609,7 @@ mod tests {
       sha1: Some(truth),
     };
 
-    let result = download_with_policy(&client, &param, &dest, 0, None, None).await;
+    let result = download_with_policy(&client, &param, &[], None, &dest, 0, None, None).await;
 
     assert!(result.is_err(), "exhausted SHA1 retries must fail the task");
     assert_eq!(server.request_heads.lock().unwrap().len(), attempts);
@@ -1421,7 +1643,7 @@ mod tests {
       sha1: Some(truth),
     };
 
-    download_with_policy(&client, &param, &dest, 0, None, None)
+    download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
       .await
       .expect("an interrupted body must be resumed with a Range request");
 

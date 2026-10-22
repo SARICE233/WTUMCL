@@ -139,6 +139,39 @@ pub struct ProxyConfig {
 pub const DEFAULT_DISCOVER_SOURCE_ENDPOINTS: &[(&str, bool)] =
   &[("https://wtumc.top:64053/api/news", true)];
 
+// Path scheme understood by a user-configured download mirror.
+//
+// PclPrefix  : official prefixes re-mapped under the base, e.g. /piston-meta/...
+// BmclapiFlat: BMCLAPI style flat paths, e.g. /mc/game/version_manifest.json,
+//              /maven/..., /assets/...
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum DownloadMirrorKind {
+  #[default]
+  PclPrefix,
+  BmclapiFlat,
+}
+
+// One user-configured download mirror. Ordered by the user; earlier entries are
+// preferred. `enabled` lets a user keep a mirror configured but temporarily off.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadMirrorConfig {
+  pub url: String,
+  pub kind: DownloadMirrorKind,
+  pub enabled: bool,
+}
+
+impl Default for DownloadMirrorConfig {
+  fn default() -> Self {
+    Self {
+      url: String::new(),
+      kind: DownloadMirrorKind::PclPrefix,
+      enabled: true,
+    }
+  }
+}
+
 pub fn default_discover_source_endpoints() -> Vec<(String, bool)> {
   DEFAULT_DISCOVER_SOURCE_ENDPOINTS
     .iter()
@@ -332,6 +365,10 @@ structstruck::strike! {
         // existed) loadable; the whole struct chain also carries #[serde(default)].
         #[serde(default)]
         pub custom_mirror_url: String,
+        // Ordered list of user mirrors. Empty means "use the legacy single
+        // BaseUrl above", so old configurations keep working unchanged.
+        #[serde(default)]
+        pub mirrors: Vec<DownloadMirrorConfig>,
       },
       pub transmission: struct {
         #[default = true]

@@ -3,6 +3,7 @@ pub mod commands;
 pub mod download;
 pub mod events;
 pub mod monitor;
+pub mod source_health;
 pub mod streams;
 
 use download::DownloadParam;

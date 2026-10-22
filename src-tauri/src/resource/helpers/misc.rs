@@ -53,6 +53,15 @@ pub fn get_source_priority_list(launcher_config: &LauncherConfig) -> Vec<SourceT
   let custom_mirror_url =
     normalize_custom_mirror_base(&launcher_config.download.source.custom_mirror_url)
       .unwrap_or_default();
+  // The ordered mirror list supersedes the single legacy BaseUrl: as soon as one
+  // enabled entry exists, the custom source is "configured" for this build.
+  let has_configured_mirror = !custom_mirror_url.is_empty()
+    || launcher_config
+      .download
+      .source
+      .mirrors
+      .iter()
+      .any(|mirror| mirror.enabled && !mirror.url.trim().is_empty());
 
   // Keep the process-wide BaseUrl in sync so that `get_download_api` can resolve
   // `SourceType::CustomMirror` without changing its signature.
@@ -69,7 +78,7 @@ pub fn get_source_priority_list(launcher_config: &LauncherConfig) -> Vec<SourceT
     // The custom mirror is opt-in: without a BaseUrl it must never enter the
     // priority list, and "custom" behaves exactly like "auto" instead.
     "custom" => {
-      if custom_mirror_url.is_empty() {
+      if !has_configured_mirror {
         auto_priority
       } else {
         vec![

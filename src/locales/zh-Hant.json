@@ -558,16 +558,26 @@
     "source": {
       "title": "源",
       "settings": {
+        "customMirrorUrl": {
+          "title": "自訂鏡像源位址",
+          "description": "僅在選擇自訂鏡像源策略時生效；留空時回退到預設源。請輸入 PCL 風格鏡像位址，鏡像未提供的檔案會自動回退到其他下載源。"
+        },
+        "mirrors": {
+          "title": "自訂鏡像源",
+          "description": "依序嘗試，越前面優先級越高；鏡像未提供的檔案會自動回退到下一個源。",
+          "add": "新增鏡像源",
+          "remove": "移除鏡像源",
+          "kind": {
+            "pclPrefix": "前綴式（PCL 風格）",
+            "bmclapiFlat": "扁平式（BMCLAPI 風格）"
+          }
+        },
         "strategy": {
           "title": "下載源選擇策略",
           "auto": "自動選擇",
           "official": "官方源優先",
           "mirror": "鏡像源優先",
           "custom": "自訂鏡像源"
-        },
-        "customMirrorUrl": {
-          "title": "自訂鏡像源位址",
-          "description": "僅在選擇自訂鏡像源策略時生效；留空時回退到預設源。請輸入 PCL 風格鏡像位址，鏡像未提供的檔案會自動回退到其他下載源。"
         }
       }
     },

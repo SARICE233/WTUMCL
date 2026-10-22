@@ -3,6 +3,7 @@ import {
   Button,
   HStack,
   Icon,
+  IconButton,
   Input,
   NumberDecrementStepper,
   NumberIncrementStepper,
@@ -15,13 +16,14 @@ import {
   SliderTrack,
   Switch,
   Text,
+  VStack,
 } from "@chakra-ui/react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LuChevronDown, LuChevronUp } from "react-icons/lu";
+import { LuChevronDown, LuChevronUp, LuPlus, LuTrash } from "react-icons/lu";
 import { LuArrowRight } from "react-icons/lu";
 import { MenuSelector } from "@/components/common/menu-selector";
 import {
@@ -33,6 +35,7 @@ import { useLauncherConfig } from "@/contexts/config";
 import { useSharedModals } from "@/contexts/shared-modal";
 import { useTaskContext } from "@/contexts/task";
 import { useToast } from "@/contexts/toast";
+import { DownloadMirrorConfig, DownloadMirrorKind } from "@/models/config";
 import { GTaskEventStatusEnums } from "@/models/task";
 import { ConfigService } from "@/services/config";
 
@@ -45,6 +48,27 @@ const DownloadSettingsPage = () => {
   const { config, update } = useLauncherConfig();
   const downloadConfigs = config.download;
   const primaryColor = config.appearance.theme.primaryColor;
+
+  const mirrors = downloadConfigs.source.mirrors;
+
+  const updateMirrors = (next: DownloadMirrorConfig[]) =>
+    update("download.source.mirrors", next);
+
+  const updateMirror = (index: number, patch: Partial<DownloadMirrorConfig>) =>
+    updateMirrors(
+      mirrors.map((mirror, current) =>
+        current === index ? { ...mirror, ...patch } : mirror
+      )
+    );
+
+  const removeMirror = (index: number) =>
+    updateMirrors(mirrors.filter((_, current) => current !== index));
+
+  const addMirror = () =>
+    updateMirrors([
+      ...mirrors,
+      { url: "", kind: "pclPrefix" as DownloadMirrorKind, enabled: true },
+    ]);
 
   const { tasks } = useTaskContext();
   const hasActiveDownloadTasks = tasks.some(
@@ -150,6 +174,74 @@ const DownloadSettingsPage = () => {
         },
         ...(downloadConfigs.source.strategy === "custom"
           ? [
+              {
+                title: t("DownloadSettingPage.source.settings.mirrors.title"),
+                description: t(
+                  "DownloadSettingPage.source.settings.mirrors.description"
+                ),
+                children: (
+                  <VStack align="stretch" spacing={2} w={96}>
+                    {mirrors.map((mirror, index) => (
+                      <HStack key={index} spacing={2}>
+                        <Switch
+                          size="sm"
+                          colorScheme={primaryColor}
+                          isChecked={mirror.enabled}
+                          onChange={(event) =>
+                            updateMirror(index, {
+                              enabled: event.target.checked,
+                            })
+                          }
+                        />
+                        <Input
+                          size="xs"
+                          flex={1}
+                          focusBorderColor={`${primaryColor}.500`}
+                          placeholder="https://example.com/mirror"
+                          value={mirror.url}
+                          onChange={(event) =>
+                            updateMirror(index, { url: event.target.value })
+                          }
+                        />
+                        <MenuSelector
+                          options={["pclPrefix", "bmclapiFlat"].map((kind) => ({
+                            value: kind,
+                            label: t(
+                              `DownloadSettingPage.source.settings.mirrors.kind.${kind}`
+                            ),
+                          }))}
+                          value={mirror.kind}
+                          onSelect={(value) =>
+                            updateMirror(index, {
+                              kind: value as DownloadMirrorKind,
+                            })
+                          }
+                          placeholder={t(
+                            `DownloadSettingPage.source.settings.mirrors.kind.${mirror.kind}`
+                          )}
+                        />
+                        <IconButton
+                          size="xs"
+                          variant="ghost"
+                          aria-label={t(
+                            "DownloadSettingPage.source.settings.mirrors.remove"
+                          )}
+                          icon={<LuTrash />}
+                          onClick={() => removeMirror(index)}
+                        />
+                      </HStack>
+                    ))}
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      leftIcon={<LuPlus />}
+                      onClick={addMirror}
+                    >
+                      {t("DownloadSettingPage.source.settings.mirrors.add")}
+                    </Button>
+                  </VStack>
+                ),
+              },
               {
                 title: t(
                   "DownloadSettingPage.source.settings.customMirrorUrl.title"

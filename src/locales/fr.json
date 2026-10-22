@@ -558,16 +558,26 @@
     "source": {
       "title": "Source",
       "settings": {
+        "customMirrorUrl": {
+          "title": "BaseUrl du miroir personnalisé",
+          "description": "Applicable uniquement lorsque la stratégie de miroir personnalisé est sélectionnée. Laisser vide pour revenir aux sources par défaut. Les fichiers non fournis par le miroir basculent vers les autres sources."
+        },
+        "mirrors": {
+          "title": "Miroirs personnalisés",
+          "description": "Essayés dans l'ordre ; les entrées les plus hautes sont prioritaires. Les fichiers absents d'un miroir passent au suivant.",
+          "add": "Ajouter un miroir",
+          "remove": "Supprimer le miroir",
+          "kind": {
+            "pclPrefix": "Préfixe (style PCL)",
+            "bmclapiFlat": "Plat (style BMCLAPI)"
+          }
+        },
         "strategy": {
           "title": "Stratégie de sélection de la source de téléchargement",
           "auto": "Sélection automatique",
           "official": "Priorité à la source officielle",
           "mirror": "Priorité au miroir",
           "custom": "Utiliser un miroir personnalisé"
-        },
-        "customMirrorUrl": {
-          "title": "BaseUrl du miroir personnalisé",
-          "description": "Applicable uniquement lorsque la stratégie de miroir personnalisé est sélectionnée. Laisser vide pour revenir aux sources par défaut. Les fichiers non fournis par le miroir basculent vers les autres sources."
         }
       }
     },
