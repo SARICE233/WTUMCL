@@ -1131,8 +1131,8 @@
     "add": "Agregar",
     "alert": {
       "noFullLogin": {
-        "title": "Esta Función No Está Disponible Actualmente",
-        "description": "Por favor inicia sesión con tu cuenta de Microsoft antes de acceder a esta función."
+        "title": "Las cuentas sin conexión necesitan una cuenta de Microsoft",
+        "description": "Inicia sesión una vez con una cuenta de Microsoft para desbloquear las cuentas sin conexión."
       }
     },
     "browse": "Examinar",
@@ -1738,6 +1738,18 @@
       "launch": "Iniciar juego",
       "instanceSettings": "Configuración de instancia"
     },
+    "downloadProgress": {
+      "title": "Descargando recursos",
+      "groups": "{{count}} en curso"
+    },
+    "greeting": {
+      "morning": "Buenos días, {{name}}",
+      "afternoon": "Buenas tardes, {{name}}",
+      "evening": "Buenas noches, {{name}}",
+      "night": "Buenas noches, {{name}}",
+      "friend": "aventurero",
+      "subtitle": "¿Listo para una nueva aventura?"
+    },
     "guide": {
       "title": "Empieza en tres pasos",
       "subtitle": "Aún no hay ninguna instancia. Sigue estos pasos para empezar.",
@@ -1754,13 +1766,11 @@
         "desc": "Elige una instancia y empieza a jugar"
       }
     },
-    "greeting": {
-      "morning": "Buenos días, {{name}}",
-      "afternoon": "Buenas tardes, {{name}}",
-      "evening": "Buenas noches, {{name}}",
-      "night": "Buenas noches, {{name}}",
-      "friend": "aventurero",
-      "subtitle": "¿Listo para una nueva aventura?"
+    "hitokoto": {
+      "title": "La frase del día",
+      "refresh": "Actualizar",
+      "loading": "Obteniendo…",
+      "empty": "hitokoto.cn no está disponible"
     },
     "news": {
       "title": "Noticias de la comunidad WTUMC",
@@ -1775,6 +1785,10 @@
       "playtime": "Tiempo de juego {{time}}",
       "launch": "Iniciar juego",
       "details": "Detalles de la instancia"
+    },
+    "weeklyPlaytime": {
+      "title": "Esta semana",
+      "subtitle": "Tiempo de juego de los últimos 7 días"
     },
     "SwitchButton": {
       "tooltip": {

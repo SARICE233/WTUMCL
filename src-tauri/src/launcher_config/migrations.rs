@@ -362,3 +362,20 @@ mod tests {
     );
   }
 }
+
+#[cfg(test)]
+mod login_flag_migration_tests {
+  use crate::launcher_config::models::LauncherConfig;
+
+  #[test]
+  fn legacy_config_without_split_login_flags_still_loads() {
+    // A pre-split config only knew allow_full_login_feature; the new flags must
+    // fall back to "allowed" so no user loses a login option on upgrade.
+    let legacy = r#"{"basicInfo":{"allowFullLoginFeature":false}}"#;
+    let config: LauncherConfig = serde_json::from_str(legacy).expect("legacy config should load");
+
+    assert!(config.basic_info.allow_third_party_login);
+    assert!(config.basic_info.allow_offline_login);
+    assert!(!config.basic_info.allow_full_login_feature);
+  }
+}

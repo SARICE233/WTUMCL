@@ -69,10 +69,9 @@ impl LauncherConfig {
 
     // Set default local game directories
     if self.local_game_directories.is_empty() {
-      let mut dirs = Vec::new();
-
       #[cfg(target_os = "macos")]
-      {
+      let dirs = {
+        let mut dirs = Vec::new();
         if let Some(app_data_dir) = APP_DATA_DIR.get() {
           let app_data_subdir = app_data_dir.join("minecraft");
           dirs.push(GameDirectory {
@@ -80,18 +79,22 @@ impl LauncherConfig {
             dir: app_data_subdir,
           });
         }
-      }
+        dirs.push(get_official_minecraft_directory(app));
+        dirs
+      };
 
       #[cfg(not(target_os = "macos"))]
-      dirs.push(default_game_directory(
-        crate::EXE_DIR.as_path(),
-        APP_DATA_DIR
-          .get()
-          .expect("APP_DATA_DIR initialization failed"),
-        is_directory_writable,
-      ));
+      let dirs = vec![
+        default_game_directory(
+          crate::EXE_DIR.as_path(),
+          APP_DATA_DIR
+            .get()
+            .expect("APP_DATA_DIR initialization failed"),
+          is_directory_writable,
+        ),
+        get_official_minecraft_directory(app),
+      ];
 
-      dirs.push(get_official_minecraft_directory(app));
       self.local_game_directories = dirs;
     }
 
@@ -120,6 +123,8 @@ impl LauncherConfig {
       // below set to default, will be updated later in first time calling `check_full_login_availability`
       is_china_mainland_ip: false,
       allow_full_login_feature: false,
+      allow_third_party_login: true,
+      allow_offline_login: true,
       // build metadata: compile-time constants may be injected by build.rs
       build_type,
       build_commit_sha: option_env!("WTUMCL_COMMIT_SHA").unwrap_or("").to_string(),

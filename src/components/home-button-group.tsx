@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
   Portal,
   Text,
+  useToken,
   Tooltip,
   VStack,
   useColorModeValue,
@@ -97,6 +98,8 @@ const HomeButtonGroup = () => {
   const { openSharedModal } = useSharedModals();
   const { config } = useLauncherConfig();
   const useLiquidGlass = config.appearance.theme.useLiquidGlassDesign;
+  const primaryColor = config.appearance.theme.primaryColor;
+  const [launchRingColor] = useToken("colors", [`${primaryColor}.500`]);
   const subtitleColor = useColorModeValue("gray.600", "gray.400");
   const compactButtonGroupColorScheme = useColorModeValue("blackAlpha", "gray");
   const { selectedPlayer, selectedInstance, getPlayerList, getInstanceList } =
@@ -217,9 +220,48 @@ const HomeButtonGroup = () => {
         <span className={styles["player-card-divider"]} aria-hidden="true" />
       </AdvancedCard>
 
+      <Flex direction="column" align="flex-end">
+        {hasInstances && (
+          <HStack spacing={1} justify="flex-end" mb={2} zIndex={5}>
+            <CompactButtonGroup
+              colorScheme={compactButtonGroupColorScheme}
+              size="xs"
+            >
+              {selectedInstance && (
+                <CommonIconButton
+                  icon={LuSettings}
+                  label={t("LaunchPage.button.instanceSettings")}
+                  tooltipPlacement="top"
+                  onClick={() =>
+                    router.push({
+                      pathname: "/instances/details/[id]/settings",
+                      query: { id: selectedInstance.id },
+                    })
+                  }
+                />
+              )}
+
+              <ButtonWithPopover
+                tooltip={t("LaunchPage.SwitchButton.tooltip.switchInstance")}
+                aria-label="instance"
+                popoverContent={
+                  <InstancesView
+                    instances={instanceList}
+                    selectedInstance={selectedInstance}
+                    viewType="list"
+                    withMenu={false}
+                  />
+                }
+                onClick={() => router.push("/instances/list")}
+              />
+            </CompactButtonGroup>
+          </HStack>
+        )}
+
       <Box
         position="relative"
         className={styles["launch-button-shell"]}
+        style={{ "--launch-ring-color": launchRingColor } as React.CSSProperties}
         data-liquid={useLiquidGlass}
         data-add-active={isAddZoneActive}
         onPointerMove={handleLaunchPointerMove}
@@ -280,44 +322,8 @@ const HomeButtonGroup = () => {
         </button>
 
         <span className={styles["launch-divider"]} aria-hidden="true" />
-
-        {hasInstances && (
-          <Box position="absolute" top={1} right={1} zIndex={5}>
-            <CompactButtonGroup
-              colorScheme={compactButtonGroupColorScheme}
-              size="xs"
-            >
-              {selectedInstance && (
-                <CommonIconButton
-                  icon={LuSettings}
-                  label={t("LaunchPage.button.instanceSettings")}
-                  tooltipPlacement="top"
-                  onClick={() =>
-                    router.push({
-                      pathname: "/instances/details/[id]/settings",
-                      query: { id: selectedInstance.id },
-                    })
-                  }
-                />
-              )}
-
-              <ButtonWithPopover
-                tooltip={t("LaunchPage.SwitchButton.tooltip.switchInstance")}
-                aria-label="instance"
-                popoverContent={
-                  <InstancesView
-                    instances={instanceList}
-                    selectedInstance={selectedInstance}
-                    viewType="list"
-                    withMenu={false}
-                  />
-                }
-                onClick={() => router.push("/instances/list")}
-              />
-            </CompactButtonGroup>
-          </Box>
-        )}
       </Box>
+      </Flex>
     </Flex>
   );
 };

@@ -16,6 +16,9 @@ use crate::resource::commands::fetch_mod_loader_version_list;
 use crate::resource::models::OtherResourceSource;
 use crate::tasks::PTaskParam;
 
+// `async_trait` expands the async methods into `#[must_use]` boxed futures;
+// clippy's double_must_use has no actionable fix in the trait source.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait ModpackManifest {
   fn from_archive(file: &File) -> SJMCLResult<Self>
@@ -302,6 +305,8 @@ mod tests {
 
   struct TestArchive {
     file: File,
+    // Held only so the temporary archive is removed when the test ends.
+    #[allow(dead_code)]
     path: TempPath,
   }
 

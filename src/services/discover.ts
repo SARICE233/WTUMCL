@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { Hitokoto } from "@/models/hitokoto";
 import {
   NewsPostRequest,
   NewsPostSummary,
@@ -20,6 +21,15 @@ export class DiscoverService {
     InvokeResponse<NewsSourceInfo[]>
   > {
     return await invoke("fetch_news_sources_info");
+  }
+
+  /**
+   * FETCH one random hitokoto sentence (backend falls back locally on failure).
+   * @returns {Promise<InvokeResponse<Hitokoto>>}
+   */
+  @responseHandler("resource")
+  static async fetchHitokoto(): Promise<InvokeResponse<Hitokoto>> {
+    return await invoke("fetch_hitokoto");
   }
 
   /**

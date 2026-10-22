@@ -87,6 +87,8 @@ export interface LauncherConfig {
     isExePathAvailable: boolean;
     isChinaMainlandIp: boolean;
     allowFullLoginFeature: boolean;
+  allowThirdPartyLogin: boolean;
+  allowOfflineLogin: boolean;
     // Build metadata, sourced from compile-time constants injected by build.rs.
     buildType: BuildType;
     buildCommitSha: string;
@@ -282,6 +284,8 @@ export const defaultConfig: LauncherConfig = {
     isExePathAvailable: true,
     isChinaMainlandIp: false,
     allowFullLoginFeature: false,
+    allowThirdPartyLogin: true,
+    allowOfflineLogin: true,
     buildType: BuildType.Dev,
     buildCommitSha: "",
   },

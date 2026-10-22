@@ -11,10 +11,10 @@ const getGreetingKey = (hour: number) => {
   return "night";
 };
 
-const LaunchGreeting = () => {
+const LaunchGreeting = ({ compact }: { compact?: boolean }) => {
   const { t, i18n } = useTranslation();
   const { config } = useLauncherConfig();
-  const { selectedPlayer } = useGlobalData();
+  const { selectedPlayer, getPlayerList } = useGlobalData();
   const primaryColor = config.appearance.theme.primaryColor;
 
   // The page is statically exported, so resolve the local time only after the
@@ -29,7 +29,12 @@ const LaunchGreeting = () => {
   }, []);
 
   const greetingKey = getGreetingKey(now?.getHours() ?? 12);
-  const playerName = selectedPlayer?.name || t("LaunchPage.greeting.friend");
+  // A stale/absent selection is healed by GlobalDataContext, but the first
+    // player is used immediately so the greeting never falls back while waiting.
+  const playerName =
+    selectedPlayer?.name ||
+    getPlayerList()?.[0]?.name ||
+    t("LaunchPage.greeting.friend");
   const dateLocale = i18n.language === "lzh" ? "zh-Hant" : i18n.language;
 
   let dateLabel = "";
@@ -61,9 +66,10 @@ const LaunchGreeting = () => {
       </HStack>
       <Text
         as="h1"
-        fontSize={{ base: "2xl", xl: "3xl" }}
+        fontSize={compact ? "lg" : { base: "2xl", xl: "3xl" }}
         fontWeight="bold"
         lineHeight="shorter"
+        noOfLines={1}
         suppressHydrationWarning
       >
         {t(`LaunchPage.greeting.${greetingKey}`, { name: playerName })}

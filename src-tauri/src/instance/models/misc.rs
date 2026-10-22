@@ -83,6 +83,15 @@ pub enum ModLoaderStatus {
   Installed,
 }
 
+const MAX_DAILY_PLAY_TIME_DAYS: usize = 14;
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyPlayTime {
+  pub date: String,
+  pub seconds: u128,
+}
+
 structstruck::strike! {
   #[strikethrough[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize, Default)]]
   #[strikethrough[serde(rename_all = "camelCase", default)]]
@@ -94,6 +103,7 @@ structstruck::strike! {
     pub icon_src: String,
     pub starred: bool,
     pub play_time: u128,
+    pub daily_play_time: Vec<DailyPlayTime>,
     pub version: String,
     pub version_path: PathBuf,
     pub mod_loader: struct {
@@ -112,6 +122,33 @@ structstruck::strike! {
 }
 
 impl Instance {
+  /// Bump today's play-time bucket and drop buckets older than the retention window.
+  pub fn record_daily_play_time(&mut self, seconds: u128) {
+    let today = chrono::Local::now().date_naive();
+    let today_key = today.format("%Y-%m-%d").to_string();
+    match self
+      .daily_play_time
+      .iter_mut()
+      .find(|bucket| bucket.date == today_key)
+    {
+      Some(bucket) => bucket.seconds = bucket.seconds.saturating_add(seconds),
+      None => self.daily_play_time.push(DailyPlayTime {
+        date: today_key,
+        seconds,
+      }),
+    }
+
+    let oldest_key = (today - chrono::Duration::days(MAX_DAILY_PLAY_TIME_DAYS as i64 - 1))
+      .format("%Y-%m-%d")
+      .to_string();
+    self
+      .daily_play_time
+      .retain(|bucket| bucket.date >= oldest_key);
+    self
+      .daily_play_time
+      .sort_by(|left, right| left.date.cmp(&right.date));
+  }
+
   pub fn get_json_cfg_path(&self) -> PathBuf {
     self.version_path.join(INSTANCE_CFG_FILE_NAME)
   }

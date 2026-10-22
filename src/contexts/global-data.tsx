@@ -52,7 +52,7 @@ const GlobalDataDispatchContext = createContext<
 export const GlobalDataContextProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const { config } = useLauncherConfig();
+  const { config, update } = useLauncherConfig();
   const toast = useToast();
 
   const [playerList, setPlayerList] = useState<Player[]>();
@@ -65,10 +65,18 @@ export const GlobalDataContextProvider: React.FC<{
 
   useEffect(() => {
     const selectedPlayerId = config.states.shared.selectedPlayerId;
-    setSelectedPlayer(
-      playerList?.find((player) => player.id === selectedPlayerId)
+    const matchedPlayer = playerList?.find(
+      (player) => player.id === selectedPlayerId
     );
-  }, [playerList, config.states.shared.selectedPlayerId]);
+    setSelectedPlayer(matchedPlayer);
+
+    // A missing or stale selection (first run, deleted account) heals itself to
+    // the first player instead of leaving the launch page without a name.
+    const fallbackPlayerId = playerList?.[0]?.id;
+    if (!matchedPlayer && fallbackPlayerId && fallbackPlayerId !== selectedPlayerId) {
+      update("states.shared.selectedPlayerId", fallbackPlayerId);
+    }
+  }, [playerList, config.states.shared.selectedPlayerId, update]);
 
   useEffect(() => {
     const selectedInstanceId = config.states.shared.selectedInstanceId;

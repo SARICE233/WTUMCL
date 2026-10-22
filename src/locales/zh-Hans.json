@@ -1131,8 +1131,8 @@
     "add": "添加",
     "alert": {
       "noFullLogin": {
-        "title": "当前功能暂不可用",
-        "description": "请先登录微软账户后使用此功能。"
+        "title": "离线账号需先登录微软账户",
+        "description": "先登录过一次微软账户，之后才能添加离线账号。"
       }
     },
     "browse": "浏览",
@@ -1738,6 +1738,18 @@
       "launch": "启动游戏",
       "instanceSettings": "实例设置"
     },
+    "downloadProgress": {
+      "title": "资源下载中",
+      "groups": "{{count}} 个任务进行中"
+    },
+    "greeting": {
+      "morning": "早上好，{{name}}",
+      "afternoon": "下午好，{{name}}",
+      "evening": "晚上好，{{name}}",
+      "night": "夜深了，{{name}}",
+      "friend": "冒险家",
+      "subtitle": "准备好开启新的冒险了吗？"
+    },
     "guide": {
       "title": "三步开始游戏",
       "subtitle": "还没有游戏实例，按下面的步骤快速开始。",
@@ -1754,13 +1766,11 @@
         "desc": "选择实例，开始新的冒险"
       }
     },
-    "greeting": {
-      "morning": "早上好，{{name}}",
-      "afternoon": "下午好，{{name}}",
-      "evening": "晚上好，{{name}}",
-      "night": "夜深了，{{name}}",
-      "friend": "冒险家",
-      "subtitle": "准备好开启新的冒险了吗？"
+    "hitokoto": {
+      "title": "每日一言",
+      "refresh": "换一句",
+      "loading": "正在获取…",
+      "empty": "一言服务暂不可用"
     },
     "news": {
       "title": "WTUMC 社区新闻",
@@ -1775,6 +1785,10 @@
       "playtime": "已游玩 {{time}}",
       "launch": "启动游戏",
       "details": "实例详情"
+    },
+    "weeklyPlaytime": {
+      "title": "本周游玩",
+      "subtitle": "最近 7 天的游玩时长"
     },
     "SwitchButton": {
       "tooltip": {

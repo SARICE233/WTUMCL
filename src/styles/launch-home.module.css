@@ -66,7 +66,204 @@
   -webkit-mask-image: linear-gradient(to top, #000 6%, transparent 62%);
 }
 
+/* Content base: the aurora wash is repeated as a left-anchored veil under the
+   feed so text always sits on the gradient. Both axes dissolve into the
+   backdrop instead of stopping on a straight line: the horizontal ramp keeps
+   the wash across the text column and then fades all the way to the right
+   edge (55% -> 100%), while the vertical ramp feathers the top and bottom. */
+.veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(46% 62% at 10% 4%, var(--launch-glow-a), transparent 72%),
+    radial-gradient(42% 56% at 34% 66%, var(--launch-glow-b), transparent 74%),
+    radial-gradient(38% 50% at 20% 46%, var(--launch-glow-c), transparent 76%);
+  /* Wide, multi-stop fades: the wash decays across the whole right half and
+     the final stop sits at the right edge, so there is no abrupt cut line. */
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.86) 4%,
+      #000 12% 55%,
+      rgba(0, 0, 0, 0.62) 76%,
+      rgba(0, 0, 0, 0.26) 90%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      rgba(0, 0, 0, 0.55) 6%,
+      #000 16%,
+      #000 84%,
+      rgba(0, 0, 0, 0.55) 94%,
+      transparent 100%
+    );
+  mask-repeat: no-repeat;
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.86) 4%,
+      #000 12% 55%,
+      rgba(0, 0, 0, 0.62) 76%,
+      rgba(0, 0, 0, 0.26) 90%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      rgba(0, 0, 0, 0.55) 6%,
+      #000 16%,
+      #000 84%,
+      rgba(0, 0, 0, 0.55) 94%,
+      transparent 100%
+    );
+  -webkit-mask-repeat: no-repeat;
+}
+
+.veil::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background-image:
+    linear-gradient(to right, var(--launch-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--launch-grid-line) 1px, transparent 1px);
+  background-size: var(--launch-grid-size) var(--launch-grid-size);
+  transform: rotate(-6deg);
+  /* Graticule: a much wider ellipse at lower opacity, with a long tail so the
+     grid thins out across the wash instead of stopping on a square boundary. */
+  mask-image: radial-gradient(
+    ellipse 132% 118% at 30% 44%,
+    rgba(0, 0, 0, 0.62) 24%,
+    rgba(0, 0, 0, 0.42) 58%,
+    rgba(0, 0, 0, 0.16) 84%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 132% 118% at 30% 44%,
+    rgba(0, 0, 0, 0.62) 24%,
+    rgba(0, 0, 0, 0.42) 58%,
+    rgba(0, 0, 0, 0.16) 84%,
+    transparent 100%
+  );
+}
+
+/* Dark theme: the washes are a little stronger, so the masks open up slightly
+   more and keep the same long, low-contrast tails (no hard edge either way). */
+:global([data-theme="dark"]) .veil {
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.82) 4%,
+      #000 12% 58%,
+      rgba(0, 0, 0, 0.56) 79%,
+      rgba(0, 0, 0, 0.22) 91%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      rgba(0, 0, 0, 0.5) 6%,
+      #000 17%,
+      #000 83%,
+      rgba(0, 0, 0, 0.5) 94%,
+      transparent 100%
+    );
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.82) 4%,
+      #000 12% 58%,
+      rgba(0, 0, 0, 0.56) 79%,
+      rgba(0, 0, 0, 0.22) 91%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      rgba(0, 0, 0, 0.5) 6%,
+      #000 17%,
+      #000 83%,
+      rgba(0, 0, 0, 0.5) 94%,
+      transparent 100%
+    );
+}
+
+:global([data-theme="dark"]) .veil::before {
+  mask-image: radial-gradient(
+    ellipse 140% 124% at 30% 44%,
+    rgba(0, 0, 0, 0.56) 26%,
+    rgba(0, 0, 0, 0.36) 60%,
+    rgba(0, 0, 0, 0.14) 86%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 140% 124% at 30% 44%,
+    rgba(0, 0, 0, 0.56) 26%,
+    rgba(0, 0, 0, 0.36) 60%,
+    rgba(0, 0, 0, 0.14) 86%,
+    transparent 100%
+  );
+}
+
+/* Fallback for engines without mask compositing (Chromium < 120,
+   Safari < 15.4): keep only the horizontal ramp, so the wash still dissolves to
+   nothing instead of being clipped against the container edge. */
+@supports not (mask-composite: intersect) {
+  .veil {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.86) 4%,
+      #000 12% 55%,
+      rgba(0, 0, 0, 0.62) 76%,
+      rgba(0, 0, 0, 0.26) 90%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.86) 4%,
+      #000 12% 55%,
+      rgba(0, 0, 0, 0.62) 76%,
+      rgba(0, 0, 0, 0.26) 90%,
+      transparent 100%
+    );
+  }
+
+  :global([data-theme="dark"]) .veil {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.82) 4%,
+      #000 12% 58%,
+      rgba(0, 0, 0, 0.56) 79%,
+      rgba(0, 0, 0, 0.22) 91%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      rgba(0, 0, 0, 0.82) 4%,
+      #000 12% 58%,
+      rgba(0, 0, 0, 0.56) 79%,
+      rgba(0, 0, 0, 0.22) 91%,
+      transparent 100%
+    );
+  }
+}
+
 .feed {
+  /* Scrollport padding: the liquid-glass cards cast a 24px shadow. Without this
+     inset, the shadow is hard-clipped by the scroll container at the right and
+     bottom edges, drawing a rectangle around the feed. Keep enough room for the
+     shadow to decay before the clip edge. */
+  padding: 2px 20px 20px 16px;
   scrollbar-width: none;
 }
 
@@ -75,22 +272,23 @@
   height: 0;
 }
 
-.newsRow {
-  display: flex;
+/* One news card plus two reserved slots, laid out as three equal columns.
+   The grid is plain layout: it never scrolls or clips, so the card's 24px
+   shadow fades out naturally instead of being cut by a scrollport edge. */
+.newsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 2px;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
+  /* Padding, never an overflow box: the extra room below the row gives the
+     shadow tail space to decay before the feed's own scrollport edge. */
+  padding: 0.25rem 0 0.5rem;
 }
 
-.newsRow::-webkit-scrollbar {
-  height: 0;
-}
-
-.newsCard {
-  scroll-snap-align: start;
+.newsSlot {
+  min-width: 0;
+  border: 1px dashed rgba(122, 144, 166, 0.34);
+  border-radius: var(--chakra-radii-xl);
+  background: rgba(122, 144, 166, 0.06);
 }
 
 .newsImage {

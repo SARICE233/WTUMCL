@@ -119,3 +119,14 @@ export interface ScreenshotInfo {
   filePath: string;
   time: number; // UNIX timestamp
 }
+
+export interface WeeklyPlayTimeDay {
+  date: string;
+  seconds: number;
+}
+
+export interface WeeklyPlayTime {
+  days: WeeklyPlayTimeDay[];
+  weekSeconds: number;
+  todaySeconds: number;
+}

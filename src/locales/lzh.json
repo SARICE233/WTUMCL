@@ -1131,8 +1131,8 @@
     "add": "增",
     "alert": {
       "noFullLogin": {
-        "title": "是功暫不可用",
-        "description": "請先登微軟戶簿，而後用是功。"
+        "title": "離線之帳，須先登微軟之帳",
+        "description": "先以微軟帳登入一次，方得增離線之帳。"
       }
     },
     "browse": "覽",
@@ -1738,6 +1738,18 @@
       "launch": "啟戲",
       "instanceSettings": "例置設"
     },
+    "downloadProgress": {
+      "title": "方下載資源",
+      "groups": "{{count}} 事方行"
+    },
+    "greeting": {
+      "morning": "晨安，{{name}}",
+      "afternoon": "午安，{{name}}",
+      "evening": "暮安，{{name}}",
+      "night": "夜闌，{{name}}",
+      "friend": "行者",
+      "subtitle": "可備啟新程乎？"
+    },
     "guide": {
       "title": "三步啟戲",
       "subtitle": "尚無戲例，循此三步以入戲。",
@@ -1754,13 +1766,11 @@
         "desc": "擇戲例，啟新程"
       }
     },
-    "greeting": {
-      "morning": "晨安，{{name}}",
-      "afternoon": "午安，{{name}}",
-      "evening": "暮安，{{name}}",
-      "night": "夜闌，{{name}}",
-      "friend": "行者",
-      "subtitle": "可備啟新程乎？"
+    "hitokoto": {
+      "title": "日一言",
+      "refresh": "易一言",
+      "loading": "方取…",
+      "empty": "一言之服不可用"
     },
     "news": {
       "title": "WTUMC 社聞",
@@ -1775,6 +1785,10 @@
       "playtime": "已戲 {{time}}",
       "launch": "啟戲",
       "details": "戲例詳情"
+    },
+    "weeklyPlaytime": {
+      "title": "本週遊玩",
+      "subtitle": "邇七日之遊時"
     },
     "SwitchButton": {
       "tooltip": {

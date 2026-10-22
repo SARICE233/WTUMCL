@@ -15,6 +15,9 @@ pub enum LaunchError {
   SelectedJavaUnavailable,
   GameFilesIncomplete,
   SetProcessPriorityFailed,
+  // Only constructed by the macOS/Linux stub of the window-title setter, which
+  // is cfg-gated out on Windows; the variant stays part of the public enum.
+  #[allow(dead_code)]
   ChangeWindowTitleFailed,
   KillProcessFailed,
   LaunchingStateNotFound,

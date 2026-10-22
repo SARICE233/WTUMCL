@@ -78,6 +78,7 @@ pub async fn record_play_time(app: AppHandle, start_time: Instant, instance_id: 
 
     let elapsed = start_time.elapsed().as_secs() as u128;
     instance.play_time = instance.play_time.saturating_add(elapsed);
+    instance.record_daily_play_time(elapsed);
 
     let _ = instance.save_json_cfg().await;
   }

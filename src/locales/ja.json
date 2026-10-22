@@ -1131,8 +1131,8 @@
     "add": "追加",
     "alert": {
       "noFullLogin": {
-        "title": "この機能は現在利用できません",
-        "description": "この機能を使用するには、まず Microsoft アカウントでログインしてください。"
+        "title": "オフラインアカウントには Microsoft アカウントが必要です",
+        "description": "先に Microsoft アカウントで一度サインインすると、オフラインアカウントを追加できます。"
       }
     },
     "browse": "参照",
@@ -1738,6 +1738,18 @@
       "launch": "ゲーム起動",
       "instanceSettings": "インスタンス設定"
     },
+    "downloadProgress": {
+      "title": "リソースをダウンロード中",
+      "groups": "{{count}} 件進行中"
+    },
+    "greeting": {
+      "morning": "おはようございます、{{name}}",
+      "afternoon": "こんにちは、{{name}}",
+      "evening": "こんばんは、{{name}}",
+      "night": "夜更かしですね、{{name}}",
+      "friend": "冒険者",
+      "subtitle": "新しい冒険を始めましょう。"
+    },
     "guide": {
       "title": "3ステップで始める",
       "subtitle": "ゲームインスタンスがありません。次の手順で準備しましょう。",
@@ -1754,13 +1766,11 @@
         "desc": "インスタンスを選んでプレイ開始"
       }
     },
-    "greeting": {
-      "morning": "おはようございます、{{name}}",
-      "afternoon": "こんにちは、{{name}}",
-      "evening": "こんばんは、{{name}}",
-      "night": "夜更かしですね、{{name}}",
-      "friend": "冒険者",
-      "subtitle": "新しい冒険を始めましょう。"
+    "hitokoto": {
+      "title": "今日の一言",
+      "refresh": "別の一言",
+      "loading": "取得中…",
+      "empty": "一言サービスを利用できません"
     },
     "news": {
       "title": "WTUMC コミュニティニュース",
@@ -1775,6 +1785,10 @@
       "playtime": "プレイ時間 {{time}}",
       "launch": "ゲーム起動",
       "details": "インスタンス詳細"
+    },
+    "weeklyPlaytime": {
+      "title": "今週のプレイ",
+      "subtitle": "直近7日間のプレイ時間"
     },
     "SwitchButton": {
       "tooltip": {

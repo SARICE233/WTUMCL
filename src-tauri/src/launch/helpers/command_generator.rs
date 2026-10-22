@@ -312,18 +312,17 @@ pub async fn generate_launch_command(
   if let Some(driver_name) = mesa_driver_name(
     &game_config.advanced.graphics.api,
     &game_config.advanced.graphics.renderer,
-  ) {
-    if let Some(mesa_loader_path) = get_windows_mesa_loader_path(app, libraries_dir)? {
-      cmd.push(format!(
-        "-javaagent:{}={}",
-        mesa_loader_path.to_string_lossy(),
-        driver_name
-      ));
-      cmd.push(format!(
-        "-Dorg.glavo.mesa.loader.nativeDir={}",
-        natives_dir.join("mesa-loader").to_string_lossy()
-      ));
-    }
+  ) && let Some(mesa_loader_path) = get_windows_mesa_loader_path(app, libraries_dir)?
+  {
+    cmd.push(format!(
+      "-javaagent:{}={}",
+      mesa_loader_path.to_string_lossy(),
+      driver_name
+    ));
+    cmd.push(format!(
+      "-Dorg.glavo.mesa.loader.nativeDir={}",
+      natives_dir.join("mesa-loader").to_string_lossy()
+    ));
   }
 
   #[cfg(target_os = "macos")]

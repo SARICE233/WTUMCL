@@ -133,7 +133,7 @@ const AddAuthServerModal: React.FC<AddAuthServerModalProps> = ({
         <ModalHeader>{t("AddAuthServerModal.header.title")}</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          {!config.basicInfo.allowFullLoginFeature && (
+          {!config.basicInfo.allowThirdPartyLogin && (
             <Alert status="error" borderRadius="md" mb="3">
               <AlertIcon />
               <VStack spacing={0} align="start">
@@ -146,7 +146,7 @@ const AddAuthServerModal: React.FC<AddAuthServerModalProps> = ({
           )}
           {!isNextStep ? (
             <FormControl
-              isDisabled={!config.basicInfo.allowFullLoginFeature}
+              isDisabled={!config.basicInfo.allowThirdPartyLogin}
               isInvalid={isServerUrlInvalid}
               isRequired
             >
@@ -197,7 +197,7 @@ const AddAuthServerModal: React.FC<AddAuthServerModalProps> = ({
                 {t("General.previous")}
               </Button>
               <Button
-                disabled={!config.basicInfo.allowFullLoginFeature}
+                disabled={!config.basicInfo.allowThirdPartyLogin}
                 colorScheme={primaryColor}
                 onClick={handleFinish}
                 isLoading={isLoading}

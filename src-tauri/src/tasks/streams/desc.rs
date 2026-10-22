@@ -36,6 +36,9 @@ impl PStatus {
     *self == PStatus::Stopped
   }
 
+  // Used by `TaskMonitor::restart_progress`, which is only referenced by the
+  // currently unregistered restart command; keep the status helper for parity.
+  #[allow(dead_code)]
   pub fn is_completed(&self) -> bool {
     *self == PStatus::Completed
   }

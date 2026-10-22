@@ -417,19 +417,67 @@ pub fn get_java_info_from_release_file(java_path: &str) -> (Option<String>, Opti
   (vendor, full_version)
 }
 
+/// A broken Windows JDK/JRE is missing runtime DLLs such as `jli.dll`; the OS
+/// loader then shows a blocking error dialog before the process starts, which
+/// froze the Java scan (issue #1977). Probe the runtime files first and skip
+/// such installations instead of spawning them.
+#[cfg(target_os = "windows")]
+fn java_runtime_looks_usable(java_path: &str) -> bool {
+  let java_path_buf = PathBuf::from(java_path);
+  let Some(bin_dir) = java_path_buf.parent() else {
+    return false;
+  };
+  bin_dir.join("jli.dll").exists() || bin_dir.join("jvm.dll").exists()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn java_runtime_looks_usable(_java_path: &str) -> bool {
+  true
+}
+
 pub fn get_java_info_from_command(java_path: &str) -> (Option<String>, Option<String>) {
+  if !java_runtime_looks_usable(java_path) {
+    return (None, None);
+  }
+
   // use "java -version -XshowSettings:properties" command to get info
   #[cfg(target_os = "windows")]
-  let output = Command::new(java_path)
+  let mut child = match Command::new(java_path)
     .args(["-XshowSettings:properties", "-version"])
     .creation_flags(0x08000000) // CREATE_NO_WINDOW
-    .output();
+    .spawn()
+  {
+    Ok(child) => child,
+    Err(_) => return (None, None),
+  };
   #[cfg(any(target_os = "macos", target_os = "linux"))]
-  let output = Command::new(java_path)
+  let mut child = match Command::new(java_path)
     .args(["-XshowSettings:properties", "-version"])
-    .output();
+    .spawn()
+  {
+    Ok(child) => child,
+    Err(_) => return (None, None),
+  };
 
-  let output = match output {
+  // Never let a hanging or dialog-blocked probe stall the whole scan.
+  let deadline = std::time::Duration::from_secs(10);
+  let started = std::time::Instant::now();
+  loop {
+    match child.try_wait() {
+      Ok(Some(_)) => break,
+      Ok(None) => {
+        if started.elapsed() > deadline {
+          let _ = child.kill();
+          let _ = child.wait();
+          return (None, None);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+      }
+      Err(_) => return (None, None),
+    }
+  }
+
+  let output = match child.wait_with_output() {
     Ok(o) if o.status.success() => o,
     _ => return (None, None),
   };

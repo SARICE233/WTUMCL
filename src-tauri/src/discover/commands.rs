@@ -5,6 +5,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 
+use crate::discover::helpers::hitokoto::{Hitokoto, fetch_hitokoto as fetch_hitokoto_with_client};
 use crate::discover::helpers::mc_news::{MC_NEWS_ENDPOINT, fetch_mc_news_page};
 use crate::discover::helpers::wtumc_news::{
   WTUMC_NEWS_ENDPOINT, fetch_wtumc_news_page, wtumc_source_info,
@@ -125,4 +126,11 @@ pub async fn fetch_news_post_summaries(
     next: None,
     cursors: Some(cursors_map),
   })
+}
+
+#[tauri::command]
+pub async fn fetch_hitokoto(app: AppHandle) -> SJMCLResult<Hitokoto> {
+  let client = app.state::<reqwest::Client>().inner().clone();
+
+  Ok(fetch_hitokoto_with_client(&client).await)
 }

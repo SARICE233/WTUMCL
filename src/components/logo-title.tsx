@@ -1,24 +1,12 @@
-import {
-  BoxProps,
-  HStack,
-  Heading,
-  Highlight,
-  Image,
-  useColorModeValue,
-} from "@chakra-ui/react";
+import { BoxProps, HStack, Heading, Highlight, Image } from "@chakra-ui/react";
 import styles from "@/styles/logo-title.module.css";
 
 interface LogoTitleProps extends BoxProps {}
 
-// Light theme uses the inverse colourway (black ring, white field) so the mark
-// stays visible on light surfaces; dark theme uses the regular colourway.
+// A single transparent PNG serves both colour modes: SVG rendering is unreliable
+// in some Windows webview scenarios, so the brand mark is served as a raster image.
 export const BrandLogo: React.FC<BoxProps> = (props) => {
-  const logoSrc = useColorModeValue(
-    "/images/brand/WTUMCL-logo-inverse.svg",
-    "/images/brand/WTUMCL-logo.svg"
-  );
-
-  return <Image src={logoSrc} alt="WTUMCL" {...props} />;
+  return <Image src="/images/icons/Logo_128x128.png" alt="WTUMCL" {...props} />;
 };
 
 export const TitleShort: React.FC<LogoTitleProps> = (props) => {

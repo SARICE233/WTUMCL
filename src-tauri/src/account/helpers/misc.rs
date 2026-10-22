@@ -65,9 +65,7 @@ pub fn add_player(app: &AppHandle, new_player: PlayerInfo) -> SJMCLResult<()> {
     let config_binding = app.state::<Mutex<LauncherConfig>>();
     let mut config_state = config_binding.lock()?;
 
-    if new_player.player_type != PlayerType::Microsoft
-      && !config_state.basic_info.allow_full_login_feature
-    {
+    if !can_add_player(&new_player.player_type, &config_state) {
       return Err(AccountError::FullLoginUnavailable.into());
     }
 
@@ -121,6 +119,25 @@ pub fn update_player_by_id(app: &AppHandle, player_id: &str, info: PlayerInfo) -
   Ok(())
 }
 
+pub fn apply_login_availability(
+  config: &mut LauncherConfig,
+  allow_offline: bool,
+) -> SJMCLResult<()> {
+  config.basic_info.allow_third_party_login = true;
+  config.basic_info.allow_offline_login = allow_offline;
+  config.basic_info.allow_full_login_feature = allow_offline;
+  Ok(())
+}
+
+/// Offline login is still gated by the microsoft feature set, third-party login
+/// (authlib-injector servers) and microsoft login never are.
+pub fn can_add_player(player_type: &PlayerType, config: &LauncherConfig) -> bool {
+  match player_type {
+    PlayerType::Offline => config.basic_info.allow_offline_login,
+    _ => true,
+  }
+}
+
 pub async fn check_full_login_availability(app: &AppHandle) -> SJMCLResult<()> {
   let loc_flag = is_china_mainland_ip(app).await;
 
@@ -132,21 +149,15 @@ pub async fn check_full_login_availability(app: &AppHandle) -> SJMCLResult<()> {
 
   match loc_flag {
     Some(true) => {
-      // in China (mainland), full account feature (offline and 3rd-party login) is always available
-      config_state.partial_update(
-        app,
-        "basic_info.allow_full_login_feature",
-        &serde_json::to_string(&true)?,
-      )?;
+      // in China (mainland), offline and 3rd-party login are always available
+      apply_login_availability(&mut config_state, true)?;
     }
     _ => {
       // not in China (mainland) or cannot determine the IP
-      // check if any player has been added (not only microsoft type player, because user may delete it)
-      config_state.partial_update(
-        app,
-        "basic_info.allow_full_login_feature",
-        &serde_json::to_string(&!account_state.players.is_empty())?,
-      )?;
+      // offline login needs a microsoft account for skin/online services, so it
+      // follows "has any player" (not only microsoft type, users may delete it);
+      // third-party login never depends on the microsoft feature set.
+      apply_login_availability(&mut config_state, !account_state.players.is_empty())?;
     }
   }
 
@@ -222,5 +233,32 @@ pub async fn oauth_polling(
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+  }
+}
+
+#[cfg(test)]
+mod login_flag_tests {
+  use super::can_add_player;
+  use crate::account::models::PlayerType;
+  use crate::launcher_config::models::LauncherConfig;
+
+  fn config(offline: bool) -> LauncherConfig {
+    let mut config = LauncherConfig::default();
+    config.basic_info.allow_offline_login = offline;
+    config
+  }
+
+  #[test]
+  fn third_party_login_ignores_the_microsoft_feature_flag() {
+    let mut blocked = config(false);
+    blocked.basic_info.allow_full_login_feature = false;
+    assert!(can_add_player(&PlayerType::ThirdParty, &blocked));
+    assert!(can_add_player(&PlayerType::Microsoft, &blocked));
+  }
+
+  #[test]
+  fn offline_login_follows_its_own_flag() {
+    assert!(!can_add_player(&PlayerType::Offline, &config(false)));
+    assert!(can_add_player(&PlayerType::Offline, &config(true)));
   }
 }

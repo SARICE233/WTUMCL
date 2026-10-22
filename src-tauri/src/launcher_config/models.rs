@@ -271,8 +271,14 @@ structstruck::strike! {
       pub is_exe_path_available: bool,
       #[default = false]
       pub is_china_mainland_ip: bool,
+      // Deprecated compat mirror of allow_offline_login; kept so older builds
+      // and configs keep reading a sensible value.
       #[default = false]
       pub allow_full_login_feature: bool,
+      #[default = true]
+      pub allow_third_party_login: bool,
+      #[default = true]
+      pub allow_offline_login: bool,
       // Build metadata, sourced from compile-time constants injected by build.rs.
       // Filled by setup_with_app; not meant to be edited by the user.
       #[default(BuildType::Dev)]

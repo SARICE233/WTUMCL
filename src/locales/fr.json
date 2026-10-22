@@ -1131,8 +1131,8 @@
     "add": "Ajouter",
     "alert": {
       "noFullLogin": {
-        "title": "Fonction actuelle n'est pas disponible",
-        "description": "Veuillez utiliser cette fonction avant de vous connecter à votre compte microsoft."
+        "title": "Les comptes hors ligne nécessitent un compte Microsoft",
+        "description": "Connectez-vous une fois avec un compte Microsoft pour débloquer les comptes hors ligne."
       }
     },
     "browse": "Parcourir",
@@ -1738,6 +1738,18 @@
       "launch": "Lancer le jeu",
       "instanceSettings": "Configuration de l'instance"
     },
+    "downloadProgress": {
+      "title": "Téléchargement de ressources",
+      "groups": "{{count}} en cours"
+    },
+    "greeting": {
+      "morning": "Bonjour, {{name}}",
+      "afternoon": "Bon après-midi, {{name}}",
+      "evening": "Bonsoir, {{name}}",
+      "night": "Bonne nuit, {{name}}",
+      "friend": "aventurier",
+      "subtitle": "Prêt pour une nouvelle aventure ?"
+    },
     "guide": {
       "title": "Commencez en trois étapes",
       "subtitle": "Aucune instance de jeu. Suivez ces étapes pour commencer.",
@@ -1754,13 +1766,11 @@
         "desc": "Choisissez une instance et jouez"
       }
     },
-    "greeting": {
-      "morning": "Bonjour, {{name}}",
-      "afternoon": "Bon après-midi, {{name}}",
-      "evening": "Bonsoir, {{name}}",
-      "night": "Bonne nuit, {{name}}",
-      "friend": "aventurier",
-      "subtitle": "Prêt pour une nouvelle aventure ?"
+    "hitokoto": {
+      "title": "La phrase du jour",
+      "refresh": "Actualiser",
+      "loading": "Récupération…",
+      "empty": "hitokoto.cn est indisponible"
     },
     "news": {
       "title": "Actualités de la communauté WTUMC",
@@ -1775,6 +1785,10 @@
       "playtime": "Temps de jeu {{time}}",
       "launch": "Lancer le jeu",
       "details": "Détails de l'instance"
+    },
+    "weeklyPlaytime": {
+      "title": "Cette semaine",
+      "subtitle": "Temps de jeu des 7 derniers jours"
     },
     "SwitchButton": {
       "tooltip": {

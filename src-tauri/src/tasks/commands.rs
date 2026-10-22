@@ -110,6 +110,9 @@ pub fn resume_progressive_task(app: AppHandle, task_id: u32) -> SJMCLResult<()> 
   Ok(())
 }
 
+// Not registered in `generate_handler!` (the frontend has no restart entry
+// point yet); keep the command implementation intact instead of deleting it.
+#[allow(dead_code)]
 #[tauri::command]
 pub async fn restart_progressive_task(app: AppHandle, task_id: u32) -> SJMCLResult<()> {
   let monitor = app.state::<Pin<Box<TaskMonitor>>>();

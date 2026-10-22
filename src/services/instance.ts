@@ -12,6 +12,7 @@ import {
   SchematicInfo,
   ScreenshotInfo,
   ShaderPackInfo,
+  WeeklyPlayTime,
 } from "@/models/instance/misc";
 import { WorldDetails, WorldInfo } from "@/models/instance/world";
 import {
@@ -35,6 +36,15 @@ export class InstanceService {
     InvokeResponse<InstanceSummary[]>
   > {
     return await invoke("retrieve_instance_list");
+  }
+
+  /**
+   * RETRIEVE the per-day play time of the last seven days across all instances.
+   * @returns {Promise<InvokeResponse<WeeklyPlayTime>>}
+   */
+  @responseHandler("instance")
+  static async getWeeklyPlayTime(): Promise<InvokeResponse<WeeklyPlayTime>> {
+    return await invoke("get_weekly_play_time");
   }
 
   /**

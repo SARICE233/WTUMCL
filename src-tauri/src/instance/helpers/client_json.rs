@@ -5,7 +5,6 @@ use serde_with::formats::PreferMany;
 use serde_with::{OneOrMany, serde_as};
 use sjmcl_macros::serialize_skip_none;
 use sjmcl_types::error::{SJMCLError, SJMCLResult};
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::str::FromStr;
@@ -632,20 +631,23 @@ pub async fn replace_native_libraries(
   client_info: &mut McClientInfo,
   instance: &Instance,
 ) -> SJMCLResult<()> {
-  #[cfg(any(
+  // Keep the platform checks as runtime conditions instead of cfg-gating the
+  // early returns: the code below is only executed on aarch64 macOS, but on the
+  // other platforms the compiler must not report it as unreachable.
+  if cfg!(any(
     all(
       any(target_arch = "x86", target_arch = "x86_64"),
       any(target_os = "linux", target_os = "macos")
     ),
     target_os = "windows"
-  ))]
-  {
+  )) {
     return Ok(());
   }
 
-  #[cfg(all(target_arch = "aarch64", target_os = "macos"))]
-  {
+  if cfg!(all(target_arch = "aarch64", target_os = "macos")) {
     use crate::instance::helpers::game_version::compare_game_versions;
+    use std::cmp::Ordering;
+
     if compare_game_versions(app, instance.version.as_str(), "1.20.1", true).await
       == Ordering::Greater
     {

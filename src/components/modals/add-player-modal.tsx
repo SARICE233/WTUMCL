@@ -338,8 +338,8 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
               />
             </FormControl>
 
-            {playerType !== PlayerType.Microsoft &&
-              !config.basicInfo.allowFullLoginFeature && (
+            {playerType === PlayerType.Offline &&
+              !config.basicInfo.allowOfflineLogin && (
                 <Alert status="error" borderRadius="md">
                   <AlertIcon />
                   <VStack spacing={0} align="start">
@@ -357,7 +357,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
               <VStack w="100%" spacing={1}>
                 <FormControl
                   isRequired
-                  isDisabled={!config.basicInfo.allowFullLoginFeature}
+                  isDisabled={!config.basicInfo.allowOfflineLogin}
                   isInvalid={
                     !!playername.length && !isOfflinePlayernameValid(playername)
                   }
@@ -379,7 +379,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
                     {t("AddPlayerModal.offline.playerName.errorMessage")}
                   </FormErrorMessage>
                 </FormControl>
-                {config.basicInfo.allowFullLoginFeature && (
+                {config.basicInfo.allowOfflineLogin && (
                   <Section
                     isAccordion
                     initialIsOpen={false}
@@ -480,8 +480,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
                         </Text>
                       </HStack>
                     </FormControl>
-                    {config.basicInfo.allowFullLoginFeature &&
-                      authServer?.authUrl &&
+                    {authServer?.authUrl &&
                       (!showOAuth ? (
                         <>
                           <FormControl isRequired>
@@ -557,7 +556,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
           )}
 
           {playerType === PlayerType.ThirdParty &&
-            config.basicInfo.allowFullLoginFeature &&
+            config.basicInfo.allowThirdPartyLogin &&
             authServer?.features.openidConfigurationUrl &&
             (showOAuth ? (
               <HStack spacing={2}>
@@ -599,11 +598,11 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
                 isDisabled={
                   !playername ||
                   (playerType === PlayerType.Offline &&
-                    config.basicInfo.allowFullLoginFeature &&
+                    config.basicInfo.allowOfflineLogin &&
                     !isOfflinePlayernameValid(playername)) ||
                   (uuid && !isUuidValid(uuid)) ||
                   (playerType === PlayerType.ThirdParty &&
-                    config.basicInfo.allowFullLoginFeature &&
+                    config.basicInfo.allowThirdPartyLogin &&
                     authServerList.length > 0 &&
                     (!authServer || !password))
                 }

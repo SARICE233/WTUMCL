@@ -1131,8 +1131,8 @@
     "add": "Add",
     "alert": {
       "noFullLogin": {
-        "title": "This Feature is Not Available Currently",
-        "description": "Please log in with your Microsoft account before accessing this feature."
+        "title": "Offline accounts need a Microsoft account",
+        "description": "Sign in with a Microsoft account once to unlock offline accounts."
       }
     },
     "browse": "Browse",
@@ -1738,6 +1738,18 @@
       "launch": "Launch Game",
       "instanceSettings": "Instance Settings"
     },
+    "downloadProgress": {
+      "title": "Downloading resources",
+      "groups": "{{count}} in progress"
+    },
+    "greeting": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}",
+      "night": "Good night, {{name}}",
+      "friend": "adventurer",
+      "subtitle": "Ready for another adventure?"
+    },
     "guide": {
       "title": "Get started in three steps",
       "subtitle": "No game instance yet. Finish these steps to jump in.",
@@ -1754,13 +1766,11 @@
         "desc": "Pick an instance and start playing"
       }
     },
-    "greeting": {
-      "morning": "Good morning, {{name}}",
-      "afternoon": "Good afternoon, {{name}}",
-      "evening": "Good evening, {{name}}",
-      "night": "Good night, {{name}}",
-      "friend": "adventurer",
-      "subtitle": "Ready for another adventure?"
+    "hitokoto": {
+      "title": "A word a day",
+      "refresh": "Refresh",
+      "loading": "Fetching…",
+      "empty": "hitokoto.cn is unavailable"
     },
     "news": {
       "title": "WTUMC community news",
@@ -1775,6 +1785,10 @@
       "playtime": "Playtime {{time}}",
       "launch": "Launch game",
       "details": "Instance details"
+    },
+    "weeklyPlaytime": {
+      "title": "This week",
+      "subtitle": "Play time in the last 7 days"
     },
     "SwitchButton": {
       "tooltip": {

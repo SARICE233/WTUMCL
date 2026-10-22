@@ -202,15 +202,23 @@ pub struct DownloadTask {
   p_handle: PTaskHandle,
   param: DownloadParam,
   dest_path: PathBuf,
+  // Kept so the existing constructors keep their signature; the reporter
+  // currently uses a fixed interval instead of this value.
+  #[allow(dead_code)]
   report_interval: Duration,
 }
 
 /// Reads only the progress report interval from the launcher config instead of
 /// cloning the whole config for every scheduled download task.
 fn download_cache_dir(app_handle: &AppHandle) -> PathBuf {
-  let config = app_handle.state::<Mutex<LauncherConfig>>();
-  let cache_dir = config.lock().unwrap().download.cache.directory.clone();
-  cache_dir
+  app_handle
+    .state::<Mutex<LauncherConfig>>()
+    .lock()
+    .unwrap()
+    .download
+    .cache
+    .directory
+    .clone()
 }
 
 /// Copies everything from the reader to the writer through a fixed
@@ -409,7 +417,7 @@ impl DownloadTask {
           task_handle.set_total(total_progress);
           task_handle.mark_started();
         }
-        let mut reader = stream.into_async_read();
+        let reader = stream.into_async_read();
         if let Some(lim) = limiter {
           let mut limited = lim.limit(reader).compat();
           copy_to_file(&mut limited, &mut file).await?;

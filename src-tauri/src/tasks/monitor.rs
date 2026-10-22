@@ -369,6 +369,9 @@ impl TaskMonitor {
     }
   }
 
+  // Used only by `tasks::commands::restart_progressive_task`, which is not
+  // registered in `generate_handler!` yet; keep the resume machinery intact.
+  #[allow(dead_code)]
   pub async fn restart_progress(&self, id: u32) {
     let handle = self.phs.write().unwrap().remove(&id);
     if let Some(handle) = handle {

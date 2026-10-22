@@ -52,9 +52,9 @@ use crate::instance::helpers::server::{
 };
 use crate::instance::helpers::world::{load_world_data_from_dir, load_world_info_from_dir};
 use crate::instance::models::misc::{
-  Instance, InstanceError, InstanceSubdirType, InstanceSummary, LocalModInfo, ModLoader,
-  ModLoaderStatus, ModLoaderType, ModpackFileList, OptiFine, ResourcePackInfo, SchematicInfo,
-  ScreenshotInfo, ShaderPackInfo,
+  DailyPlayTime, Instance, InstanceError, InstanceSubdirType, InstanceSummary, LocalModInfo,
+  ModLoader, ModLoaderStatus, ModLoaderType, ModpackFileList, OptiFine, ResourcePackInfo,
+  SchematicInfo, ScreenshotInfo, ShaderPackInfo,
 };
 use crate::instance::models::world::{WorldDetails, WorldInfo};
 use crate::launch::helpers::file_validator::{get_invalid_assets, get_invalid_library_files};
@@ -1101,6 +1101,7 @@ pub async fn create_instance(
     icon_src,
     starred: false,
     play_time: 0,
+    daily_play_time: Vec::new(),
     use_spec_game_config: false,
     spec_game_config: None,
     modpack_version: modpack_version.clone(),
@@ -1757,4 +1758,120 @@ pub async fn export_modpack(
     .map_err(|_| InstanceError::ZipFileProcessFailed)?;
 
   Ok(())
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeeklyPlayTimeDay {
+  pub date: String,
+  pub seconds: u128,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeeklyPlayTime {
+  pub days: Vec<WeeklyPlayTimeDay>,
+  pub week_seconds: u128,
+  pub today_seconds: u128,
+}
+
+const WEEKLY_PLAY_TIME_DAYS: usize = 7;
+
+fn aggregate_play_time(buckets: &[&[DailyPlayTime]], today: chrono::NaiveDate) -> WeeklyPlayTime {
+  let mut seconds_by_date: HashMap<String, u128> = HashMap::new();
+  for bucket in buckets.iter().flat_map(|list| list.iter()) {
+    let entry = seconds_by_date.entry(bucket.date.clone()).or_default();
+    *entry = entry.saturating_add(bucket.seconds);
+  }
+
+  let mut days = Vec::with_capacity(WEEKLY_PLAY_TIME_DAYS);
+  let mut week_seconds = 0_u128;
+  for offset in (0..WEEKLY_PLAY_TIME_DAYS).rev() {
+    let date = (today - chrono::Duration::days(offset as i64))
+      .format("%Y-%m-%d")
+      .to_string();
+    let seconds = seconds_by_date.get(&date).copied().unwrap_or(0);
+    week_seconds = week_seconds.saturating_add(seconds);
+    days.push(WeeklyPlayTimeDay { date, seconds });
+  }
+  let today_seconds = days.last().map(|day| day.seconds).unwrap_or(0);
+
+  WeeklyPlayTime {
+    days,
+    week_seconds,
+    today_seconds,
+  }
+}
+
+#[tauri::command]
+pub async fn get_weekly_play_time(app: AppHandle) -> SJMCLResult<WeeklyPlayTime> {
+  let summaries = retrieve_instance_list(app).await?;
+
+  let mut buckets = Vec::with_capacity(summaries.len());
+  for summary in summaries {
+    let instance = Instance {
+      version_path: summary.version_path,
+      ..Default::default()
+    }
+    .load_json_cfg()
+    .await
+    .unwrap_or_default();
+    buckets.push(instance.daily_play_time);
+  }
+
+  let bucket_slices = buckets
+    .iter()
+    .map(|bucket| bucket.as_slice())
+    .collect::<Vec<_>>();
+  Ok(aggregate_play_time(
+    &bucket_slices,
+    chrono::Local::now().date_naive(),
+  ))
+}
+
+#[cfg(test)]
+mod weekly_play_time_tests {
+  use super::{DailyPlayTime, aggregate_play_time};
+
+  fn bucket(date: &str, seconds: u128) -> DailyPlayTime {
+    DailyPlayTime {
+      date: date.to_string(),
+      seconds,
+    }
+  }
+
+  fn today() -> chrono::NaiveDate {
+    chrono::NaiveDate::from_ymd_opt(2026, 10, 22).unwrap()
+  }
+
+  #[test]
+  fn aggregates_window_and_sums_across_instances() {
+    let first = vec![
+      bucket("2026-10-22", 100),
+      bucket("2026-10-20", 50),
+      bucket("2026-10-15", 999),
+      bucket("2026-09-01", 7),
+    ];
+    let second = vec![bucket("2026-10-22", 200)];
+
+    let result = aggregate_play_time(&[first.as_slice(), second.as_slice()], today());
+
+    assert_eq!(result.days.len(), 7);
+    assert_eq!(result.days.first().unwrap().date, "2026-10-16");
+    assert_eq!(result.days.last().unwrap().date, "2026-10-22");
+    assert_eq!(result.today_seconds, 300);
+    assert_eq!(result.week_seconds, 350);
+    // the 8th day back falls out of the window
+    assert!(result.days.iter().all(|day| day.date != "2026-10-15"));
+  }
+
+  #[test]
+  fn missing_data_yields_zero_filled_days() {
+    let result = aggregate_play_time(&[], today());
+
+    assert_eq!(result.days.len(), 7);
+    assert_eq!(result.week_seconds, 0);
+    assert_eq!(result.today_seconds, 0);
+    assert!(result.days.iter().all(|day| day.seconds == 0));
+  }
 }

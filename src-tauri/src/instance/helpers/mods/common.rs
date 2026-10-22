@@ -77,6 +77,9 @@ pub fn compress_icon(wrapper: ImageWrapper) -> ImageWrapper {
   }
 }
 
+// `async_trait` expands the async methods into `#[must_use]` boxed futures;
+// clippy's double_must_use has no actionable fix in the trait source.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait LocalModMetadataParser {
   type Metadata;

@@ -10,7 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LuChevronLeft, LuChevronRight, LuNewspaper } from "react-icons/lu";
 import AdvancedCard from "@/components/common/advanced-card";
@@ -25,6 +25,8 @@ import { formatRelativeTime } from "@/utils/datetime";
 import { cleanHtmlText } from "@/utils/string";
 
 const MAX_NEWS_POSTS = 5;
+// The feed shows a single card at a time and advances on this cadence.
+const NEWS_ROTATE_INTERVAL_MS = 5000;
 
 const NewsCard = ({ post }: { post: NewsPostSummary }) => {
   const { t } = useTranslation();
@@ -35,9 +37,8 @@ const NewsCard = ({ post }: { post: NewsPostSummary }) => {
   return (
     <AdvancedCard
       data-news-card=""
-      className={homeStyles.newsCard}
-      w="13.5rem"
-      flexShrink={0}
+      w="100%"
+      minW={0}
       p={0}
       overflow="hidden"
       cursor="pointer"
@@ -112,6 +113,16 @@ const NewsCard = ({ post }: { post: NewsPostSummary }) => {
   );
 };
 
+// Reserved, empty placeholders that keep the row three columns wide. They are
+// purely decorative: no copy, no image, no icon, and nothing focusable.
+const NewsSlot = () => (
+  <Box
+    data-launch="news-slot"
+    aria-hidden="true"
+    className={homeStyles.newsSlot}
+  />
+);
+
 const CommunityNewsFeed = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -119,9 +130,10 @@ const CommunityNewsFeed = () => {
 
   const [posts, setPosts] = useState<NewsPostSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const rowRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPointerInside, setIsPointerInside] = useState(false);
+  const [isFocusWithin, setIsFocusWithin] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
@@ -152,33 +164,34 @@ const CommunityNewsFeed = () => {
     fetchPosts();
   }, [fetchPosts]);
 
-  const updateScrollState = useCallback(() => {
-    const row = rowRef.current;
-    if (!row) return;
-    setCanScrollLeft(row.scrollLeft > 4);
-    setCanScrollRight(row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
+  // Follow the OS motion preference live, so turning it on stops the rotation
+  // without a reload and turning it off starts it again.
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncPreference = () => setPrefersReducedMotion(media.matches);
+    syncPreference();
+    media.addEventListener("change", syncPreference);
+    return () => media.removeEventListener("change", syncPreference);
   }, []);
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(updateScrollState);
-    return () => window.cancelAnimationFrame(frame);
-  }, [posts, isLoading, updateScrollState]);
+  const postCount = posts.length;
+  const currentIndex = postCount > 0 ? activeIndex % postCount : 0;
+  const post = posts[currentIndex];
+  const isPaused = isPointerInside || isFocusWithin;
 
+  // Advance only while nobody is interacting with the section; hovering,
+  // keyboard focus and the reduced-motion preference all hold the card still.
   useEffect(() => {
-    const row = rowRef.current;
-    if (!row) return;
-    const observer = new ResizeObserver(updateScrollState);
-    observer.observe(row);
-    return () => observer.disconnect();
-  }, [updateScrollState]);
+    if (prefersReducedMotion || isPaused || postCount <= 1) return;
+    const timer = window.setInterval(() => {
+      setActiveIndex((index) => (index + 1) % postCount);
+    }, NEWS_ROTATE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [isPaused, postCount, prefersReducedMotion]);
 
-  const scrollByPage = (direction: -1 | 1) => {
-    const row = rowRef.current;
-    if (!row) return;
-    row.scrollBy({
-      left: direction * Math.max(216, row.clientWidth * 0.8),
-      behavior: "smooth",
-    });
+  const showRelative = (direction: -1 | 1) => {
+    if (postCount <= 1) return;
+    setActiveIndex((index) => (index + direction + postCount) % postCount);
   };
 
   return (
@@ -193,8 +206,8 @@ const CommunityNewsFeed = () => {
             size="xs"
             fontSize="sm"
             h={21}
-            isDisabled={!canScrollLeft}
-            onClick={() => scrollByPage(-1)}
+            isDisabled={postCount <= 1}
+            onClick={() => showRelative(-1)}
           />
           <CommonIconButton
             icon={LuChevronRight}
@@ -202,8 +215,8 @@ const CommunityNewsFeed = () => {
             size="xs"
             fontSize="sm"
             h={21}
-            isDisabled={!canScrollRight}
-            onClick={() => scrollByPage(1)}
+            isDisabled={postCount <= 1}
+            onClick={() => showRelative(1)}
           />
           <CommonIconButton
             icon="more"
@@ -215,27 +228,30 @@ const CommunityNewsFeed = () => {
           />
         </HStack>
       }
+      onMouseEnter={() => setIsPointerInside(true)}
+      onMouseLeave={() => setIsPointerInside(false)}
+      onFocusCapture={() => setIsFocusWithin(true)}
+      onBlurCapture={(event) => {
+        const nextTarget = event.relatedTarget as Node | null;
+        if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+          setIsFocusWithin(false);
+        }
+      }}
     >
       {isLoading ? (
-        <HStack spacing={3} overflow="hidden">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <AdvancedCard
-              key={index}
-              w="13.5rem"
-              flexShrink={0}
-              p={0}
-              overflow="hidden"
-            >
-              <Skeleton h="4.75rem" w="100%" />
-              <VStack align="stretch" spacing={2} p={2.5}>
-                <Skeleton h={3} w="70%" />
-                <Skeleton h={3} w="100%" />
-                <Skeleton h={3} w="80%" />
-              </VStack>
-            </AdvancedCard>
-          ))}
-        </HStack>
-      ) : posts.length === 0 ? (
+        <Box className={homeStyles.newsGrid}>
+          <AdvancedCard w="100%" minW={0} p={0} overflow="hidden">
+            <Skeleton h="4.75rem" w="100%" />
+            <VStack align="stretch" spacing={2} p={2.5}>
+              <Skeleton h={3} w="70%" />
+              <Skeleton h={3} w="100%" />
+              <Skeleton h={3} w="80%" />
+            </VStack>
+          </AdvancedCard>
+          <NewsSlot />
+          <NewsSlot />
+        </Box>
+      ) : !post ? (
         <Empty
           size="sm"
           withIcon={false}
@@ -243,15 +259,10 @@ const CommunityNewsFeed = () => {
           py={3}
         />
       ) : (
-        <Box
-          ref={rowRef}
-          data-news-row=""
-          className={homeStyles.newsRow}
-          onScroll={updateScrollState}
-        >
-          {posts.map((post) => (
-            <NewsCard key={post.link} post={post} />
-          ))}
+        <Box className={homeStyles.newsGrid}>
+          <NewsCard key={post.link} post={post} />
+          <NewsSlot />
+          <NewsSlot />
         </Box>
       )}
     </Section>

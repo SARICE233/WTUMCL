@@ -89,4 +89,7 @@ package-lock.json
 
 # design tool caches
 design/**/__pycache__/
+.local/
+.mirror-probe/
+bugimg/
 *.pyc

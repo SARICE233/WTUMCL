@@ -278,3 +278,11 @@ git config user.email "你的邮箱"
 
 - Rust 与 crates 走 rsproxy 镜像（见 7.2）
 - GitHub SSH 22 端口被本网络拒绝，`origin` 使用 HTTPS + `gh auth setup-git` 复用 gh 凭据
+
+## 11. 微软 OAuth 客户端 ID
+
+- 本项目自有 Azure 应用注册尚在申请中，暂用 **PCL2-CE** 的内置公共客户端 ID
+  （`c14b0370-8d75-42f8-b329-5b60d39e319f`，取自其 v2.15.1 发布二进制并以
+  consumers device-code 端点复核，见 `.owv/n3-client-id-check.md`；注意不是
+  PCL2 正式版的 id）。
+- 构建期可用 `MS_CLIENT_ID` 环境变量覆盖，自有 ID 批下后直接替换常量并去掉该兜底。

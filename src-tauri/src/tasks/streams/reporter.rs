@@ -46,6 +46,8 @@ where
     self.total = total;
   }
 
+  // Reserved for resuming tasks from a persisted descriptor; no caller yet.
+  #[allow(dead_code)]
   pub fn from_desc_interval<T: Clone + Serialize + for<'de> Deserialize<'de>>(
     desc: &PDesc<T>,
     interval: &Duration,
@@ -116,8 +118,11 @@ where
   }
 }
 
+// Reserved Tauri-event sink scaffolding; not wired up yet.
+#[allow(dead_code)]
 pub struct EventPayload {}
 
+#[allow(dead_code)]
 pub struct EventReporter {
   app: AppHandle,
   task_id: u32,

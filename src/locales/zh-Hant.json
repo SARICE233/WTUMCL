@@ -1131,8 +1131,8 @@
     "add": "新增",
     "alert": {
       "noFullLogin": {
-        "title": "目前功能暫不可用",
-        "description": "請先登入微軟帳戶後使用此功能。"
+        "title": "離線帳號需先登入微軟帳戶",
+        "description": "先登入過一次微軟帳戶，之後才能加入離線帳號。"
       }
     },
     "browse": "瀏覽",
@@ -1738,6 +1738,18 @@
       "launch": "啟動遊戲",
       "instanceSettings": "實例設定"
     },
+    "downloadProgress": {
+      "title": "資源下載中",
+      "groups": "{{count}} 個任務進行中"
+    },
+    "greeting": {
+      "morning": "早安，{{name}}",
+      "afternoon": "午安，{{name}}",
+      "evening": "晚安，{{name}}",
+      "night": "夜深了，{{name}}",
+      "friend": "冒險家",
+      "subtitle": "準備好展開新的冒險了嗎？"
+    },
     "guide": {
       "title": "三步開始遊戲",
       "subtitle": "還沒有遊戲實例，按下面的步驟快速開始。",
@@ -1754,13 +1766,11 @@
         "desc": "選擇實例，開始新的冒險"
       }
     },
-    "greeting": {
-      "morning": "早安，{{name}}",
-      "afternoon": "午安，{{name}}",
-      "evening": "晚安，{{name}}",
-      "night": "夜深了，{{name}}",
-      "friend": "冒險家",
-      "subtitle": "準備好展開新的冒險了嗎？"
+    "hitokoto": {
+      "title": "每日一言",
+      "refresh": "換一句",
+      "loading": "正在取得…",
+      "empty": "一言服務暫時無法使用"
     },
     "news": {
       "title": "WTUMC 社群新聞",
@@ -1775,6 +1785,10 @@
       "playtime": "已遊玩 {{time}}",
       "launch": "啟動遊戲",
       "details": "實例詳情"
+    },
+    "weeklyPlaytime": {
+      "title": "本週遊玩",
+      "subtitle": "最近 7 天的遊玩時長"
     },
     "SwitchButton": {
       "tooltip": {

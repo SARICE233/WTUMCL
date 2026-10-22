@@ -527,7 +527,11 @@ pub fn create_zip_from_dirs(paths: Vec<PathBuf>, zip_file_path: PathBuf) -> SJMC
 #[derive(Debug)]
 pub enum PermissionOperation {
   Upgrade,
+  // Only constructed by the Unix implementation of `manage_permissions_unix`,
+  // which is cfg-gated out on Windows; both variants stay public API.
+  #[allow(dead_code)]
   Downgrade,
+  #[allow(dead_code)]
   Exact,
 }
 
@@ -557,8 +561,10 @@ where
 {
   #[cfg(target_os = "windows")]
   {
-    // On Windows, simply return Ok(()) since no changes are made
-    return Ok(());
+    // On Windows, no permission changes are made. Reference the parameters so
+    // the cfg-only stub does not warn about unused variables; the final Ok(())
+    // below remains reachable for the compiler.
+    let _ = (path, perm_mask, operation);
   }
 
   #[cfg(any(target_os = "linux", target_os = "macos"))]
