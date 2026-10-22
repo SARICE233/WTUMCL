@@ -291,6 +291,11 @@ const EditGameDirectoryModal: React.FC<EditGameDirectoryModalProps> = ({
   return (
     <Modal
       size={{ base: "md", lg: "lg", xl: "xl" }}
+      // Keep the modal vertically centered so that validation messages appearing
+      // under the name field grow the body symmetrically; with the default
+      // top-aligned layout the content shifts downward and clicks land off
+      // target after pressing "Browse" (issue #1980).
+      isCentered
       initialFocusRef={initialRef}
       returnFocusOnClose={false}
       {...modalProps}

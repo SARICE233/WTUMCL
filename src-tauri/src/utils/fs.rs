@@ -425,6 +425,11 @@ Terminal=false
 }
 
 pub fn validate_sha1(dest_path: PathBuf, truth: String) -> SJMCLResult<()> {
+  // An empty or whitespace-only sha1 means "not provided": skip comparison instead
+  // of failing against an impossible expected hash (issue #1938).
+  if truth.trim().is_empty() {
+    return Ok(());
+  }
   let mut f = std::fs::File::options()
     .read(true)
     .create(false)
@@ -626,5 +631,50 @@ impl Drop for RemoveDirGuard {
     {
       let _ = fs::remove_dir_all(path);
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn temp_file_with(content: &[u8]) -> PathBuf {
+    let path = std::env::temp_dir().join(format!("sjmcl-fs-test-{}", uuid::Uuid::new_v4()));
+    std::fs::write(&path, content).unwrap();
+    path
+  }
+
+  #[test]
+  fn validate_sha1_skips_empty_truth() {
+    let path = temp_file_with(b"hello");
+    assert!(validate_sha1(path.clone(), String::new()).is_ok());
+    assert!(validate_sha1(path.clone(), "   ".to_string()).is_ok());
+    let _ = std::fs::remove_file(path);
+  }
+
+  #[test]
+  fn validate_sha1_matches_correct_hash() {
+    let path = temp_file_with(b"hello");
+    assert!(
+      validate_sha1(
+        path.clone(),
+        "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d".to_string()
+      )
+      .is_ok()
+    );
+    let _ = std::fs::remove_file(path);
+  }
+
+  #[test]
+  fn validate_sha1_rejects_wrong_hash() {
+    let path = temp_file_with(b"hello");
+    assert!(
+      validate_sha1(
+        path.clone(),
+        "0000000000000000000000000000000000000000".to_string()
+      )
+      .is_err()
+    );
+    let _ = std::fs::remove_file(path);
   }
 }

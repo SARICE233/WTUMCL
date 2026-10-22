@@ -19,7 +19,7 @@ export class LaunchService {
   @responseHandler("launch")
   static async selectSuitableJRE(
     instanceId: string
-  ): Promise<InvokeResponse<void>> {
+  ): Promise<InvokeResponse<number>> {
     return await invoke("select_suitable_jre", { instanceId });
   }
 
@@ -28,8 +28,10 @@ export class LaunchService {
    * @returns {Promise<InvokeResponse<void>>}
    */
   @responseHandler("launch")
-  static async validateGameFiles(): Promise<InvokeResponse<void>> {
-    return await invoke("validate_game_files");
+  static async validateGameFiles(
+    launchingId: number
+  ): Promise<InvokeResponse<void>> {
+    return await invoke("validate_game_files", { launchingId });
   }
 
   /**
@@ -38,8 +40,10 @@ export class LaunchService {
    * @returns {Promise<InvokeResponse<boolean>>} false if the access token is expired.
    */
   @responseHandler("launch")
-  static async validateSelectedPlayer(): Promise<InvokeResponse<boolean>> {
-    return await invoke("validate_selected_player");
+  static async validateSelectedPlayer(
+    launchingId: number
+  ): Promise<InvokeResponse<boolean>> {
+    return await invoke("validate_selected_player", { launchingId });
   }
 
   /**
@@ -50,10 +54,12 @@ export class LaunchService {
    */
   @responseHandler("launch")
   static async launchGame(
+    launchingId: number,
     quickPlaySingleplayer?: string,
     quickPlayMultiplayer?: string
   ): Promise<InvokeResponse<void>> {
     return await invoke("launch_game", {
+      launchingId,
       quickPlaySingleplayer,
       quickPlayMultiplayer,
     });
@@ -64,8 +70,10 @@ export class LaunchService {
    * @returns {Promise<InvokeResponse<void>>}
    */
   @responseHandler("launch")
-  static async cancelLaunchProcess(): Promise<InvokeResponse<void>> {
-    return await invoke("cancel_launch_process");
+  static async cancelLaunchProcess(
+    launchingId: number
+  ): Promise<InvokeResponse<void>> {
+    return await invoke("cancel_launch_process", { launchingId });
   }
 
   /**

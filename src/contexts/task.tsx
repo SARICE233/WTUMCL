@@ -64,8 +64,15 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({
   const [tasks, setTasks] = useState<TaskGroupDesc[]>([]);
   const [generalPercent, setGeneralPercent] = useState<number>();
   const { t } = useTranslation();
-  const modLoaderLoadingToastRef = React.useRef<ToastId | null>(null);
-  const optifineLoadingToastRef = React.useRef<ToastId | null>(null);
+  // Toast ids keyed by instanceId: a global single-toast ref would swallow the
+  // completion of a second instance's loader install while the first one is
+  // still running (issue #1934).
+  const modLoaderLoadingToastMapRef = React.useRef<Map<string, ToastId>>(
+    new Map()
+  );
+  const optifineLoadingToastMapRef = React.useRef<Map<string, ToastId>>(
+    new Map()
+  );
 
   const updateGroupInfo = useCallback((group: TaskGroupDesc) => {
     if (group.status === GTaskEventStatusEnums.Completed) {
@@ -470,21 +477,27 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({
                   let instanceName = getInstanceList()?.find(
                     (i) => i.id === instanceId
                   )?.name;
-                  if (modLoaderLoadingToastRef.current) return newTasks;
-                  modLoaderLoadingToastRef.current = toast({
-                    title: t(
-                      "Services.instance.finishModLoaderInstall.loading",
-                      {
-                        instanceName,
-                      }
-                    ),
-                    status: "loading",
-                  });
+                  if (modLoaderLoadingToastMapRef.current.has(instanceId))
+                    return newTasks;
+                  modLoaderLoadingToastMapRef.current.set(
+                    instanceId,
+                    toast({
+                      title: t(
+                        "Services.instance.finishModLoaderInstall.loading",
+                        {
+                          instanceName,
+                        }
+                      ),
+                      status: "loading",
+                    })
+                  );
                   InstanceService.finishModLoaderInstall(instanceId).then(
                     (response) => {
-                      if (modLoaderLoadingToastRef.current) {
-                        closeToast(modLoaderLoadingToastRef.current);
-                        modLoaderLoadingToastRef.current = null;
+                      const toastId =
+                        modLoaderLoadingToastMapRef.current.get(instanceId);
+                      if (toastId !== undefined) {
+                        closeToast(toastId);
+                        modLoaderLoadingToastMapRef.current.delete(instanceId);
                       }
                       if (response.status === "success") {
                         getInstanceList(true);
@@ -509,21 +522,27 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({
                   let instanceName = getInstanceList()?.find(
                     (i) => i.id === instanceId
                   )?.name;
-                  if (optifineLoadingToastRef.current) return newTasks;
-                  optifineLoadingToastRef.current = toast({
-                    title: t(
-                      "Services.instance.finishOptiFineLoaderInstall.loading",
-                      {
-                        instanceName,
-                      }
-                    ),
-                    status: "loading",
-                  });
+                  if (optifineLoadingToastMapRef.current.has(instanceId))
+                    return newTasks;
+                  optifineLoadingToastMapRef.current.set(
+                    instanceId,
+                    toast({
+                      title: t(
+                        "Services.instance.finishOptiFineLoaderInstall.loading",
+                        {
+                          instanceName,
+                        }
+                      ),
+                      status: "loading",
+                    })
+                  );
                   InstanceService.finishOptiFineLoaderInstall(instanceId).then(
                     (response) => {
-                      if (optifineLoadingToastRef.current) {
-                        closeToast(optifineLoadingToastRef.current);
-                        optifineLoadingToastRef.current = null;
+                      const toastId =
+                        optifineLoadingToastMapRef.current.get(instanceId);
+                      if (toastId !== undefined) {
+                        closeToast(toastId);
+                        optifineLoadingToastMapRef.current.delete(instanceId);
                       }
                       if (response.status === "success") {
                         getInstanceList(true);

@@ -19,7 +19,7 @@ import {
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { appDataDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useCallback, useEffect, useState } from "react";
+import { UIEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LuPlus, LuTrash } from "react-icons/lu";
 import { ChakraColorSelectPopover } from "@/components/chakra-color-selector";
@@ -58,7 +58,12 @@ const AppearanceSettingsPage = () => {
     const handleRetrieveFontList = async () => {
       const res = await UtilsService.retrieveFontList();
       if (res.status === "success") {
-        setFonts(["%built-in", ...res.data]);
+        // Keep a stable, user-friendly order regardless of the OS enumeration
+        // order (issue #1734); "%built-in" always stays first.
+        const sorted = [...res.data].sort((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: "base", numeric: true })
+        );
+        setFonts(["%built-in", ...sorted]);
       }
     };
     handleRetrieveFontList();
@@ -196,6 +201,8 @@ const AppearanceSettingsPage = () => {
       : font;
   };
 
+  const FONT_MENU_PAGE_SIZE = 60;
+
   const FontFamilyMenu = ({
     value,
     onChange,
@@ -203,9 +210,35 @@ const AppearanceSettingsPage = () => {
     value: string;
     onChange: (v: string) => void;
   }) => {
+    // Mount only a page of fonts at a time and append more on scroll. Rendering
+    // every installed font at once froze the appearance page on systems with
+    // thousands of fonts installed (issue #1272).
+    const [visibleCount, setVisibleCount] = useState<number>(
+      FONT_MENU_PAGE_SIZE
+    );
+
+    const visibleFonts = useMemo(
+      () => fonts.slice(0, visibleCount),
+      [fonts, visibleCount]
+    );
+
+    const handleMenuScroll = useCallback(
+      (event: UIEvent<HTMLDivElement>) => {
+        const target = event.currentTarget;
+        if (
+          visibleCount < fonts.length &&
+          target.scrollTop + target.clientHeight >=
+            target.scrollHeight - FONT_MENU_PAGE_SIZE
+        ) {
+          setVisibleCount((count) => count + FONT_MENU_PAGE_SIZE);
+        }
+      },
+      [fonts.length, visibleCount]
+    );
+
     return (
       <MenuSelector
-        options={fonts.map((font) => ({
+        options={visibleFonts.map((font) => ({
           value: font,
           label: (
             <Text
@@ -220,7 +253,12 @@ const AppearanceSettingsPage = () => {
         onSelect={(v) => onChange(v as string)}
         placeholder={buildFontName(value)}
         isLazy
-        menuListProps={{ maxH: "40vh", overflowY: "auto" }}
+        onClose={() => setVisibleCount(FONT_MENU_PAGE_SIZE)}
+        menuListProps={{
+          maxH: "40vh",
+          overflowY: "auto",
+          onScroll: handleMenuScroll,
+        }}
       />
     );
   };

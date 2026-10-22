@@ -56,7 +56,7 @@ pub async fn select_suitable_jre(
   instance_id: String,
   instances_state: State<'_, Mutex<HashMap<String, Instance>>>,
   launching_queue_state: State<'_, Mutex<Vec<LaunchingState>>>,
-) -> SJMCLResult<()> {
+) -> SJMCLResult<u64> {
   let instance = instances_state
     .lock()?
     .get(&instance_id)
@@ -93,7 +93,7 @@ pub async fn select_suitable_jre(
     ..LaunchingState::default()
   });
 
-  Ok(())
+  Ok(timestamp)
 }
 
 // Step 2: extract native libraries, validate game and dependency files, and prepare legacy game assets (if needed).
@@ -102,11 +102,13 @@ pub async fn validate_game_files(
   app: AppHandle,
   launcher_config_state: State<'_, Mutex<LauncherConfig>>,
   launching_queue_state: State<'_, Mutex<Vec<LaunchingState>>>,
+  launching_id: u64,
 ) -> SJMCLResult<()> {
   let (instance, mut client_info, game_config) = {
     let mut launching_queue = launching_queue_state.lock()?;
     let launching = launching_queue
-      .last_mut()
+      .iter_mut()
+      .find(|s| s.id == launching_id)
       .ok_or(LaunchError::LaunchingStateNotFound)?;
     launching.current_step = 2;
     (
@@ -128,7 +130,8 @@ pub async fn validate_game_files(
   {
     let mut launching_queue = launching_queue_state.lock()?;
     let launching = launching_queue
-      .last_mut()
+      .iter_mut()
+      .find(|s| s.id == launching_id)
       .ok_or(LaunchError::LaunchingStateNotFound)?;
 
     launching.client_info = client_info.clone();
@@ -220,6 +223,7 @@ pub async fn validate_selected_player(
   app: AppHandle,
   launching_queue_state: State<'_, Mutex<Vec<LaunchingState>>>,
   local_ygg_server_state: State<'_, Mutex<YggdrasilServer>>,
+  launching_id: u64,
 ) -> SJMCLResult<bool> {
   let mut player = get_selected_player_info(&app)?;
 
@@ -258,7 +262,8 @@ pub async fn validate_selected_player(
   {
     let mut launching_queue = launching_queue_state.lock()?;
     let launching = launching_queue
-      .last_mut()
+      .iter_mut()
+      .find(|s| s.id == launching_id)
       .ok_or(LaunchError::LaunchingStateNotFound)?;
     launching.current_step = 3;
     launching.selected_player = Some(player.clone());
@@ -278,11 +283,13 @@ pub async fn launch_game(
   launching_queue_state: State<'_, Mutex<Vec<LaunchingState>>>,
   quick_play_singleplayer: Option<String>,
   quick_play_multiplayer: Option<String>,
+  launching_id: u64,
 ) -> SJMCLResult<()> {
   let (id, selected_java, game_config, instance) = {
     let mut launching_queue = launching_queue_state.lock()?;
     let launching = launching_queue
-      .last_mut()
+      .iter_mut()
+      .find(|s| s.id == launching_id)
       .ok_or(LaunchError::LaunchingStateNotFound)?;
     launching.current_step = 4;
     (
@@ -365,7 +372,8 @@ pub async fn launch_game(
   {
     let mut launching_queue = launching_queue_state.lock()?;
     let launching = launching_queue
-      .last_mut()
+      .iter_mut()
+      .find(|s| s.id == launching_id)
       .ok_or(LaunchError::LaunchingStateNotFound)?;
     launching.pid = pid;
     launching.full_command = full_cmd;
@@ -406,11 +414,14 @@ pub async fn launch_game(
 #[tauri::command]
 pub fn cancel_launch_process(
   launching_queue_state: State<'_, Mutex<Vec<LaunchingState>>>,
+  launching_id: u64,
 ) -> SJMCLResult<()> {
   let mut launching_queue = launching_queue_state.lock()?;
 
-  // kill process if pid exists
-  if let Some(launching) = launching_queue.last_mut()
+  // Only touch the launch identified by launching_id. Keying by the queue tail
+  // could kill a different, already-running game when a second launch is
+  // cancelled before it enqueues (issue #1933).
+  if let Some(launching) = launching_queue.iter_mut().find(|s| s.id == launching_id)
     && launching.pid != 0
   {
     launching.current_step = 0; // mark as manually cancelled to avoid game error window popping up

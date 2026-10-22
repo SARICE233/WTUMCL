@@ -68,6 +68,9 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
 
   const [pickedInstance, setPickedInstance] = useState<InstanceSummary>();
   const [pickedPlayer, setPickedPlayer] = useState<Player>();
+  // Identifies the launch this modal owns, so cancel can never target another
+  // running game (issue #1933).
+  const launchingIdRef = useRef<number>(0);
   const [errorPaused, setErrorPaused] = useState<boolean>(false);
   const [errorDesc, setErrorDesc] = useState<string>("");
   const [activeStep, setActiveStep] = useState<number>(-1);
@@ -123,7 +126,7 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
   }, [playerId]);
 
   const handleCloseModalWithCancel = useCallback(() => {
-    LaunchService.cancelLaunchProcess();
+    LaunchService.cancelLaunchProcess(launchingIdRef.current);
     setErrorPaused(false);
     onSelectPlayerModalClose();
     onSelectInstanceModalClose();
@@ -178,7 +181,8 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
       },
       {
         label: "validateGameFiles",
-        function: () => LaunchService.validateGameFiles(),
+        function: () =>
+          LaunchService.validateGameFiles(launchingIdRef.current),
         isOK: (data: any) => true,
         onResCallback: (data: any) => {}, // TODO
         onErrCallback: (error: ResponseError) => {
@@ -195,11 +199,14 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
       },
       {
         label: "validateSelectedPlayer",
-        function: () => LaunchService.validateSelectedPlayer(),
+        function: () =>
+          LaunchService.validateSelectedPlayer(launchingIdRef.current),
         isOK: (data: boolean) => data,
         onResCallback: (data: boolean) => {
           const reValidate = () =>
-            LaunchService.validateSelectedPlayer().then((response) => {
+            LaunchService.validateSelectedPlayer(
+            launchingIdRef.current
+          ).then((response) => {
               if (response.status === "success") {
                 setActiveStep(activeStep + 1);
               } else {
@@ -232,7 +239,11 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
       {
         label: "launchGame",
         function: () =>
-          LaunchService.launchGame(quickPlaySingleplayer, quickPlayMultiplayer),
+          LaunchService.launchGame(
+            launchingIdRef.current,
+            quickPlaySingleplayer,
+            quickPlayMultiplayer
+          ),
         isOK: (data: any) => true,
         onResCallback: (data: any) => {},
         onErrCallback: (error: ResponseError) => {},
@@ -307,6 +318,10 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
       previousStep.current = activeStep;
       currentStep.function().then((response) => {
         if (response.status === "success") {
+          // Step 1 returns the id of the launching state it created.
+          if (activeStep === 0 && typeof response.data === "number") {
+            launchingIdRef.current = response.data;
+          }
           if (currentStep.isOK(response.data)) {
             setActiveStep(activeStep + 1);
           } else {

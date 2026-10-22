@@ -1,12 +1,11 @@
-use reqwest::redirect::Policy;
-use reqwest::{Client, Error};
+use reqwest::Error;
 use serde::{Deserialize, Serialize};
 use sjmcl_types::error::{SJMCLError, SJMCLResult};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 use url::Url;
 use zip::ZipArchive;
@@ -27,12 +26,15 @@ use crate::tasks::commands::schedule_progressive_task_group;
 use crate::tasks::download::DownloadParam;
 
 async fn fetch_bmcl_forge_installer_url(
+  app: AppHandle,
   root: Url,
   game_version: &str,
   loader_ver: &str,
   branch: Option<&str>,
 ) -> Result<String, Error> {
-  let client = Client::builder().redirect(Policy::limited(5)).build()?;
+  // Use the shared client so this probe honors the configured proxy and UA
+  // (issue #1632 residual).
+  let client = app.state::<reqwest::Client>().inner().clone();
 
   let response = client
     .get(root)
@@ -51,6 +53,7 @@ async fn fetch_bmcl_forge_installer_url(
 }
 
 pub async fn install_forge_loader(
+  app: AppHandle,
   priority: &[SourceType],
   game_version: &str,
   loader: &ModLoader,
@@ -77,6 +80,7 @@ pub async fn install_forge_loader(
         }
         SourceType::BMCLAPIMirror => {
           let s = fetch_bmcl_forge_installer_url(
+            app.clone(),
             root,
             game_version,
             loader_ver,
