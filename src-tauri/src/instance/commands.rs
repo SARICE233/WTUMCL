@@ -568,10 +568,7 @@ pub async fn add_game_server(
   };
   let mut existing_servers = load_servers_info_from_nbt(&nbt_path).await?;
 
-  if existing_servers
-    .iter()
-    .any(|server| server.ip == server_addr)
-  {
+  if is_duplicate_server(&existing_servers, &server_addr) {
     return Err(InstanceError::DuplicateServer.into());
   }
 
@@ -585,6 +582,17 @@ pub async fn add_game_server(
     .map_err(|_| InstanceError::FileOperationError)?;
 
   Ok(())
+}
+
+/// Whether `server_addr` is already taken by a server that the UI lists.
+///
+/// Hidden servers are filtered out by `retrieve_game_server_list`
+/// (`retain(|server| !server.hidden)`), so they must not block adding the same
+/// address again; keep both predicates in sync (fix #1971).
+fn is_duplicate_server(existing_servers: &[GameServerInfo], server_addr: &str) -> bool {
+  existing_servers
+    .iter()
+    .any(|server| !server.hidden && server.ip == server_addr)
 }
 
 #[tauri::command]
@@ -1035,6 +1043,61 @@ pub fn create_launch_desktop_shortcut(
   Ok(())
 }
 
+/// Whether a directory is only the shell left behind by a cancelled or failed
+/// client download: the config files written before the download group starts
+/// (`<name>.json` / `sjmclcfg.json`, plus a generated `options.txt`) and empty
+/// subdirectories, with no client jar and no mods/content files. Such a shell
+/// can be reclaimed; anything with real content must still be treated as an
+/// existing instance (fix #1914).
+fn is_reusable_partial_dir(path: &Path) -> bool {
+  let Ok(metadata) = fs::symlink_metadata(path) else {
+    return false;
+  };
+  if !metadata.is_dir() {
+    return false;
+  }
+
+  let Ok(entries) = fs::read_dir(path) else {
+    return false;
+  };
+
+  let mut has_json = false;
+  for entry in entries.flatten() {
+    let Ok(file_type) = entry.file_type() else {
+      return false;
+    };
+    if file_type.is_dir() {
+      // The installer creates subdirectories like mods/ eagerly, so empty ones
+      // are expected leftovers. Any content inside them means the download
+      // progressed beyond the config stage.
+      let Ok(mut sub_entries) = fs::read_dir(entry.path()) else {
+        return false;
+      };
+      if sub_entries.next().is_some() {
+        return false;
+      }
+    } else if file_type.is_file() {
+      let file_path = entry.path();
+      let is_json = file_path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("json"));
+      // create_instance may write a first-screen options.txt before it commits.
+      let is_generated_options = file_path
+        .file_name()
+        .is_some_and(|name| name.eq_ignore_ascii_case("options.txt"));
+      if !is_json && !is_generated_options {
+        return false;
+      }
+      has_json |= is_json;
+    } else {
+      // Symlinks and other special entries are not part of a plain config shell.
+      return false;
+    }
+  }
+
+  has_json
+}
+
 #[tauri::command]
 pub async fn create_instance(
   app: AppHandle,
@@ -1061,10 +1124,15 @@ pub async fn create_instance(
     )
   };
 
-  // Ensure the instance name is unique
+  // Ensure the instance name is unique, but reclaim the config-only shell left by a
+  // cancelled/failed download instead of reporting a name conflict (fix #1914).
   let version_path = directory.dir.join("versions").join(&name);
   if version_path.exists() {
-    return Err(InstanceError::ConflictNameError.into());
+    if is_reusable_partial_dir(&version_path) {
+      fs::remove_dir_all(&version_path).map_err(|_| InstanceError::FileOperationError)?;
+    } else {
+      return Err(InstanceError::ConflictNameError.into());
+    }
   }
 
   // Guard removes version_path on any early return (errors), fix #1105 #1310
@@ -1873,5 +1941,135 @@ mod weekly_play_time_tests {
     assert_eq!(result.week_seconds, 0);
     assert_eq!(result.today_seconds, 0);
     assert!(result.days.iter().all(|day| day.seconds == 0));
+  }
+}
+
+#[cfg(test)]
+mod server_and_partial_instance_dir_tests {
+  use super::{GameServerInfo, is_duplicate_server, is_reusable_partial_dir};
+  use std::fs;
+  use std::path::{Path, PathBuf};
+  use std::sync::atomic::{AtomicUsize, Ordering};
+
+  static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+  fn unique_temp_path(tag: &str) -> PathBuf {
+    let nanos = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    std::env::temp_dir().join(format!(
+      "sjmcl-instance-{}-{}-{}-{}",
+      tag,
+      std::process::id(),
+      nanos,
+      TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+    ))
+  }
+
+  struct TempDir(PathBuf);
+
+  impl TempDir {
+    fn new(tag: &str) -> Self {
+      let path = unique_temp_path(tag);
+      fs::create_dir_all(&path).unwrap();
+      Self(path)
+    }
+
+    fn path(&self) -> &Path {
+      &self.0
+    }
+  }
+
+  impl Drop for TempDir {
+    fn drop(&mut self) {
+      let _ = fs::remove_dir_all(&self.0);
+    }
+  }
+
+  fn server(ip: &str, hidden: bool) -> GameServerInfo {
+    GameServerInfo {
+      ip: ip.to_string(),
+      hidden,
+      ..Default::default()
+    }
+  }
+
+  #[test]
+  fn duplicate_server_check_ignores_hidden_entries() {
+    let servers = vec![server("mc.example.com", true)];
+    assert!(!is_duplicate_server(&servers, "mc.example.com"));
+  }
+
+  #[test]
+  fn duplicate_server_check_flags_visible_repeat() {
+    let servers = vec![
+      server("mc.example.com", false),
+      server("mc.example.com", true),
+    ];
+    assert!(is_duplicate_server(&servers, "mc.example.com"));
+  }
+
+  #[test]
+  fn duplicate_server_check_allows_other_addresses() {
+    let servers = vec![server("mc.example.com", false)];
+    assert!(!is_duplicate_server(&servers, "play.example.com"));
+  }
+
+  #[test]
+  fn partial_dir_is_reusable_with_config_json_only() {
+    let dir = TempDir::new("partial-config");
+    fs::write(dir.path().join("MyInstance.json"), "{}").unwrap();
+    fs::write(dir.path().join("sjmclcfg.json"), "{}").unwrap();
+    // Empty subdirectories are created eagerly by the installer.
+    fs::create_dir_all(dir.path().join("mods")).unwrap();
+    assert!(is_reusable_partial_dir(dir.path()));
+  }
+
+  #[test]
+  fn partial_dir_is_not_reusable_with_client_jar() {
+    let dir = TempDir::new("partial-jar");
+    fs::write(dir.path().join("MyInstance.json"), "{}").unwrap();
+    fs::write(dir.path().join("MyInstance.jar"), [0u8; 8]).unwrap();
+    assert!(!is_reusable_partial_dir(dir.path()));
+  }
+
+  #[test]
+  fn partial_dir_is_not_reusable_with_mods_content() {
+    let dir = TempDir::new("partial-mods");
+    fs::write(dir.path().join("MyInstance.json"), "{}").unwrap();
+    fs::create_dir_all(dir.path().join("mods")).unwrap();
+    fs::write(dir.path().join("mods").join("example.jar"), [0u8; 4]).unwrap();
+    assert!(!is_reusable_partial_dir(dir.path()));
+  }
+
+  #[test]
+  fn partial_dir_is_not_reusable_when_missing() {
+    let path = unique_temp_path("partial-missing");
+    assert!(!is_reusable_partial_dir(&path));
+  }
+
+  #[test]
+  fn partial_dir_is_not_reusable_for_regular_file() {
+    let path = unique_temp_path("partial-file");
+    fs::write(&path, b"not a directory").unwrap();
+    assert!(!is_reusable_partial_dir(&path));
+    let _ = fs::remove_file(&path);
+  }
+
+  #[test]
+  fn partial_dir_is_reusable_with_generated_options_txt() {
+    let dir = TempDir::new("partial-options");
+    fs::write(dir.path().join("MyInstance.json"), "{}").unwrap();
+    fs::write(dir.path().join("options.txt"), "lang:en_us\n").unwrap();
+    assert!(is_reusable_partial_dir(dir.path()));
+  }
+
+  #[test]
+  fn partial_dir_is_not_reusable_with_unrelated_file() {
+    let dir = TempDir::new("partial-unrelated");
+    fs::write(dir.path().join("MyInstance.json"), "{}").unwrap();
+    fs::write(dir.path().join("notes.txt"), "hello").unwrap();
+    assert!(!is_reusable_partial_dir(dir.path()));
   }
 }
