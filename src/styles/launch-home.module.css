@@ -272,9 +272,9 @@
   height: 0;
 }
 
-/* One news card plus two reserved slots, laid out as three equal columns.
-   The grid is plain layout: it never scrolls or clips, so the card's 24px
-   shadow fades out naturally instead of being cut by a scrollport edge. */
+/* Up to three news cards in a row, laid out as three equal columns. The grid
+   is plain layout: it never scrolls or clips, so the card's 24px shadow fades
+   out naturally instead of being cut by a scrollport edge. */
 .newsGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -282,13 +282,6 @@
   /* Padding, never an overflow box: the extra room below the row gives the
      shadow tail space to decay before the feed's own scrollport edge. */
   padding: 0.25rem 0 0.5rem;
-}
-
-.newsSlot {
-  min-width: 0;
-  border: 1px dashed rgba(122, 144, 166, 0.34);
-  border-radius: var(--chakra-radii-xl);
-  background: rgba(122, 144, 166, 0.06);
 }
 
 .newsImage {

@@ -25,7 +25,9 @@ import { formatRelativeTime } from "@/utils/datetime";
 import { cleanHtmlText } from "@/utils/string";
 
 const MAX_NEWS_POSTS = 5;
-// The feed shows a single card at a time and advances on this cadence.
+// Cards shown side by side in the news row; the row pages through the rest.
+const VISIBLE_NEWS_COUNT = 3;
+// The row advances one card at a time on this cadence.
 const NEWS_ROTATE_INTERVAL_MS = 5000;
 
 const NewsCard = ({ post }: { post: NewsPostSummary }) => {
@@ -113,16 +115,6 @@ const NewsCard = ({ post }: { post: NewsPostSummary }) => {
   );
 };
 
-// Reserved, empty placeholders that keep the row three columns wide. They are
-// purely decorative: no copy, no image, no icon, and nothing focusable.
-const NewsSlot = () => (
-  <Box
-    data-launch="news-slot"
-    aria-hidden="true"
-    className={homeStyles.newsSlot}
-  />
-);
-
 const CommunityNewsFeed = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -176,7 +168,12 @@ const CommunityNewsFeed = () => {
 
   const postCount = posts.length;
   const currentIndex = postCount > 0 ? activeIndex % postCount : 0;
-  const post = posts[currentIndex];
+  // The row is always filled with real posts: the window starts at the current
+  // index and wraps around, so short feeds simply show fewer cards.
+  const visiblePosts = Array.from(
+    { length: Math.min(VISIBLE_NEWS_COUNT, postCount) },
+    (_, offset) => posts[(currentIndex + offset) % postCount]
+  );
   const isPaused = isPointerInside || isFocusWithin;
 
   // Advance only while nobody is interacting with the section; hovering,
@@ -240,18 +237,18 @@ const CommunityNewsFeed = () => {
     >
       {isLoading ? (
         <Box className={homeStyles.newsGrid}>
-          <AdvancedCard w="100%" minW={0} p={0} overflow="hidden">
-            <Skeleton h="4.75rem" w="100%" />
-            <VStack align="stretch" spacing={2} p={2.5}>
-              <Skeleton h={3} w="70%" />
-              <Skeleton h={3} w="100%" />
-              <Skeleton h={3} w="80%" />
-            </VStack>
-          </AdvancedCard>
-          <NewsSlot />
-          <NewsSlot />
+          {Array.from({ length: VISIBLE_NEWS_COUNT }).map((_, index) => (
+            <AdvancedCard key={index} w="100%" minW={0} p={0} overflow="hidden">
+              <Skeleton h="4.75rem" w="100%" />
+              <VStack align="stretch" spacing={2} p={2.5}>
+                <Skeleton h={3} w="70%" />
+                <Skeleton h={3} w="100%" />
+                <Skeleton h={3} w="80%" />
+              </VStack>
+            </AdvancedCard>
+          ))}
         </Box>
-      ) : !post ? (
+      ) : postCount === 0 ? (
         <Empty
           size="sm"
           withIcon={false}
@@ -260,9 +257,9 @@ const CommunityNewsFeed = () => {
         />
       ) : (
         <Box className={homeStyles.newsGrid}>
-          <NewsCard key={post.link} post={post} />
-          <NewsSlot />
-          <NewsSlot />
+          {visiblePosts.map((visiblePost) => (
+            <NewsCard key={visiblePost.link} post={visiblePost} />
+          ))}
         </Box>
       )}
     </Section>
