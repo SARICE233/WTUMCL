@@ -411,6 +411,20 @@ pub async fn launch_game(
   Ok(())
 }
 
+/// Locate the launch identified by `launching_id` and mark it as cancelled.
+///
+/// Returns the pid to kill only when the id exists and its process has already
+/// been spawned (`pid != 0`). A missing id or a launch still waiting for a Java
+/// runtime is left untouched, and no other queue entry is ever modified.
+fn take_cancel_target(queue: &mut [LaunchingState], launching_id: u64) -> Option<u32> {
+  let launching = queue.iter_mut().find(|s| s.id == launching_id)?;
+  if launching.pid == 0 {
+    return None;
+  }
+  launching.current_step = 0; // mark as manually cancelled to avoid game error window popping up
+  Some(launching.pid)
+}
+
 #[tauri::command]
 pub fn cancel_launch_process(
   launching_queue_state: State<'_, Mutex<Vec<LaunchingState>>>,
@@ -421,11 +435,8 @@ pub fn cancel_launch_process(
   // Only touch the launch identified by launching_id. Keying by the queue tail
   // could kill a different, already-running game when a second launch is
   // cancelled before it enqueues (issue #1933).
-  if let Some(launching) = launching_queue.iter_mut().find(|s| s.id == launching_id)
-    && launching.pid != 0
-  {
-    launching.current_step = 0; // mark as manually cancelled to avoid game error window popping up
-    kill_process(launching.pid)?;
+  if let Some(pid) = take_cancel_target(launching_queue.as_mut_slice(), launching_id) {
+    kill_process(pid)?;
   }
 
   Ok(())
@@ -527,4 +538,84 @@ pub fn export_game_crash_info(
 
   paths_to_zip.extend(crash_report_path);
   create_zip_from_dirs(paths_to_zip, zip_file_path.clone())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::take_cancel_target;
+  use crate::launch::models::LaunchingState;
+
+  fn launching(id: u64, pid: u32, current_step: usize) -> LaunchingState {
+    LaunchingState {
+      id,
+      pid,
+      current_step,
+      ..Default::default()
+    }
+  }
+
+  #[test]
+  fn cancel_only_targets_the_identified_launching_id() {
+    let mut queue = vec![launching(1, 111, 2), launching(2, 222, 3)];
+
+    assert_eq!(take_cancel_target(&mut queue, 1), Some(111));
+
+    assert_eq!(queue[0].current_step, 0);
+    assert_eq!(queue[0].pid, 111);
+    assert_eq!(queue[1].current_step, 3);
+    assert_eq!(queue[1].pid, 222);
+  }
+
+  #[test]
+  fn cancel_unknown_id_leaves_the_tail_running_launch_untouched() {
+    let mut queue = vec![launching(1, 0, 1), launching(2, 222, 3)];
+
+    assert_eq!(take_cancel_target(&mut queue, 999), None);
+
+    // Regression for #1933: the old code cancelled `last_mut()`, which would
+    // have marked the already running tail launch as cancelled.
+    assert_eq!(queue[1].pid, 222);
+    assert_eq!(queue[1].current_step, 3);
+    assert_eq!(queue[0].current_step, 1);
+  }
+
+  #[test]
+  fn cancel_target_without_pid_returns_none_and_keeps_step() {
+    let mut queue = vec![launching(7, 0, 2)];
+
+    assert_eq!(take_cancel_target(&mut queue, 7), None);
+
+    assert_eq!(queue[0].current_step, 2);
+    assert_eq!(queue[0].pid, 0);
+  }
+
+  #[test]
+  fn cancel_on_empty_queue_returns_none() {
+    let mut queue: Vec<LaunchingState> = Vec::new();
+
+    assert_eq!(take_cancel_target(&mut queue, 42), None);
+    assert!(queue.is_empty());
+  }
+
+  #[test]
+  fn cancel_duplicate_ids_only_touches_the_first_match() {
+    let mut queue = vec![launching(5, 555, 2), launching(5, 666, 3)];
+
+    assert_eq!(take_cancel_target(&mut queue, 5), Some(555));
+
+    assert_eq!(queue[0].current_step, 0);
+    assert_eq!(queue[1].current_step, 3);
+    assert_eq!(queue[1].pid, 666);
+  }
+
+  #[test]
+  fn cancel_duplicate_ids_with_zero_pid_does_not_fall_through() {
+    let mut queue = vec![launching(5, 0, 2), launching(5, 666, 3)];
+
+    assert_eq!(take_cancel_target(&mut queue, 5), None);
+
+    assert_eq!(queue[0].current_step, 2);
+    assert_eq!(queue[1].current_step, 3);
+    assert_eq!(queue[1].pid, 666);
+  }
 }
