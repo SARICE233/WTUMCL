@@ -20,6 +20,15 @@ const OFFICIAL_PREFIXES: &[&str] = &[
   "https://libraries.minecraft.net",
 ];
 
+/// Official Maven repositories that may serve the same coordinates for the
+/// Maven-layout resource types. Which one goes first is decided per namespace
+/// by `maven_priority`.
+const MAVEN_LIBRARIES: &str = "https://libraries.minecraft.net";
+const MAVEN_FABRIC: &str = "https://maven.fabricmc.net";
+const MAVEN_FORGE: &str = "https://maven.minecraftforge.net";
+const MAVEN_NEOFORGE: &str = "https://maven.neoforged.net/releases";
+const MAVEN_CENTRAL: &str = "https://repo1.maven.org/maven2";
+
 /// Download base URL of one user mirror for one resource type.
 ///
 /// `None` means "this mirror cannot serve that resource type"; callers must then
@@ -177,6 +186,7 @@ pub fn candidates(url: &Url, resource_types: &[ResourceType], config: &LauncherC
     }
   }
 
+  push_reverse_sources(&mut result, url, &resource_types, config);
   dedupe(result)
 }
 
@@ -201,6 +211,207 @@ fn split_official_prefix(url: &str) -> Option<&str> {
   OFFICIAL_PREFIXES
     .iter()
     .find_map(|prefix| url.strip_prefix(prefix))
+    // A host such as `libraries.minecraft.net.evil.example` shares the prefix
+    // but is not a Mojang URL: only a path boundary may follow the prefix.
+    .filter(|suffix| suffix.is_empty() || suffix.starts_with('/'))
+}
+
+/// Appends the failover candidates hidden behind a mirror-form URL.
+///
+/// `push_rewritten` only understands official URLs, so a URL that already
+/// points at BMCLAPI or a configured mirror would otherwise keep a single
+/// candidate and every download would have exactly one source to try.
+fn push_reverse_sources(
+  result: &mut Vec<Url>,
+  url: &Url,
+  resource_types: &[ResourceType],
+  config: &LauncherConfig,
+) {
+  let Some((base, matched)) = matched_reverse_base(url, resource_types, config) else {
+    return;
+  };
+
+  // `base` was matched as a prefix of `url`, so the split sits on a char
+  // boundary and the suffix is either empty or starts with '/'.
+  let suffix = &url.as_str()[base.len()..];
+  for resource_type in matched {
+    for alternative in alternative_bases(resource_type, suffix, config) {
+      if let Ok(candidate) = Url::parse(&format!("{alternative}{suffix}")) {
+        result.push(candidate);
+      }
+    }
+  }
+}
+
+/// Longest known download base `url` already points at, together with the
+/// resource types that base serves.
+///
+/// Bases match on a path boundary (`url == base` or `url` starts with
+/// `base + "/"`), so `.../mavenX/foo.jar` is not mistaken for an object of
+/// `.../maven/`, and the longest base wins when several are nested.
+fn matched_reverse_base(
+  url: &Url,
+  resource_types: &[ResourceType],
+  config: &LauncherConfig,
+) -> Option<(String, Vec<ResourceType>)> {
+  let text = url.as_str();
+  let mut best: Option<String> = None;
+  let mut matched: Vec<ResourceType> = Vec::new();
+
+  for resource_type in resource_types {
+    for api in derivation_bases(*resource_type, config) {
+      // A bare host base cannot tell which kind of object a URL below it is,
+      // so it must never be used for reverse derivation: otherwise a typo such
+      // as `.../mavenX/foo.jar` would become a fabricated candidate for every
+      // bare-host resource type.
+      if !has_path(&api) {
+        continue;
+      }
+
+      let base = base_text(&api);
+      if !url_starts_with_base(text, &base) {
+        continue;
+      }
+
+      if best
+        .as_deref()
+        .is_none_or(|current| base.len() > current.len())
+      {
+        best = Some(base);
+        matched.clear();
+      } else if best.as_deref() != Some(base.as_str()) {
+        continue;
+      }
+
+      if !matched.contains(resource_type) {
+        matched.push(*resource_type);
+      }
+    }
+  }
+
+  best.map(|base| (base, matched))
+}
+
+/// Bases a URL may currently point at, in reverse-derivation order: the
+/// official host, BMCLAPI, then every configured mirror.
+///
+/// The official host only counts when it is Mojang's own. A third-party Maven
+/// host (fabricmc, forge, neoforged, ...) is where that artifact really lives,
+/// not a mirror of a Mojang path, so a URL there must never be rewritten onto
+/// a Mojang-style candidate (see `OFFICIAL_PREFIXES`).
+fn derivation_bases(resource_type: ResourceType, config: &LauncherConfig) -> Vec<Url> {
+  let mut bases = Vec::new();
+
+  if let Ok(api) = get_download_api(SourceType::Official, resource_type) {
+    if OFFICIAL_PREFIXES
+      .iter()
+      .any(|prefix| api.as_str().starts_with(prefix))
+    {
+      bases.push(api);
+    }
+  }
+
+  if let Ok(api) = get_download_api(SourceType::BMCLAPIMirror, resource_type) {
+    bases.push(api);
+  }
+
+  for mirror in configured_mirrors(config) {
+    if let Some(api) = mirror_download_api(&mirror, resource_type) {
+      bases.push(api);
+    }
+  }
+
+  bases
+}
+
+/// Bases to try for a URL whose suffix below its current base is `suffix`.
+///
+/// Maven-family resource types get their namespace-specific Maven hosts first,
+/// then their own official base, then BMCLAPI and the user mirrors.
+fn alternative_bases(
+  resource_type: ResourceType,
+  suffix: &str,
+  config: &LauncherConfig,
+) -> Vec<String> {
+  let mut bases: Vec<String> = Vec::new();
+
+  if is_maven_family(resource_type) {
+    for repository in maven_priority(suffix) {
+      push_unique_base(&mut bases, repository);
+    }
+  }
+
+  if let Ok(api) = get_download_api(SourceType::Official, resource_type) {
+    push_unique_base(&mut bases, &base_text(&api));
+  }
+
+  if let Ok(api) = get_download_api(SourceType::BMCLAPIMirror, resource_type) {
+    push_unique_base(&mut bases, &base_text(&api));
+  }
+
+  for mirror in configured_mirrors(config) {
+    if let Some(api) = mirror_download_api(&mirror, resource_type) {
+      push_unique_base(&mut bases, &base_text(&api));
+    }
+  }
+
+  bases
+}
+
+/// Resource types whose objects live in a Maven repository, so any Maven host
+/// that proxies the same coordinates can serve them.
+fn is_maven_family(resource_type: ResourceType) -> bool {
+  matches!(
+    resource_type,
+    ResourceType::Libraries
+      | ResourceType::FabricMaven
+      | ResourceType::ForgeMaven
+      | ResourceType::ForgeMavenNew
+      | ResourceType::NeoforgeMaven
+      | ResourceType::QuiltMaven
+      | ResourceType::CleanroomMaven
+  )
+}
+
+/// Maven hosts to try for `suffix`, most specific namespace first: a
+/// `net/fabricmc` artifact is most likely on the Fabric Maven, while
+/// `libraries.minecraft.net` mirrors some of those coordinates as well.
+fn maven_priority(suffix: &str) -> &'static [&'static str] {
+  if suffix.starts_with("/net/fabricmc/") {
+    &[MAVEN_FABRIC, MAVEN_LIBRARIES, MAVEN_CENTRAL]
+  } else if suffix.starts_with("/net/minecraftforge/") {
+    &[MAVEN_FORGE, MAVEN_LIBRARIES, MAVEN_FABRIC, MAVEN_CENTRAL]
+  } else if suffix.starts_with("/net/neoforged/") {
+    &[MAVEN_NEOFORGE, MAVEN_LIBRARIES, MAVEN_FABRIC, MAVEN_CENTRAL]
+  } else {
+    &[MAVEN_LIBRARIES, MAVEN_FABRIC, MAVEN_CENTRAL]
+  }
+}
+
+/// Scheme, host and path of a download base, without the trailing slash that
+/// separates the base from the object suffix.
+fn base_text(api: &Url) -> String {
+  api.as_str().trim_end_matches('/').to_string()
+}
+
+/// True when the base carries a path of its own.
+fn has_path(api: &Url) -> bool {
+  !api.path().trim_matches('/').is_empty()
+}
+
+fn url_starts_with_base(url: &str, base: &str) -> bool {
+  url == base
+    || url
+      .strip_prefix(base)
+      .is_some_and(|rest| rest.starts_with('/'))
+}
+
+fn push_unique_base(bases: &mut Vec<String>, base: &str) {
+  let base = base.trim_end_matches('/');
+  if base.is_empty() || bases.iter().any(|existing| existing == base) {
+    return;
+  }
+  bases.push(base.to_string());
 }
 
 fn dedupe(urls: Vec<Url>) -> Vec<Url> {
@@ -228,6 +439,22 @@ mod tests {
       })
       .collect();
     config
+  }
+
+  /// Default configuration of a user in mainland China: BMCLAPI is preferred
+  /// and no custom mirror is set up.
+  fn china_config() -> LauncherConfig {
+    let mut config = LauncherConfig::default();
+    config.download.source.mirrors.clear();
+    config.download.source.custom_mirror_url = String::new();
+    config.basic_info.is_china_mainland_ip = true;
+    config
+  }
+
+  fn position(list: &[Url], expected: &str) -> Option<usize> {
+    list
+      .iter()
+      .position(|candidate| candidate.as_str() == expected)
   }
 
   #[test]
@@ -320,5 +547,106 @@ mod tests {
     let mut unique = list.clone();
     unique.dedup();
     assert_eq!(unique.len(), list.len());
+  }
+
+  #[test]
+  fn bmclapi_maven_url_derives_libraries_and_fabric_candidates() {
+    let config = china_config();
+    let url =
+      Url::parse("https://bmclapi2.bangbang93.com/maven/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar")
+        .unwrap();
+    let list = candidates(&url, &[], &config);
+    assert_eq!(list[0], url);
+
+    let libraries = position(
+      &list,
+      "https://libraries.minecraft.net/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar",
+    )
+    .expect("libraries candidate");
+    let fabric = position(
+      &list,
+      "https://maven.fabricmc.net/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar",
+    )
+    .expect("fabric maven candidate");
+    assert!(libraries < fabric);
+  }
+
+  #[test]
+  fn fabric_namespace_prefers_the_fabric_maven() {
+    let config = china_config();
+    let url = Url::parse(
+      "https://bmclapi2.bangbang93.com/maven/net/fabricmc/fabric-loader/0.16.0/fabric-loader-0.16.0.jar",
+    )
+    .unwrap();
+    let list = candidates(&url, &[ResourceType::Libraries], &config);
+    let fabric = position(
+      &list,
+      "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.0/fabric-loader-0.16.0.jar",
+    )
+    .expect("fabric maven candidate");
+    let libraries = position(
+      &list,
+      "https://libraries.minecraft.net/net/fabricmc/fabric-loader/0.16.0/fabric-loader-0.16.0.jar",
+    )
+    .expect("libraries candidate");
+    assert!(fabric < libraries);
+  }
+
+  #[test]
+  fn bmclapi_assets_url_derives_the_official_asset_host() {
+    let config = china_config();
+    let url = Url::parse(
+      "https://bmclapi2.bangbang93.com/assets/ab/cdef0123456789abcdef0123456789abcdef0123",
+    )
+    .unwrap();
+    let list = candidates(&url, &[], &config);
+    assert_eq!(list[0], url);
+    assert!(
+      position(
+        &list,
+        "https://resources.download.minecraft.net/ab/cdef0123456789abcdef0123456789abcdef0123",
+      )
+      .is_some()
+    );
+  }
+
+  #[test]
+  fn near_prefix_and_unknown_hosts_do_not_fabricate_candidates() {
+    let config = china_config();
+
+    let near_prefix = Url::parse("https://bmclapi2.bangbang93.com/mavenX/foo.jar").unwrap();
+    let list = candidates(&near_prefix, &[], &config);
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0], near_prefix);
+
+    let third_party =
+      Url::parse("https://repo.example.invalid/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar").unwrap();
+    let list = candidates(&third_party, &[], &config);
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0], third_party);
+  }
+
+  #[test]
+  fn base_only_urls_do_not_panic() {
+    let config = china_config();
+    let url = Url::parse("https://bmclapi2.bangbang93.com/maven/").unwrap();
+    let list = candidates(&url, &[], &config);
+    assert_eq!(list[0], url);
+    assert!(position(&list, "https://libraries.minecraft.net/").is_some());
+  }
+
+  #[test]
+  fn custom_mirror_urls_derive_official_candidates() {
+    let config = config_with(&[("https://b.example", DownloadMirrorKind::BmclapiFlat, true)]);
+    let url = Url::parse("https://b.example/maven/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar").unwrap();
+    let list = candidates(&url, &[ResourceType::Libraries], &config);
+    assert_eq!(list[0], url);
+    assert!(
+      position(
+        &list,
+        "https://libraries.minecraft.net/org/ow2/asm/asm/9.10.1/asm-9.10.1.jar",
+      )
+      .is_some()
+    );
   }
 }

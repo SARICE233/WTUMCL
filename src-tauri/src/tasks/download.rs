@@ -218,8 +218,12 @@ fn candidates_for(param: &DownloadParam, alt_srcs: &[Url]) -> Vec<Url> {
 /// zero because a different mirror may not serve the same byte ranges. Each
 /// outcome feeds `SourceHealth`, so a mirror that has just failed three times in
 /// a row is skipped by the next task instead of costing it another timeout. The
-/// per-source transfer itself is delegated to [`DownloadEngine`]; this function
-/// only owns the failover policy.
+/// gate is advisory, not absolute: when every candidate is currently disabled it
+/// is dropped and the sources are tried anyway (fail-open), because a mirror that
+/// recovered can only prove itself by answering a request, and a blanket skip
+/// turns a transient outage into a permanently failing task. The per-source
+/// transfer itself is delegated to [`DownloadEngine`]; this function only owns
+/// the failover policy.
 pub(crate) async fn download_with_policy(
   client: &Client,
   param: &DownloadParam,
@@ -236,10 +240,30 @@ pub(crate) async fn download_with_policy(
   let retry_same_source_on_sha1 = sources.len() == 1;
   let mut attempts: Vec<String> = Vec::new();
   let mut last_error: Option<String> = None;
+  let mut attempted = 0usize;
+
+  // Read the health gate once, before the first attempt, so the decision cannot
+  // drift between sources while a concurrent task updates the same host.
+  let disabled: Vec<bool> = sources
+    .iter()
+    .map(|source| source_health().is_disabled(&SourceHealth::host_key(source)))
+    .collect();
+  // Fail-open: when every candidate sits inside its penalty window, skip
+  // nothing. Failing without sending a single request would keep the task
+  // broken for the whole TTL even if the mirror is already back, and the mirror
+  // can only ever prove itself by answering a request.
+  let fail_open = !sources.is_empty() && disabled.iter().all(|disabled| *disabled);
+  if fail_open {
+    log::warn!(
+      "All {} candidate source(s) for {} are marked unhealthy; trying them anyway as a last resort",
+      sources.len(),
+      param.src
+    );
+  }
 
   for (index, source) in sources.iter().enumerate() {
     let host = SourceHealth::host_key(source);
-    if source_health().is_disabled(&host) {
+    if disabled[index] && !fail_open {
       attempts.push(format!("{source} (skipped: marked unhealthy)"));
       continue;
     }
@@ -247,6 +271,7 @@ pub(crate) async fn download_with_policy(
     let offset = if index == 0 { initial_offset } else { 0 };
     let started = Instant::now();
     let headers_timeout = source_health().timeout_for(&host);
+    attempted += 1;
 
     // The engine receives one source per call: source order and health are the
     // driver's responsibility, the transfer contract is the engine's.
@@ -287,15 +312,17 @@ pub(crate) async fn download_with_policy(
     }
   }
 
+  // Reaching this point means at least one candidate was really contacted: the
+  // fail-open branch above guarantees the loop cannot end on skips alone, so
+  // this error always counts and names sources that were actually tried.
   Err(SJMCLError(match last_error {
     Some(detail) => format!(
-      "Download failed after trying {} source(s): {detail}. Tried: {}",
-      attempts.len(),
+      "Download failed after trying {attempted} source(s): {detail}. Tried: {}",
       attempts.join(" | ")
     ),
     None => format!(
-      "Download failed: every candidate source is currently marked unhealthy ({} attempted)",
-      attempts.len()
+      "Download failed: no candidate source could be attempted for {}",
+      param.src
     ),
   }))
 }
@@ -998,6 +1025,11 @@ pub(crate) mod tests {
     BodyEndedByClose { body: Vec<u8> },
     /// `206 Partial Content` with the tail starting at `offset`.
     RangeTail { body: Vec<u8>, offset: usize },
+    /// Accepts the request but stays silent for `delay` before sending any
+    /// response header, then serves `body`. Reproduces a mirror that stalls
+    /// instead of failing immediately (BMCLAPI's "timed out waiting for
+    /// response headers" case).
+    Delayed { delay: Duration, body: Vec<u8> },
     /// An error status with an empty body, e.g. a dead mirror path.
     Status { code: u16, reason: &'static str },
   }
@@ -1027,6 +1059,9 @@ pub(crate) mod tests {
               let _ = socket.set_read_timeout(Some(Duration::from_secs(2)));
               let head = read_std_request_head(&mut socket);
               heads.lock().unwrap().push(head);
+              if let FakeReply::Delayed { delay, .. } = &replies[index] {
+                wait_unless_stopped(*delay, &stop_by_server);
+              }
               serve_std_reply(&mut socket, &replies[index]);
               index += 1;
             }
@@ -1074,6 +1109,19 @@ pub(crate) mod tests {
     }
   }
 
+  /// Sleeps for `delay` before a reply, but wakes up as soon as the server is
+  /// dropped so a stalled reply never holds up test teardown for its whole
+  /// delay.
+  fn wait_unless_stopped(delay: Duration, stop: &std::sync::atomic::AtomicBool) {
+    let started = std::time::Instant::now();
+    while started.elapsed() < delay {
+      if stop.load(std::sync::atomic::Ordering::SeqCst) {
+        return;
+      }
+      std::thread::sleep((delay - started.elapsed()).min(Duration::from_millis(10)));
+    }
+  }
+
   fn serve_std_reply(socket: &mut std::net::TcpStream, reply: &FakeReply) {
     use std::io::Write;
 
@@ -1088,6 +1136,14 @@ pub(crate) mod tests {
       }
       FakeReply::BodyEndedByClose { body } => {
         let _ = socket.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+        let _ = socket.write_all(body);
+      }
+      FakeReply::Delayed { body, .. } => {
+        let head = format!(
+          "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+          body.len()
+        );
+        let _ = socket.write_all(head.as_bytes());
         let _ = socket.write_all(body);
       }
       FakeReply::Status { code, reason } => {
@@ -1183,6 +1239,70 @@ pub(crate) mod tests {
   }
 
   #[tokio::test]
+  async fn stalled_secondary_is_fast_failed_then_the_next_source_downloads() {
+    // Real-world shape (BMCLAPI fabric-maven): the primary answers 404 at once,
+    // the secondary accepts the request but never sends response headers, and
+    // the tertiary mirror serves the file. The stalled source must be abandoned
+    // by the fast-fail budget, not waited on until its own header deadline.
+    const STALL: Duration = Duration::from_secs(6);
+    let payload: Vec<u8> = (0..4096).map(|index| (index % 241) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let primary = FakeHttpServer::spawn(vec![FakeReply::Status {
+      code: 404,
+      reason: "Not Found",
+    }]);
+    let stalled = FakeHttpServer::spawn(vec![FakeReply::Delayed {
+      delay: STALL,
+      // If the downloader waited the stall out instead of failing over, this
+      // body would satisfy the SHA-1 and hide the regression, so the
+      // request-count assertions below also prove the tertiary was used.
+      body: payload.clone(),
+    }]);
+    let tertiary = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    // Ephemeral ports can be recycled between tests and the health map is
+    // process-global; re-arm all three hosts so a stale disabled entry cannot
+    // turn the stall into a skip.
+    for server in [&primary, &stalled, &tertiary] {
+      let host = SourceHealth::host_key(&Url::parse(&server.url).unwrap());
+      source_health().record_success(&host, Duration::from_millis(5));
+    }
+
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("stalled-failover");
+    let param = DownloadParam {
+      src: Url::parse(&primary.url).unwrap(),
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: Some(truth.clone()),
+      size: None,
+    };
+    let alt = [
+      Url::parse(&stalled.url).unwrap(),
+      Url::parse(&tertiary.url).unwrap(),
+    ];
+
+    let started = std::time::Instant::now();
+    download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
+      .await
+      .expect("the third source must serve the file after the stalled second one");
+    let elapsed = started.elapsed();
+
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
+    assert_eq!(primary.request_heads.lock().unwrap().len(), 1);
+    assert_eq!(stalled.request_heads.lock().unwrap().len(), 1);
+    assert_eq!(tertiary.request_heads.lock().unwrap().len(), 1);
+    println!("failover done in {elapsed:?}; stall {STALL:?}; requests 1/1/1; tertiary bytes 4096");
+    assert!(
+      elapsed < Duration::from_secs(20),
+      "failover from the stalled source took {elapsed:?}, expected under 20 s"
+    );
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
   async fn every_source_failing_reports_what_was_tried() {
     let first = FakeHttpServer::spawn(vec![FakeReply::Status {
       code: 500,
@@ -1192,24 +1312,229 @@ pub(crate) mod tests {
       code: 404,
       reason: "Not Found",
     }]);
+    let third = FakeHttpServer::spawn(vec![FakeReply::Status {
+      code: 403,
+      reason: "Forbidden",
+    }]);
+    let first_url = Url::parse(&first.url).unwrap();
+    let second_url = Url::parse(&second.url).unwrap();
+    let third_url = Url::parse(&third.url).unwrap();
+    for url in [&first_url, &second_url, &third_url] {
+      source_health().record_success(&SourceHealth::host_key(url), Duration::from_millis(5));
+    }
     let client = download_client_builder().no_proxy().build().unwrap();
     let dest = unique_temp_path("all-sources-fail");
     let param = DownloadParam {
-      src: Url::parse(&first.url).unwrap(),
+      src: first_url,
       dest: PathBuf::from("file.bin"),
       filename: None,
       sha1: None,
       size: None,
     };
-    let alt = [Url::parse(&second.url).unwrap()];
+    let alt = [second_url, third_url];
 
     let error = download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
       .await
-      .expect_err("both sources fail, so the task must fail");
+      .expect_err("all three sources fail, so the task must fail");
+
+    assert!(error.0.contains("after trying 3 source(s)"), "{}", error.0);
+    assert!(error.0.contains(&first.url), "{}", error.0);
+    assert!(error.0.contains(&second.url), "{}", error.0);
+    assert!(error.0.contains(&third.url), "{}", error.0);
+    assert_eq!(first.request_heads.lock().unwrap().len(), 1);
+    assert_eq!(second.request_heads.lock().unwrap().len(), 1);
+    assert_eq!(third.request_heads.lock().unwrap().len(), 1);
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn all_sources_unhealthy_fails_open_and_downloads() {
+    // Regression: when a past outage disabled every candidate, the old code
+    // returned an error without sending a single request, so the task kept
+    // failing for the whole TTL even after the mirror had recovered.
+    let payload: Vec<u8> = (0..4096).map(|index| (index % 233) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let first = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    let second = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    let first_url = Url::parse(&first.url).unwrap();
+    let second_url = Url::parse(&second.url).unwrap();
+    let first_host = SourceHealth::host_key(&first_url);
+    let second_host = SourceHealth::host_key(&second_url);
+    for _ in 0..3 {
+      source_health().record_failure(&first_host);
+      source_health().record_failure(&second_host);
+    }
+    assert!(source_health().is_disabled(&first_host));
+    assert!(source_health().is_disabled(&second_host));
+
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("fail-open");
+    let param = DownloadParam {
+      src: first_url,
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: Some(truth.clone()),
+      size: None,
+    };
+    let alt = [second_url];
+
+    download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
+      .await
+      .expect("every source being unhealthy must fail open, not fail the task");
+
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
+    let requests =
+      first.request_heads.lock().unwrap().len() + second.request_heads.lock().unwrap().len();
+    assert!(
+      requests >= 1,
+      "fail-open must actually send a request, got {requests}"
+    );
+    println!("fail-open with all sources unhealthy: {requests} request(s) sent");
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn unhealthy_primary_is_skipped_in_favour_of_healthy_alt() {
+    let payload: Vec<u8> = (0..2048).map(|index| (index % 197) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let primary = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    let alt = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    let primary_url = Url::parse(&primary.url).unwrap();
+    let alt_url = Url::parse(&alt.url).unwrap();
+    let primary_host = SourceHealth::host_key(&primary_url);
+    let alt_host = SourceHealth::host_key(&alt_url);
+    // Re-enable the alternative first so a recycled port from another test can
+    // never leak state into this assertion; then disable only the primary.
+    source_health().record_success(&alt_host, std::time::Duration::from_millis(5));
+    for _ in 0..3 {
+      source_health().record_failure(&primary_host);
+    }
+    assert!(source_health().is_disabled(&primary_host));
+    assert!(!source_health().is_disabled(&alt_host));
+
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("skip-unhealthy-primary");
+    let param = DownloadParam {
+      src: primary_url,
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: Some(truth.clone()),
+      size: None,
+    };
+    let alt_srcs = [alt_url];
+
+    download_with_policy(&client, &param, &alt_srcs[..], None, &dest, 0, None, None)
+      .await
+      .expect("the healthy alternative must serve the download");
+
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    assert_eq!(primary.request_heads.lock().unwrap().len(), 0);
+    assert_eq!(alt.request_heads.lock().unwrap().len(), 1);
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn single_unhealthy_source_is_still_tried() {
+    // Boundary: one candidate, and that candidate is disabled. Fail-open must
+    // still send the request instead of reporting "unhealthy" without trying.
+    let payload: Vec<u8> = (0..512).map(|index| (index % 251) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let server = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    let url = Url::parse(&server.url).unwrap();
+    let host = SourceHealth::host_key(&url);
+    for _ in 0..3 {
+      source_health().record_failure(&host);
+    }
+    assert!(source_health().is_disabled(&host));
+
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("fail-open-single");
+    let param = DownloadParam {
+      src: url,
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: Some(truth),
+      size: None,
+    };
+
+    download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
+      .await
+      .expect("a single disabled source must still be tried");
+
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    assert_eq!(server.request_heads.lock().unwrap().len(), 1);
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn all_sources_unhealthy_and_failing_still_reports_attempts() {
+    let first = FakeHttpServer::spawn(vec![
+      FakeReply::Status {
+        code: 500,
+        reason: "Internal Server Error",
+      },
+      FakeReply::Status {
+        code: 500,
+        reason: "Internal Server Error",
+      },
+      FakeReply::Status {
+        code: 500,
+        reason: "Internal Server Error",
+      },
+    ]);
+    let second = FakeHttpServer::spawn(vec![
+      FakeReply::Status {
+        code: 404,
+        reason: "Not Found",
+      },
+      FakeReply::Status {
+        code: 404,
+        reason: "Not Found",
+      },
+      FakeReply::Status {
+        code: 404,
+        reason: "Not Found",
+      },
+    ]);
+    let first_url = Url::parse(&first.url).unwrap();
+    let second_url = Url::parse(&second.url).unwrap();
+    for _ in 0..3 {
+      source_health().record_failure(&SourceHealth::host_key(&first_url));
+      source_health().record_failure(&SourceHealth::host_key(&second_url));
+    }
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("fail-open-all-fail");
+    let param = DownloadParam {
+      src: first_url,
+      dest: PathBuf::from("file.bin"),
+      filename: None,
+      sha1: None,
+      size: None,
+    };
+    let alt = [second_url];
+
+    let error = download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
+      .await
+      .expect_err("fail-open still reports an error when the retried sources fail");
 
     assert!(error.0.contains("after trying 2 source(s)"), "{}", error.0);
     assert!(error.0.contains(&first.url), "{}", error.0);
     assert!(error.0.contains(&second.url), "{}", error.0);
+    assert!(
+      first.request_heads.lock().unwrap().len() >= 1,
+      "the primary must have been contacted under fail-open"
+    );
     let _ = std::fs::remove_file(&dest);
   }
 
