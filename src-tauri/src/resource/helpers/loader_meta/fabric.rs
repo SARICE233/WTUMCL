@@ -32,9 +32,10 @@ pub async fn get_fabric_meta_by_game_version(
 ) -> SJMCLResult<Vec<ModLoaderResourceInfo>> {
   let client = app.state::<reqwest::Client>();
   for source_type in priority_list.iter() {
-    let url = get_download_api(*source_type, ResourceType::FabricMeta)?
-      .join("v2/versions/loader/")?
-      .join(game_version)?;
+    let Ok(api) = get_download_api(*source_type, ResourceType::FabricMeta) else {
+      continue;
+    };
+    let url = api.join("v2/versions/loader/")?.join(game_version)?;
     match client.get(url).send().await {
       Ok(response) => {
         if response.status().is_success() {

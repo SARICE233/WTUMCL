@@ -37,7 +37,11 @@ pub async fn get_game_version_manifest(
   let client = app.state::<reqwest::Client>();
 
   for source_type in priority_list.iter() {
-    let url = get_download_api(*source_type, ResourceType::VersionManifest)?;
+    // A source may simply have no path for this resource type; keep walking the
+    // priority list instead of failing the whole request.
+    let Ok(url) = get_download_api(*source_type, ResourceType::VersionManifest) else {
+      continue;
+    };
     let response = match client.get(url).send().await {
       Ok(resp) if resp.status().is_success() => resp,
       _ => continue,

@@ -4,7 +4,9 @@ use strum::IntoEnumIterator;
 use url::Url;
 
 use crate::launcher_config::models::{DownloadMirrorConfig, DownloadMirrorKind, LauncherConfig};
-use crate::resource::helpers::misc::{get_custom_mirror_download_api, get_download_api};
+use crate::resource::helpers::misc::{
+  get_custom_mirror_download_api, get_download_api, get_flat_mirror_download_api,
+};
 use crate::resource::models::{ResourceType, SourceType};
 
 /// Official hosts whose URLs may be re-pointed at another source. A URL that
@@ -41,56 +43,10 @@ pub fn mirror_download_api(
     DownloadMirrorKind::PclPrefix => {
       get_custom_mirror_download_api(&mirror.url, resource_type).ok()
     }
-    DownloadMirrorKind::BmclapiFlat => flat_mirror_api(&mirror.url, resource_type),
-  }
-}
-
-/// BMCLAPI-style mirrors share one flat path scheme, so only the base differs.
-/// Prefix-shaped entries are returned without a trailing slash: the caller
-/// appends the official URL suffix it is rewriting.
-fn flat_mirror_api(base: &str, resource_type: ResourceType) -> Option<Url> {
-  let base = base.trim().trim_end_matches('/');
-  if base.is_empty() {
-    return None;
-  }
-
-  let path = match resource_type {
-    // The official suffix already carries `/mc/game/version_manifest*.json`.
-    ResourceType::LauncherMeta
-    | ResourceType::VersionManifest
-    | ResourceType::VersionManifestV2 => base.to_string(),
-    ResourceType::Assets => format!("{base}/assets"),
-    ResourceType::Launcher => base.to_string(),
-    ResourceType::Libraries
-    | ResourceType::ForgeMaven
-    | ResourceType::ForgeMavenNew
-    | ResourceType::NeoforgeMaven
-    | ResourceType::FabricMaven
-    | ResourceType::QuiltMaven
-    | ResourceType::Liteloader => format!("{base}/maven"),
-    ResourceType::ForgeMeta => format!("{base}/forge"),
-    ResourceType::ForgeInstall => format!("{base}/forge/download"),
-    ResourceType::FabricMeta => format!("{base}/fabric-meta"),
-    ResourceType::NeoforgeMetaForge | ResourceType::NeoforgeMetaNeoforge => {
-      format!("{base}/neoforge")
+    DownloadMirrorKind::BmclapiFlat => {
+      get_flat_mirror_download_api(&mirror.url, resource_type).ok()
     }
-    ResourceType::NeoforgeInstall => format!("{base}/neoforge/version"),
-    ResourceType::OptiFine => format!("{base}/optifine"),
-    ResourceType::QuiltMeta => format!("{base}/quilt-meta"),
-    ResourceType::AuthlibInjector => format!("{base}/mirrors/authlib-injector"),
-    ResourceType::MojangJava => {
-      format!("{base}/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json")
-    }
-    // Flat mirrors expose these through their own version endpoints; guessing a
-    // path would only produce 404s, so report nothing.
-    ResourceType::PistonMeta
-    | ResourceType::PistonData
-    | ResourceType::CleanroomMaven
-    | ResourceType::CleanroomMeta
-    | ResourceType::CleanroomInstall => return None,
-  };
-
-  Url::parse(&path).ok()
+  }
 }
 
 /// Mirrors the user actually wants us to use, in their configured order.
@@ -201,6 +157,15 @@ fn push_rewritten(result: &mut Vec<Url>, url: &Url, api: &Url) {
   let Some(suffix) = split_official_prefix(url.as_str()) else {
     return;
   };
+
+  // Some resource types have no prefix mirror but a full-object mirror API
+  // (the version manifest): appending the suffix again would duplicate it.
+  if api.ends_with(suffix) {
+    if let Ok(candidate) = Url::parse(api) {
+      result.push(candidate);
+    }
+    return;
+  }
 
   if let Ok(candidate) = Url::parse(&format!("{api}{suffix}")) {
     result.push(candidate);

@@ -35,7 +35,9 @@ async fn get_latest_meta(
   let client = app.state::<reqwest::Client>();
 
   for source in priority_list.iter() {
-    let url = get_download_api(*source, ResourceType::AuthlibInjector)?;
+    let Ok(url) = get_download_api(*source, ResourceType::AuthlibInjector) else {
+      continue;
+    };
     let response = client
       .get(url.join("artifact/latest.json")?)
       .send()

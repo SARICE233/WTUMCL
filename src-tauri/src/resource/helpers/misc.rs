@@ -6,39 +6,48 @@ use std::sync::{OnceLock, RwLock};
 use strum::IntoEnumIterator;
 use url::Url;
 
-use crate::launcher_config::models::LauncherConfig;
+use crate::launcher_config::models::{DownloadMirrorKind, LauncherConfig};
 use crate::resource::models::{
   ModUpdateQuery, OtherResourceInfo, OtherResourceVersionPack, ResourceError, ResourceType,
   SourceType,
 };
 use crate::utils::string::contains_chinese;
 
-// BaseUrl of the optional PCL-style custom mirror, kept process-wide because
-// `get_download_api` has no access to the launcher config and is called from many
-// download flows with only a `SourceType`. It is synchronized by
+// BaseUrl and path scheme of the custom download mirror, kept process-wide
+// because `get_download_api` has no access to the launcher config and is called
+// from many download flows with only a `SourceType`. It is synchronized by
 // `get_source_priority_list` (always called before a download starts) and can also
-// be set explicitly with `set_custom_mirror_url`. An empty value means "not
+// be set explicitly with `set_custom_mirror_target`. An empty value means "not
 // configured": `get_download_api(SourceType::CustomMirror, ..)` then fails safely.
-static CUSTOM_MIRROR_URL: OnceLock<RwLock<String>> = OnceLock::new();
-
-fn custom_mirror_url_cell() -> &'static RwLock<String> {
-  CUSTOM_MIRROR_URL.get_or_init(|| RwLock::new(String::new()))
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CustomMirrorTarget {
+  pub base_url: String,
+  pub kind: DownloadMirrorKind,
 }
 
-pub fn set_custom_mirror_url(url: &str) {
+static CUSTOM_MIRROR: OnceLock<RwLock<CustomMirrorTarget>> = OnceLock::new();
+
+fn custom_mirror_cell() -> &'static RwLock<CustomMirrorTarget> {
+  CUSTOM_MIRROR.get_or_init(|| RwLock::new(CustomMirrorTarget::default()))
+}
+
+pub fn set_custom_mirror_target(base_url: &str, kind: DownloadMirrorKind) {
   // Store only a validated BaseUrl: an invalid user input falls back to "not
   // configured" so `get_download_api(SourceType::CustomMirror, ..)` errors out
   // instead of building a malformed download URL.
-  let normalized = normalize_custom_mirror_base(url).unwrap_or_default();
-  if let Ok(mut cell) = custom_mirror_url_cell().write() {
-    *cell = normalized;
+  let target = match normalize_custom_mirror_base(base_url) {
+    Ok(base_url) => CustomMirrorTarget { base_url, kind },
+    Err(_) => CustomMirrorTarget::default(),
+  };
+  if let Ok(mut cell) = custom_mirror_cell().write() {
+    *cell = target;
   }
 }
 
-pub fn get_custom_mirror_url() -> String {
-  custom_mirror_url_cell()
+pub fn get_custom_mirror_target() -> CustomMirrorTarget {
+  custom_mirror_cell()
     .read()
-    .map(|url| url.clone())
+    .map(|target| target.clone())
     .unwrap_or_default()
 }
 
@@ -46,26 +55,50 @@ fn normalize_custom_mirror_base_text(url: &str) -> String {
   url.trim().trim_end_matches('/').to_string()
 }
 
+/// The mirror the `CustomMirror` source refers to.
+///
+/// The ordered mirror list supersedes the single legacy BaseUrl: the first
+/// enabled entry with a valid BaseUrl wins and its path scheme is kept, so a
+/// flat (BMCLAPI-style) mirror can actually serve as the primary source. The
+/// legacy BaseUrl only decides when the list has no usable entry.
+fn resolve_custom_mirror_target(launcher_config: &LauncherConfig) -> CustomMirrorTarget {
+  let listed = launcher_config
+    .download
+    .source
+    .mirrors
+    .iter()
+    .filter(|mirror| mirror.enabled)
+    .find_map(|mirror| {
+      normalize_custom_mirror_base(&mirror.url)
+        .ok()
+        .map(|base_url| CustomMirrorTarget {
+          base_url,
+          kind: mirror.kind,
+        })
+    });
+
+  listed
+    .or_else(|| {
+      normalize_custom_mirror_base(&launcher_config.download.source.custom_mirror_url)
+        .ok()
+        .map(|base_url| CustomMirrorTarget {
+          base_url,
+          kind: DownloadMirrorKind::PclPrefix,
+        })
+    })
+    .unwrap_or_default()
+}
+
 pub fn get_source_priority_list(launcher_config: &LauncherConfig) -> Vec<SourceType> {
   let strategy = launcher_config.download.source.strategy.as_str();
   // Empty, blank and malformed BaseUrls are all treated as "not configured";
   // they must never enter the priority list.
-  let custom_mirror_url =
-    normalize_custom_mirror_base(&launcher_config.download.source.custom_mirror_url)
-      .unwrap_or_default();
-  // The ordered mirror list supersedes the single legacy BaseUrl: as soon as one
-  // enabled entry exists, the custom source is "configured" for this build.
-  let has_configured_mirror = !custom_mirror_url.is_empty()
-    || launcher_config
-      .download
-      .source
-      .mirrors
-      .iter()
-      .any(|mirror| mirror.enabled && !mirror.url.trim().is_empty());
+  let custom_mirror = resolve_custom_mirror_target(launcher_config);
+  let has_configured_mirror = !custom_mirror.base_url.is_empty();
 
-  // Keep the process-wide BaseUrl in sync so that `get_download_api` can resolve
+  // Keep the process-wide mirror in sync so that `get_download_api` can resolve
   // `SourceType::CustomMirror` without changing its signature.
-  set_custom_mirror_url(&custom_mirror_url);
+  set_custom_mirror_target(&custom_mirror.base_url, custom_mirror.kind);
 
   let auto_priority = match launcher_config.basic_info.is_china_mainland_ip {
     true => vec![SourceType::BMCLAPIMirror, SourceType::Official],
@@ -98,10 +131,18 @@ pub fn get_download_api(source: SourceType, resource_type: ResourceType) -> SJMC
   match source {
     SourceType::Official => get_official_download_api(resource_type),
     SourceType::BMCLAPIMirror => get_bmclapi_download_api(resource_type),
-    // Reads the BaseUrl synchronized from the launcher config; when it is empty or
+    // Reads the mirror synchronized from the launcher config; when it is empty or
     // invalid this returns `NoDownloadApi` so that callers fall back safely.
     SourceType::CustomMirror => {
-      get_custom_mirror_download_api(&get_custom_mirror_url(), resource_type)
+      let target = get_custom_mirror_target();
+      match target.kind {
+        DownloadMirrorKind::PclPrefix => {
+          get_custom_mirror_download_api(&target.base_url, resource_type)
+        }
+        DownloadMirrorKind::BmclapiFlat => {
+          get_flat_mirror_download_api(&target.base_url, resource_type)
+        }
+      }
     }
   }
 }
@@ -240,6 +281,56 @@ pub fn get_custom_mirror_download_api(
   };
 
   Ok(Url::parse(&format!("{}/{}", base_url, path))?)
+}
+
+// Resource types served by a BMCLAPI-style (flat) custom mirror, mapped to the
+// full URL the download flow requests:
+// ` {BaseUrl}/mc/game/version_manifest.json`, `{BaseUrl}/maven/`, `{BaseUrl}/assets/`, ...
+//
+// A flat mirror exposes its own version endpoints instead of mirroring the
+// piston hosts path-for-path, so PistonMeta/PistonData deliberately resolve to
+// nothing: the version info keeps pointing at Mojang and the mirror only serves
+// the objects it advertises.
+pub fn get_flat_mirror_download_api(
+  base_url: &str,
+  resource_type: ResourceType,
+) -> SJMCLResult<Url> {
+  let base_url = normalize_custom_mirror_base(base_url)?;
+  let base = base_url.as_str();
+
+  let url = match resource_type {
+    ResourceType::VersionManifest => format!("{base}/mc/game/version_manifest.json"),
+    ResourceType::VersionManifestV2 => format!("{base}/mc/game/version_manifest_v2.json"),
+    ResourceType::LauncherMeta | ResourceType::Launcher => format!("{base}/"),
+    ResourceType::Assets => format!("{base}/assets/"),
+    ResourceType::Libraries
+    | ResourceType::ForgeMaven
+    | ResourceType::ForgeMavenNew
+    | ResourceType::NeoforgeMaven
+    | ResourceType::FabricMaven
+    | ResourceType::QuiltMaven
+    | ResourceType::Liteloader => format!("{base}/maven/"),
+    ResourceType::ForgeMeta => format!("{base}/forge/"),
+    ResourceType::ForgeInstall => format!("{base}/forge/download/"),
+    ResourceType::FabricMeta => format!("{base}/fabric-meta/"),
+    ResourceType::NeoforgeMetaForge | ResourceType::NeoforgeMetaNeoforge => {
+      format!("{base}/neoforge/")
+    }
+    ResourceType::NeoforgeInstall => format!("{base}/neoforge/version/"),
+    ResourceType::OptiFine => format!("{base}/optifine/"),
+    ResourceType::QuiltMeta => format!("{base}/quilt-meta/"),
+    ResourceType::AuthlibInjector => format!("{base}/mirrors/authlib-injector/"),
+    ResourceType::MojangJava => {
+      format!("{base}/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json")
+    }
+    ResourceType::PistonMeta
+    | ResourceType::PistonData
+    | ResourceType::CleanroomMaven
+    | ResourceType::CleanroomMeta
+    | ResourceType::CleanroomInstall => return Err(ResourceError::NoDownloadApi.into()),
+  };
+
+  Ok(Url::parse(&url)?)
 }
 
 // Validate and normalize a user-provided custom mirror BaseUrl.
@@ -534,15 +625,27 @@ mod download_source_tests {
   use super::*;
   use std::sync::{Mutex, MutexGuard};
 
+  use crate::launcher_config::models::DownloadMirrorConfig;
+
   const CUSTOM_MIRROR: &str = "https://mcmirror.bvvd.mom";
 
   // The custom mirror BaseUrl lives in a process-wide cell, so tests touching it
   // must be serialized.
   static BASE_URL_LOCK: Mutex<()> = Mutex::new(());
 
+  // The legacy single BaseUrl is the PclPrefix flavour of the same cell; tests
+  // that predate the mirror list keep configuring it this way.
+  fn set_legacy_mirror(url: &str) {
+    set_custom_mirror_target(url, DownloadMirrorKind::PclPrefix);
+  }
+
+  fn legacy_mirror_url() -> String {
+    get_custom_mirror_target().base_url
+  }
+
   fn lock_base_url() -> MutexGuard<'static, ()> {
     let guard = BASE_URL_LOCK.lock().unwrap_or_else(|err| err.into_inner());
-    set_custom_mirror_url("");
+    set_legacy_mirror("");
     guard
   }
 
@@ -567,7 +670,7 @@ mod download_source_tests {
   #[test]
   fn custom_mirror_maps_official_prefixes() {
     let _guard = lock_base_url();
-    set_custom_mirror_url(CUSTOM_MIRROR);
+    set_legacy_mirror(CUSTOM_MIRROR);
 
     let cases = [
       (
@@ -653,7 +756,7 @@ mod download_source_tests {
   #[test]
   fn custom_mirror_keeps_base_url_path_prefix() {
     let _guard = lock_base_url();
-    set_custom_mirror_url("https://example.com/mirror/");
+    set_legacy_mirror("https://example.com/mirror/");
 
     assert_eq!(
       api_str(SourceType::CustomMirror, ResourceType::PistonData),
@@ -760,7 +863,7 @@ mod download_source_tests {
   #[test]
   fn unmapped_resource_types_fall_back_to_bmclapi() {
     let _guard = lock_base_url();
-    set_custom_mirror_url(CUSTOM_MIRROR);
+    set_legacy_mirror(CUSTOM_MIRROR);
 
     for resource_type in [
       ResourceType::Liteloader,
@@ -829,11 +932,7 @@ mod download_source_tests {
         "invalid base url {base_url} must fall back to auto priority"
       );
       assert!(!priority.contains(&SourceType::CustomMirror));
-      assert_eq!(
-        get_custom_mirror_url(),
-        "",
-        "invalid base url must be cleared"
-      );
+      assert_eq!(legacy_mirror_url(), "", "invalid base url must be cleared");
     }
   }
 
@@ -847,7 +946,7 @@ mod download_source_tests {
       true,
     ));
     assert_eq!(priority.first(), Some(&SourceType::CustomMirror));
-    assert_eq!(get_custom_mirror_url(), "https://example.com/mirror");
+    assert_eq!(legacy_mirror_url(), "https://example.com/mirror");
     assert_eq!(
       api_str(SourceType::CustomMirror, ResourceType::Libraries),
       "https://example.com/mirror/libraries/"
@@ -875,7 +974,7 @@ mod download_source_tests {
       piston_data
     );
 
-    set_custom_mirror_url(CUSTOM_MIRROR);
+    set_legacy_mirror(CUSTOM_MIRROR);
     assert_eq!(
       convert_url_to_primary_source(&piston_data, &[ResourceType::PistonData], &custom).as_str(),
       "https://mcmirror.bvvd.mom/piston-data/v1/objects/abc/client.jar"
@@ -885,7 +984,7 @@ mod download_source_tests {
   #[test]
   fn installer_resource_types_fall_back_to_bmclapi_not_the_custom_base() {
     let _guard = lock_base_url();
-    set_custom_mirror_url(CUSTOM_MIRROR);
+    set_legacy_mirror(CUSTOM_MIRROR);
 
     for resource_type in [ResourceType::ForgeInstall, ResourceType::NeoforgeInstall] {
       let custom = get_download_api(SourceType::CustomMirror, resource_type)
@@ -896,8 +995,92 @@ mod download_source_tests {
     }
 
     // Without a valid BaseUrl the source resolves to an error instead of an URL.
-    set_custom_mirror_url("not a url");
-    assert_eq!(get_custom_mirror_url(), "");
+    set_legacy_mirror("not a url");
+    assert_eq!(legacy_mirror_url(), "");
     assert!(get_download_api(SourceType::CustomMirror, ResourceType::ForgeInstall).is_err());
+  }
+
+  fn flat_mirror(url: &str) -> DownloadMirrorConfig {
+    DownloadMirrorConfig {
+      url: url.to_string(),
+      kind: DownloadMirrorKind::BmclapiFlat,
+      enabled: true,
+    }
+  }
+
+  #[test]
+  fn listed_flat_mirror_becomes_the_custom_source() {
+    let _guard = lock_base_url();
+    let mut config = test_config("custom", "", true);
+    config.download.source.mirrors = vec![flat_mirror(CUSTOM_MIRROR)];
+
+    let priority = get_source_priority_list(&config);
+    assert_eq!(priority.first(), Some(&SourceType::CustomMirror));
+    assert_eq!(legacy_mirror_url(), CUSTOM_MIRROR);
+    assert_eq!(
+      get_custom_mirror_target().kind,
+      DownloadMirrorKind::BmclapiFlat
+    );
+    assert_eq!(
+      api_str(SourceType::CustomMirror, ResourceType::VersionManifest),
+      "https://mcmirror.bvvd.mom/mc/game/version_manifest.json"
+    );
+    assert_eq!(
+      api_str(SourceType::CustomMirror, ResourceType::Libraries),
+      "https://mcmirror.bvvd.mom/maven/"
+    );
+    assert_eq!(
+      api_str(SourceType::CustomMirror, ResourceType::Assets),
+      "https://mcmirror.bvvd.mom/assets/"
+    );
+    // A flat mirror rewrites its own version manifests; there is no path to
+    // guess for the piston hosts, so the caller must keep the original URL.
+    assert!(get_download_api(SourceType::CustomMirror, ResourceType::PistonMeta).is_err());
+  }
+
+  #[test]
+  fn listed_mirror_kind_selects_the_path_scheme() {
+    let _guard = lock_base_url();
+    let mut config = test_config("custom", "", true);
+    config.download.source.mirrors = vec![DownloadMirrorConfig {
+      url: CUSTOM_MIRROR.to_string(),
+      kind: DownloadMirrorKind::PclPrefix,
+      enabled: true,
+    }];
+
+    get_source_priority_list(&config);
+    assert_eq!(
+      api_str(SourceType::CustomMirror, ResourceType::Libraries),
+      "https://mcmirror.bvvd.mom/libraries/"
+    );
+    assert_eq!(
+      api_str(SourceType::CustomMirror, ResourceType::VersionManifest),
+      "https://mcmirror.bvvd.mom/launchermeta/mc/game/version_manifest.json"
+    );
+  }
+
+  #[test]
+  fn an_unusable_mirror_entry_falls_back_to_the_legacy_base_url() {
+    let _guard = lock_base_url();
+    let mut config = test_config("custom", CUSTOM_MIRROR, true);
+    config.download.source.mirrors = vec![
+      flat_mirror("not a url"),
+      DownloadMirrorConfig {
+        url: "https://disabled.example".to_string(),
+        kind: DownloadMirrorKind::BmclapiFlat,
+        enabled: false,
+      },
+    ];
+
+    get_source_priority_list(&config);
+    assert_eq!(legacy_mirror_url(), CUSTOM_MIRROR);
+    assert_eq!(
+      get_custom_mirror_target().kind,
+      DownloadMirrorKind::PclPrefix
+    );
+    assert_eq!(
+      api_str(SourceType::CustomMirror, ResourceType::Libraries),
+      "https://mcmirror.bvvd.mom/libraries/"
+    );
   }
 }

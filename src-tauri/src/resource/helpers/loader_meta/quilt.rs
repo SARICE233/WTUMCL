@@ -30,9 +30,10 @@ pub async fn get_quilt_meta_by_game_version(
   let client = app.state::<reqwest::Client>();
 
   for source_type in priority_list.iter() {
-    let url = get_download_api(*source_type, ResourceType::QuiltMeta)?
-      .join("v3/versions/loader/")?
-      .join(game_version)?;
+    let Ok(api) = get_download_api(*source_type, ResourceType::QuiltMeta) else {
+      continue;
+    };
+    let url = api.join("v3/versions/loader/")?.join(game_version)?;
 
     match client.get(url).send().await {
       Ok(response) => {

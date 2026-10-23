@@ -520,7 +520,8 @@ pub async fn get_invalid_assets(
   asset_path: &Path,
   check_hash: bool,
 ) -> SJMCLResult<Vec<PTaskParam>> {
-  let assets_download_api = get_download_api(source, ResourceType::Assets)?;
+  let assets_download_api = get_download_api(source, ResourceType::Assets)
+    .or_else(|_| get_download_api(SourceType::Official, ResourceType::Assets))?;
 
   let asset_index_path = asset_path.join(format!("indexes/{}.json", client_info.asset_index.id));
   let asset_index = load_asset_index(app, &asset_index_path, &client_info.asset_index).await?;
