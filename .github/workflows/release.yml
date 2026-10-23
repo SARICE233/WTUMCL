@@ -119,6 +119,8 @@ jobs:
 
       - name: Generate Changelog
         id: changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pip install requests packaging
           python scripts/release/generate_changelog_draft.py > release-notes.md

@@ -78,9 +78,9 @@ def main():
         author = commit['author']['login'] if commit['author'] else 'unknown'
         emoji = get_emoji(msg)
         if emoji:
-            print(f"- {emoji} {msg} @{author}")
+            print(f"- {emoji} {msg} `@{author}`")
         else:
-            print(f"- {msg} @{author}")
+            print(f"- {msg} `@{author}`")
 
 if __name__ == "__main__":
     main()
