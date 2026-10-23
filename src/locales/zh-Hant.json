@@ -1779,8 +1779,7 @@
     "hitokoto": {
       "title": "每日一言",
       "refresh": "換一句",
-      "loading": "正在取得…",
-      "empty": "一言服務暫時無法使用"
+      "loading": "正在取得…"
     },
     "news": {
       "title": "WTUMC 社群新聞",

@@ -1,6 +1,6 @@
 import { HStack, Text, VStack } from "@chakra-ui/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LuRefreshCw } from "react-icons/lu";
 import AdvancedCard from "@/components/common/advanced-card";
@@ -11,20 +11,34 @@ import { DiscoverService } from "@/services/discover";
 
 const HITOKOTO_SITE = "https://hitokoto.cn";
 
+/** WTUMC-only sentences used whenever hitokoto.cn cannot be reached. */
+const FALLBACK_HITOKOTO: Hitokoto[] = [
+  { text: "自强不息，经天纬地", from: "WTUMC" },
+  { text: "在指尖上建造世界，在虚拟中纵横经纬", from: "WTUMC" },
+];
+
 const HitokotoCard = () => {
   const { t } = useTranslation();
   const [hitokoto, setHitokoto] = useState<Hitokoto>();
   const [isLoading, setIsLoading] = useState(true);
+  const fallbackIndex = useRef(0);
 
   const refresh = useCallback(() => {
     setIsLoading(true);
+    const applyFallback = () => {
+      const index = fallbackIndex.current % FALLBACK_HITOKOTO.length;
+      fallbackIndex.current += 1;
+      setHitokoto(FALLBACK_HITOKOTO[index]);
+    };
     DiscoverService.fetchHitokoto()
       .then((response) => {
-        if (response.status === "success") {
+        if (response.status === "success" && response.data.text.trim()) {
           setHitokoto(response.data);
+        } else {
+          applyFallback();
         }
       })
-      .catch(() => undefined)
+      .catch(applyFallback)
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -55,7 +69,7 @@ const HitokotoCard = () => {
           <Text fontSize="sm" lineHeight="tall" minH="2.5rem">
             {isLoading
               ? t("LaunchPage.hitokoto.loading")
-              : hitokoto?.text || t("LaunchPage.hitokoto.empty")}
+              : hitokoto?.text || FALLBACK_HITOKOTO[0].text}
           </Text>
           <HStack spacing={2} justifyContent="space-between">
             <Text fontSize="xs" className="secondary-text" isTruncated>

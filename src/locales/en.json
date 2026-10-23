@@ -1779,8 +1779,7 @@
     "hitokoto": {
       "title": "A word a day",
       "refresh": "Refresh",
-      "loading": "Fetching…",
-      "empty": "hitokoto.cn is unavailable"
+      "loading": "Fetching…"
     },
     "news": {
       "title": "WTUMC community news",

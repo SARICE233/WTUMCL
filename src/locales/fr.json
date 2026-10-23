@@ -1779,8 +1779,7 @@
     "hitokoto": {
       "title": "La phrase du jour",
       "refresh": "Actualiser",
-      "loading": "Récupération…",
-      "empty": "hitokoto.cn est indisponible"
+      "loading": "Récupération…"
     },
     "news": {
       "title": "Actualités de la communauté WTUMC",

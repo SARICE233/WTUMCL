@@ -1779,8 +1779,7 @@
     "hitokoto": {
       "title": "日一言",
       "refresh": "易一言",
-      "loading": "方取…",
-      "empty": "一言之服不可用"
+      "loading": "方取…"
     },
     "news": {
       "title": "WTUMC 社聞",

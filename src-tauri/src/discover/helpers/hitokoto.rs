@@ -6,11 +6,10 @@ use tauri_plugin_http::reqwest;
 const HITOKOTO_ENDPOINT: &str = "https://v1.hitokoto.cn/?c=a&c=d&c=i&c=k&encode=json";
 const HITOKOTO_TIMEOUT_SECS: u64 = 5;
 
-/// Sentences served when the remote endpoint is unreachable, slow or malformed.
-const FALLBACK_HITOKOTO: [(&str, &str); 3] = [
-  ("先把火把插在脚下，再去看远处的矿洞。", "WTUMC"),
-  ("挖到基岩之前，别忘了先带一张床。", "WTUMC"),
-  ("存档会记住你今天走过的每一步。", "WTUMC"),
+/// WTUMC sentences served when the remote endpoint is unreachable, slow or malformed.
+const FALLBACK_HITOKOTO: [(&str, &str); 2] = [
+  ("自强不息，经天纬地", "WTUMC"),
+  ("在指尖上建造世界，在虚拟中纵横经纬", "WTUMC"),
 ];
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -101,11 +100,16 @@ mod tests {
   }
 
   #[test]
-  fn fallback_rotates_and_is_never_empty() {
+  fn fallback_serves_only_the_two_wtumc_sentences() {
     let first = fallback();
     let second = fallback();
-    assert!(!first.text.is_empty());
-    assert!(!second.text.is_empty());
-    assert_ne!(first.text, second.text);
+    let third = fallback();
+    assert_eq!(first.text, "自强不息，经天纬地");
+    assert_eq!(second.text, "在指尖上建造世界，在虚拟中纵横经纬");
+    assert_eq!(third.text, first.text);
+    for hitokoto in [first, second] {
+      assert_eq!(hitokoto.from, "WTUMC");
+      assert_eq!(hitokoto.from_who, None);
+    }
   }
 }
