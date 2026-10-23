@@ -16,8 +16,9 @@
   --launch-glow-c: rgba(120, 92, 200, 0.13);
 }
 
-/* Purely decorative: low-contrast graticule and aurora washes that echo the
-   Meridian preset without competing with the launcher wallpaper. */
+/* Purely decorative: the aurora washes sit over every wallpaper (the feed's
+   text contrast depends on them), while the low-contrast graticule is mounted
+   only when the page root opts in with [data-launch-decor="meridian"]. */
 .texture {
   position: absolute;
   inset: 0;
@@ -29,7 +30,7 @@
     radial-gradient(40% 55% at 62% 38%, var(--launch-glow-c), transparent 75%);
 }
 
-.texture::before {
+.page[data-launch-decor="meridian"] .texture::before {
   content: "";
   position: absolute;
   inset: -14%;
@@ -51,7 +52,7 @@
   );
 }
 
-.texture::after {
+.page[data-launch-decor="meridian"] .texture::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -124,7 +125,7 @@
   -webkit-mask-repeat: no-repeat;
 }
 
-.veil::before {
+.page[data-launch-decor="meridian"] .veil::before {
   content: "";
   position: absolute;
   inset: -12%;
@@ -194,7 +195,7 @@
     );
 }
 
-:global([data-theme="dark"]) .veil::before {
+:global([data-theme="dark"]) .page[data-launch-decor="meridian"] .veil::before {
   mask-image: radial-gradient(
     ellipse 140% 124% at 30% 44%,
     rgba(0, 0, 0, 0.56) 26%,
@@ -272,16 +273,70 @@
   height: 0;
 }
 
-/* Up to three news cards in a row, laid out as three equal columns. The grid
-   is plain layout: it never scrolls or clips, so the card's 24px shadow fades
-   out naturally instead of being cut by a scrollport edge. */
+/* Up to three news cards in a row, laid out as three equal columns. This box
+   only carries the shared metrics (gap, column count, how many columns are on
+   screen) and the vertical breathing room; the window and the sliding row are
+   its two children. A short feed keeps third-width cards because the column
+   count never drops below three, only the number of columns in the window. */
 .newsGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  --news-gap: 0.75rem;
+  --news-columns: 3;
+  --news-visible: 3;
+  display: block;
   /* Padding, never an overflow box: the extra room below the row gives the
      shadow tail space to decay before the feed's own scrollport edge. */
   padding: 0.25rem 0 0.5rem;
+}
+
+/* The window the row slides through: exactly as wide as the columns that are
+   meant to be on screen. Only the horizontal axis is clipped; the clip edge is
+   pushed one gap outwards with overflow-clip-margin so the card's 24px shadow
+   keeps a band to decay in and the cards are not cut into hard rectangles.
+   Overflowing cards start exactly at the clip edge, so none of them peeks in
+   while the row is at rest. */
+.newsViewport {
+  width: calc(
+    (100% - (var(--news-columns) - 1) * var(--news-gap)) / var(--news-columns) *
+      var(--news-visible) + (var(--news-visible) - 1) * var(--news-gap)
+  );
+  overflow-x: clip;
+  overflow-y: visible;
+  overflow-clip-margin: var(--news-gap);
+}
+
+/* The sliding row. Its width is rebuilt from the window so that its own 100%
+   is the full row again: the slots below and the translate step both resolve
+   their percentages against it, which keeps every card at the same width no
+   matter how many columns the window shows. */
+.newsTrack {
+  --news-row-width: calc(
+    (100% - (var(--news-visible) - 1) * var(--news-gap)) * var(--news-columns) /
+      var(--news-visible) + (var(--news-columns) - 1) * var(--news-gap)
+  );
+  --news-step: calc(
+    (100% - (var(--news-columns) - 1) * var(--news-gap)) / var(--news-columns) +
+      var(--news-gap)
+  );
+  width: var(--news-row-width);
+  display: flex;
+  gap: var(--news-gap);
+  transform: translateX(calc(var(--news-offset, 0) * -1 * var(--news-step)));
+  transition: transform 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
+}
+
+/* Used for the invisible jump back to the first card after a wrap. */
+.newsTrackSnap {
+  transition: none;
+}
+
+.newsSlot {
+  flex: 0 0
+    calc(
+      (100% - (var(--news-columns) - 1) * var(--news-gap)) / var(--news-columns)
+    );
+  min-width: 0;
+  display: flex;
 }
 
 .newsImage {
@@ -308,8 +363,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .texture::before,
-  .texture::after {
+  /* The row switches to the next set of cards outright instead of sliding. */
+  .newsTrack,
+  .newsTrackSnap {
+    transition: none;
+  }
+
+  .page[data-launch-decor="meridian"] .texture::before,
+  .page[data-launch-decor="meridian"] .texture::after {
     transform: none;
   }
 }
