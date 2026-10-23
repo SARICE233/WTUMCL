@@ -1,0 +1,16 @@
+# Mirror of the repository root .cargo/audit.toml.
+# CI runs the audit job with `working-directory: src-tauri` (.github/workflows/audit.yml),
+# and cargo-audit only resolves .cargo/audit.toml relative to the current directory, so the
+# root config is not picked up there. Keep both files in sync.
+[advisories]
+ignore = [
+  # RSA is used for local signing and JWT verification; no decryption. No upstream fix is available yet.
+  "RUSTSEC-2023-0071",
+  # zip 2.x: RUSTSEC-2026-0367/0368/0369 (SUID/SGID preservation, symlink escape on extract).
+  # The only patched release is zip >=9.0.0, a major API rewrite; migrating needs code changes in
+  # src-tauri/src/{instance/helpers/modpack/*,utils/fs.rs} and is tracked separately. Extraction here
+  # only touches archives the user picked locally or Mojang/loader jars fetched by the launcher.
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
+]
