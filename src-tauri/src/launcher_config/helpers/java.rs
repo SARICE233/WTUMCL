@@ -3,8 +3,9 @@ use sjmcl_types::error::{SJMCLError, SJMCLResult};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 
@@ -435,6 +436,34 @@ fn java_runtime_looks_usable(_java_path: &str) -> bool {
   true
 }
 
+/// Wait for `child` to exit, killing and reaping it once `deadline` elapses.
+///
+/// Returns `true` when the child exited on its own and `false` when it had to
+/// be killed (or when polling it failed). A killed child is reaped here so the
+/// scan never leaves a zombie behind (issue #1977).
+fn wait_until_exit(child: &mut Child, deadline: Duration) -> bool {
+  let started = Instant::now();
+  loop {
+    match child.try_wait() {
+      Ok(Some(_)) => return true,
+      Ok(None) => {
+        if started.elapsed() > deadline {
+          let _ = child.kill();
+          let _ = child.wait();
+          return false;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+      }
+      Err(_) => return false,
+    }
+  }
+}
+
+/// Upper bound for a single `java -XshowSettings:properties -version` probe.
+/// A broken runtime can block inside the OS loader, so the scan must never
+/// wait on it indefinitely (issue #1977).
+const JAVA_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
+
 pub fn get_java_info_from_command(java_path: &str) -> (Option<String>, Option<String>) {
   if !java_runtime_looks_usable(java_path) {
     return (None, None);
@@ -460,21 +489,8 @@ pub fn get_java_info_from_command(java_path: &str) -> (Option<String>, Option<St
   };
 
   // Never let a hanging or dialog-blocked probe stall the whole scan.
-  let deadline = std::time::Duration::from_secs(10);
-  let started = std::time::Instant::now();
-  loop {
-    match child.try_wait() {
-      Ok(Some(_)) => break,
-      Ok(None) => {
-        if started.elapsed() > deadline {
-          let _ = child.kill();
-          let _ = child.wait();
-          return (None, None);
-        }
-        std::thread::sleep(std::time::Duration::from_millis(50));
-      }
-      Err(_) => return (None, None),
-    }
+  if !wait_until_exit(&mut child, JAVA_PROBE_TIMEOUT) {
+    return (None, None);
   }
 
   let output = match child.wait_with_output() {
@@ -596,4 +612,209 @@ pub async fn build_mojang_java_download_params(
     .collect();
 
   Ok(download_params)
+}
+
+#[cfg(test)]
+mod tests {
+  #[cfg(target_os = "windows")]
+  use super::java_runtime_looks_usable;
+  use super::{get_java_info_from_command, wait_until_exit};
+  use std::fs;
+  use std::path::PathBuf;
+  use std::process::{Command, Stdio};
+  use std::time::{Duration, Instant};
+
+  /// A unique directory under the system temp dir, removed on drop even when
+  /// an assertion panics.
+  struct TempJavaDir {
+    path: PathBuf,
+  }
+
+  impl TempJavaDir {
+    fn new(label: &str) -> Self {
+      let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+      let pid = std::process::id();
+      let path = std::env::temp_dir().join(format!("sjmcl-java-probe-{label}-{pid}-{nanos}"));
+      fs::create_dir_all(&path).expect("create temporary java directory");
+      Self { path }
+    }
+
+    fn join(&self, name: &str) -> PathBuf {
+      self.path.join(name)
+    }
+
+    #[cfg(target_os = "windows")]
+    fn fake_java_exe(&self) -> String {
+      let exe = self.join("java.exe");
+      fs::write(&exe, b"").expect("write placeholder java.exe");
+      exe.to_string_lossy().into_owned()
+    }
+  }
+
+  impl Drop for TempJavaDir {
+    fn drop(&mut self) {
+      let _ = fs::remove_dir_all(&self.path);
+    }
+  }
+
+  fn long_running_child() -> Command {
+    #[cfg(target_os = "windows")]
+    let mut command = {
+      let comspec = std::env::var_os("COMSPEC").unwrap_or_else(|| "cmd.exe".into());
+      let mut command = Command::new(comspec);
+      // Loopback only: no external network and no extra binary is required.
+      command.args(["/c", "ping -n 30 127.0.0.1"]);
+      command
+    };
+    #[cfg(not(target_os = "windows"))]
+    let mut command = {
+      let mut command = Command::new("sleep");
+      command.arg("30");
+      command
+    };
+    command.stdout(Stdio::null()).stderr(Stdio::null());
+    command
+  }
+
+  #[test]
+  #[cfg(target_os = "windows")]
+  fn java_runtime_missing_jli_and_jvm_is_skipped_before_spawning() {
+    let dir = TempJavaDir::new("missing-runtime");
+    let java_path = dir.fake_java_exe();
+
+    // Only java.exe exists: the runtime DLLs the OS loader needs are absent.
+    assert!(!java_runtime_looks_usable(&java_path));
+
+    let started = Instant::now();
+    let info = get_java_info_from_command(&java_path);
+    let elapsed = started.elapsed();
+    println!("missing jli/jvm probe returned in {elapsed:?}");
+
+    assert_eq!(info, (None, None));
+    assert!(
+      elapsed < Duration::from_secs(1),
+      "broken runtime probe must be skipped without spawning, took {elapsed:?}"
+    );
+  }
+
+  #[test]
+  #[cfg(target_os = "windows")]
+  fn java_runtime_with_jli_dll_is_considered_usable() {
+    let dir = TempJavaDir::new("jli-present");
+    let java_path = dir.fake_java_exe();
+    fs::write(dir.join("jli.dll"), b"").expect("write jli.dll");
+
+    let started = Instant::now();
+    let usable = java_runtime_looks_usable(&java_path);
+    let elapsed = started.elapsed();
+    println!("jli.dll presence check returned in {elapsed:?}");
+
+    assert!(usable);
+  }
+
+  #[test]
+  #[cfg(target_os = "windows")]
+  fn java_runtime_with_jvm_dll_is_considered_usable() {
+    let dir = TempJavaDir::new("jvm-present");
+    let java_path = dir.fake_java_exe();
+    fs::write(dir.join("jvm.dll"), b"").expect("write jvm.dll");
+
+    let started = Instant::now();
+    let usable = java_runtime_looks_usable(&java_path);
+    let elapsed = started.elapsed();
+    println!("jvm.dll presence check returned in {elapsed:?}");
+
+    assert!(usable);
+  }
+
+  #[test]
+  #[cfg(target_os = "windows")]
+  fn java_runtime_with_jli_but_fake_executable_fails_spawn_fast() {
+    let dir = TempJavaDir::new("fake-exe");
+    let java_path = dir.fake_java_exe();
+    fs::write(dir.join("jli.dll"), b"").expect("write jli.dll");
+
+    // The runtime check passes, so the probe reaches `Command::spawn`; a
+    // zero-byte executable is rejected by the OS loader immediately.
+    assert!(java_runtime_looks_usable(&java_path));
+
+    let started = Instant::now();
+    let info = get_java_info_from_command(&java_path);
+    let elapsed = started.elapsed();
+    println!("fake java.exe spawn returned in {elapsed:?}");
+
+    assert_eq!(info, (None, None));
+    assert!(
+      elapsed < Duration::from_secs(1),
+      "spawn failure should return quickly, took {elapsed:?}"
+    );
+  }
+
+  #[test]
+  fn java_probe_of_missing_path_returns_none_fast() {
+    let dir = TempJavaDir::new("missing-path");
+    let java_path = dir.join("does-not-exist").to_string_lossy().into_owned();
+
+    let started = Instant::now();
+    let info = get_java_info_from_command(&java_path);
+    let elapsed = started.elapsed();
+    println!("missing path probe returned in {elapsed:?}");
+
+    assert_eq!(info, (None, None));
+    assert!(
+      elapsed < Duration::from_secs(1),
+      "a missing java path must fail fast, took {elapsed:?}"
+    );
+  }
+
+  #[test]
+  fn java_wait_until_exit_kills_a_hung_child_at_the_deadline() {
+    let mut child = long_running_child()
+      .spawn()
+      .expect("spawn long-running child");
+
+    let started = Instant::now();
+    let exited = wait_until_exit(&mut child, Duration::from_millis(600));
+    let elapsed = started.elapsed();
+    println!("wait_until_exit deadline path returned in {elapsed:?}");
+
+    assert!(!exited, "a long-running child must hit the deadline");
+    assert!(
+      elapsed < Duration::from_secs(5),
+      "wait_until_exit must kill the child near the 600ms deadline, took {elapsed:?}"
+    );
+    assert!(
+      matches!(child.try_wait(), Ok(Some(_))),
+      "the child must be killed and reaped"
+    );
+  }
+
+  #[test]
+  fn java_wait_until_exit_reports_a_child_that_already_exited() {
+    #[cfg(target_os = "windows")]
+    let mut child = {
+      let comspec = std::env::var_os("COMSPEC").unwrap_or_else(|| "cmd.exe".into());
+      let mut command = Command::new(comspec);
+      command.args(["/c", "exit 0"]);
+      command.stdout(Stdio::null()).stderr(Stdio::null());
+      command.spawn().expect("spawn short-lived child")
+    };
+    #[cfg(not(target_os = "windows"))]
+    let mut child = {
+      let mut command = Command::new("true");
+      command.stdout(Stdio::null()).stderr(Stdio::null());
+      command.spawn().expect("spawn short-lived child")
+    };
+
+    let started = Instant::now();
+    let exited = wait_until_exit(&mut child, Duration::from_secs(10));
+    let elapsed = started.elapsed();
+    println!("wait_until_exit normal-exit path returned in {elapsed:?}");
+
+    assert!(exited);
+    assert!(elapsed < Duration::from_secs(5));
+  }
 }
