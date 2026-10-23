@@ -2,6 +2,17 @@
 
 > 本文件为 AI 编程助手提供项目上下文和开发规范。
 
+## 分支维护约定（硬性，不可协商）
+
+本仓库是 SJMCL 的二次开发分支 **WTUMCL**（`origin` = https://github.com/SARICE233/WTUMCL），**只维护本分支，不向上游输出**。
+
+- **不提 PR**：不向 `UNIkeEN/SJMCL`（上游）或任何其它仓库创建 pull request；不为了让上游合并而拆分提交、整理补丁、开分支或建 issue。
+- **不向上游推送**：`upstream` 只用于 `git fetch` / `git merge`（单向流入）；任何 `git push` 只允许指向 `origin`。
+- **PR 相关 skill 禁用**：`.agents/skills/sjmcl-create-pr/` 在本仓无效，AI 助手不得调用；`.github/PULL_REQUEST_TEMPLATE.md` 是上游遗留文件，不用于本仓流程。
+- **提交即落地**：改动验证通过后直接提交到本分支（`main` 或仓库内 worktree 分支），由用户决定何时推送。
+- **上游 issue 号只作记录**：commit message 里引用 `#1933` 之类是在说明改动动机（与上游同源的问题），不代表要向上游提交修复。
+- **不为上游牺牲本分支**：如果某种写法只对上游友好、却要牺牲本仓的品牌、社区服务集成或自研模块，优先满足本分支；上游可合并性不是需求。
+
 ## 项目信息
 
 - 跨平台 Minecraft 启动器，简称 SJMCL

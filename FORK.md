@@ -33,6 +33,15 @@ GitHub 的 zip 下载会破坏两类 git 对象，这里已通过直接对齐上
 
 `.gitmodules` 的 SSH 地址已改为 https，便于无 SSH key 的环境初始化子模块。
 
+### 0.3 反向输出：只维护本分支（硬性）
+
+本仓不向上游提 PR，也不向上游推送。`upstream` 只用于单向流入（`git fetch upstream` + `git merge upstream/main`），`git push` 只允许指向 `origin`。
+
+- 上游 issue 号（如 `#1933`）出现在 commit message 里只说明改动动机，**不是 PR 预告**。
+- 不做「为了上游可合并」的提交拆分或代码让步；`DownloadMirrorKind`、WTUMC 社区服务、品牌与界面等 fork 专属改动按本仓需要演进。
+- `.agents/skills/sjmcl-create-pr/` 与 `.github/PULL_REQUEST_TEMPLATE.md` 视为上游遗留，本仓不使用。
+- 同一约定在 `AGENTS.md` 的「分支维护约定（硬性）」里重复声明，供每次会话自动加载。
+
 ## 1. 授权义务（分发前必须全部满足）
 
 上游以 **GPLv3** 发布，并依 GPLv3 第 7 条追加了条件，见 `LICENSE.EXTRA`。作为分发方，以下四条全部生效：
