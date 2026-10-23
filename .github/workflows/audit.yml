@@ -30,6 +30,22 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+      # rustsec/audit-check leaves a half-cloned advisory database behind when
+      # GitHub drops the connection, and cargo-audit then dies with
+      # "failed to read directory ~/.cargo/advisory-db/crates". Pre-fetch it
+      # ourselves with retries so the audit step starts from a complete copy.
+      - name: Fetch the RustSec advisory database
+        run: |
+          set -uo pipefail
+          db="$HOME/.cargo/advisory-db"
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$db"
+            if git clone --quiet --depth 1 https://github.com/rustsec/advisory-db "$db" && [ -d "$db/crates" ]; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::warning::Could not fetch the advisory database; cargo-audit will try on its own."
       - uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
