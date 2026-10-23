@@ -134,10 +134,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.Version-Check.outputs.version }}
         run: |
-          # Create the release
-          gh release create "$GITHUB_REF_NAME" \
-            --title "WTUMCL ${{ env.VERSION }}" \
-            --draft \
-            --notes-file release-notes.md \
-            ./release-artifacts/*
+          # A release may already exist for this tag (prepared manually with curated notes).
+          # In that case upload the freshly built artifacts to it instead of failing.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; uploading artifacts to it."
+            gh release upload "$GITHUB_REF_NAME" ./release-artifacts/* SHA256SUMS.txt --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "WTUMCL ${{ env.VERSION }}" \
+              --draft \
+              --notes-file release-notes.md \
+              ./release-artifacts/* SHA256SUMS.txt
+          fi
 
