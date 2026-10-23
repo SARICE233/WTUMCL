@@ -1,6 +1,6 @@
 > **WTUMCL** 是基于 [SJMCL](https://github.com/UNIkeEN/SJMCL) 的二次开发分支，由 **武汉纺织大学 MC 社区（WTUMC）** 维护。
 > 原项目版权归 SJMCL 团队（© 2024-2026）所有，以 GPLv3 及附加条款（见 [LICENSE.EXTRA](../LICENSE.EXTRA)）发布。
-> 源仓库：https://github.com/UNIkeEN/SJMCL
+> 上游仓库：https://github.com/UNIkeEN/SJMCL · 本分支仓库：https://github.com/SARICE233/WTUMCL
 
 <img src="figs/banner.png" alt="WTUMCL" width="640" />
 
@@ -82,7 +82,7 @@ pnpm tauri build
 
 ## 开发与贡献
 
-欢迎通过 [Issues](https://github.com/SARICE233/WTUMCL/issues) 与 [Pull Requests](https://github.com/SARICE233/WTUMCL/pulls) 参与本分支的开发。若改动同时涉及上游项目，请遵循上游的[贡献指南](https://github.com/UNIkeEN/SJMCL/blob/main/CONTRIBUTING.md)。
+欢迎通过 [Issues](https://github.com/SARICE233/WTUMCL/issues) 与 [Pull Requests](https://github.com/SARICE233/WTUMCL/pulls) 参与本分支的开发，请遵循[本分支的贡献指南](CONTRIBUTING.zh-Hans.md)。WTUMCL 独立维护：改动直接落地本仓、不向上游提交，上游贡献流程不适用于本分支。
 
 ### 开发扩展
 

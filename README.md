@@ -1,6 +1,6 @@
 > **WTUMCL** is a fork of [SJMCL](https://github.com/UNIkeEN/SJMCL), maintained by **WTUMC (Wuhan Textile University Minecraft Community)**.
 > The original project is Copyright © 2024-2026 SJMCL Team and is licensed under GPLv3 with additional terms (see [LICENSE.EXTRA](LICENSE.EXTRA)).
-> Origin repository: https://github.com/UNIkeEN/SJMCL
+> Upstream repository: https://github.com/UNIkeEN/SJMCL · This fork: https://github.com/SARICE233/WTUMCL
 
 <img src="docs/figs/banner.png" alt="WTUMCL" width="640" />
 
@@ -82,7 +82,7 @@ pnpm tauri build
 
 ## Development and Contributing
 
-Contributions to this fork are welcome through [Issues](https://github.com/SARICE233/WTUMCL/issues) and [Pull Requests](https://github.com/SARICE233/WTUMCL/pulls). For changes that also affect the upstream project, please follow the upstream [Contributing Guide](https://github.com/UNIkeEN/SJMCL/blob/main/CONTRIBUTING.md).
+Contributions to this fork are welcome through [Issues](https://github.com/SARICE233/WTUMCL/issues) and [Pull Requests](https://github.com/SARICE233/WTUMCL/pulls) against this repository. Please follow [this fork's Contributing Guide](CONTRIBUTING.md). WTUMCL is maintained independently: changes land here and are not submitted upstream, so the upstream contributing guide does not apply to this fork.
 
 ### Developing Extensions
 

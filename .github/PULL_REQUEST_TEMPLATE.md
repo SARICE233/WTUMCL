@@ -1,4 +1,11 @@
 <!--
+NOTE (WTUMCL): this template is inherited from the upstream project UNIkeEN/SJMCL and is
+not part of this fork's workflow. WTUMCL (SARICE233/WTUMCL) is maintained independently:
+it never opens pull requests against the upstream repository, so this template must not be
+used to prepare upstream pull requests. See AGENTS.md ("分支维护约定") in this repository.
+-->
+
+<!--
 Thank you for contributing to this project! 🎉 We appreciate your efforts and time. 🥰
 Please take a moment to fill out the information below to help us review your PR efficiently.
 -->
