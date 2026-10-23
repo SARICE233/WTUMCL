@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import styles from "@/styles/background-preset.module.css";
 
 interface BackgroundPresetProps {
@@ -12,12 +13,25 @@ const BackgroundPreset = ({
   colorMode,
   fixed = false,
 }: BackgroundPresetProps) => {
+  // A hidden window (minimised, or behind another window on some platforms)
+  // keeps ticking CSS animations, so the drifting gradients are paused until it
+  // is visible again instead of compositing offscreen forever.
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setIsPaused(document.visibilityState === "hidden");
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+
   if (presetKey !== "Meridian") return null;
 
   return (
     <div
       className={`${styles.layer} ${fixed ? styles.fixed : ""}`}
       data-theme={colorMode}
+      data-paused={isPaused || undefined}
       aria-hidden="true"
     >
       <div className={styles.canvas}>

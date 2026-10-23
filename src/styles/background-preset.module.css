@@ -1,6 +1,7 @@
 /* Animated "Meridian" built-in background preset. */
 .layer {
-  --meridian-line: rgba(48, 92, 132, 0.11);
+  --meridian-line: rgba(48, 92, 132, 0.115);
+  --meridian-line-minor: rgba(48, 92, 132, 0.05);
   --meridian-cell: 5.5rem;
 
   position: absolute;
@@ -16,7 +17,8 @@
 }
 
 .layer[data-theme="dark"] {
-  --meridian-line: rgba(150, 199, 236, 0.1);
+  --meridian-line: rgba(150, 199, 236, 0.105);
+  --meridian-line-minor: rgba(150, 199, 236, 0.045);
 
   background: #0d141d;
 }
@@ -78,8 +80,8 @@
 .aurora-a {
   top: -28vmax;
   left: -18vmax;
-  width: 62vmax;
-  height: 62vmax;
+  width: clamp(420px, 62vmax, 1120px);
+  height: clamp(420px, 62vmax, 1120px);
   background: radial-gradient(
     circle,
     rgba(96, 170, 232, 0.42) 0%,
@@ -92,8 +94,8 @@
 .aurora-b {
   right: -18vmax;
   bottom: -30vmax;
-  width: 58vmax;
-  height: 58vmax;
+  width: clamp(400px, 58vmax, 1040px);
+  height: clamp(400px, 58vmax, 1040px);
   background: radial-gradient(
     circle,
     rgba(84, 194, 176, 0.34) 0%,
@@ -106,8 +108,8 @@
 .aurora-c {
   top: 24%;
   right: 8%;
-  width: 42vmax;
-  height: 42vmax;
+  width: clamp(300px, 42vmax, 760px);
+  height: clamp(300px, 42vmax, 760px);
   background: radial-gradient(
     circle,
     rgba(164, 138, 220, 0.24) 0%,
@@ -153,6 +155,8 @@
 .grid {
   position: absolute;
   inset: -24%;
+  /* Two scales of graticule in one layer: the half-cell subdivision keeps the
+     surface from reading as graph paper, while the major lines stay readable. */
   background-image:
     repeating-linear-gradient(
       to right,
@@ -163,19 +167,29 @@
       to bottom,
       var(--meridian-line) 0 1px,
       transparent 1px var(--meridian-cell)
+    ),
+    repeating-linear-gradient(
+      to right,
+      var(--meridian-line-minor) 0 1px,
+      transparent 1px calc(var(--meridian-cell) / 2)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--meridian-line-minor) 0 1px,
+      transparent 1px calc(var(--meridian-cell) / 2)
     );
-  opacity: 0.85;
+  opacity: 0.9;
   mask-image: radial-gradient(
-    ellipse 82% 76% at 50% 44%,
-    #000 30%,
+    ellipse 86% 80% at 50% 44%,
+    #000 26%,
     transparent 100%
   );
   -webkit-mask-image: radial-gradient(
-    ellipse 82% 76% at 50% 44%,
-    #000 30%,
+    ellipse 86% 80% at 50% 44%,
+    #000 26%,
     transparent 100%
   );
-  animation: meridian-grid-pan 38s linear infinite;
+  animation: meridian-grid-pan 34s linear infinite;
   will-change: transform;
 }
 
@@ -247,6 +261,13 @@
       0
     );
   }
+}
+
+/* Paused while the window is hidden, so a minimised launcher stops compositing
+   the drifting gradients and the panning graticule. */
+.layer[data-paused] .aurora,
+.layer[data-paused] .grid {
+  animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
