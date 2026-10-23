@@ -5,10 +5,10 @@
 name: Release
 
 on:
-    push:
-        tags:
-            - 'v*'
-    workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,7 +24,7 @@ jobs:
       version: ${{ steps.check-tag.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -33,7 +33,7 @@ jobs:
         with:
           version: 10.26.1
           run_install: false
-      
+
       - name: Check version consistency
         run: pnpm run version check
 
@@ -43,7 +43,7 @@ jobs:
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
           echo "Package version: $PKG_VERSION"
-          
+
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG_VERSION="${{ github.ref_name }}"
             TAG_VERSION=${TAG_VERSION#v}
@@ -59,7 +59,7 @@ jobs:
             PKG_VERSION="$PKG_VERSION"-"$COMMIT_HASH"
             echo "Not a tag, using package version with commit hash: $PKG_VERSION"
           fi
-          
+
           # Set the version as output
           echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
 
@@ -77,7 +77,7 @@ jobs:
     needs: [Version-Check, Build-and-Release]
     if: always() && needs.Build-and-Release.result == 'success'
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -86,7 +86,7 @@ jobs:
       - name: Download non-macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: 'WTUMCL_${{ needs.Version-Check.outputs.version }}_*'
+          pattern: "WTUMCL_${{ needs.Version-Check.outputs.version }}_*"
           path: artifacts
           merge-multiple: true
 
@@ -97,22 +97,11 @@ jobs:
           mkdir -p release-artifacts
           find artifacts -name "WTUMCL_${VERSION}_*" -exec cp {} release-artifacts/ \;
 
-          # Collect all SHA256 files into one summary
-          touch SHA256SUMS.txt
-          echo "# Version: ${{ env.VERSION }}" >> SHA256SUMS.txt
-          echo "# Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> SHA256SUMS.txt
-          echo "" >> SHA256SUMS.txt
-          
-          # Collect SHA256 from downloaded artifacts
-          find artifacts -name "*.sha256" -type f | sort | while read sha256_file; do
-            cat "$sha256_file" >> SHA256SUMS.txt
-          done
-
+          # The per-job .sha256 files hash the raw compiled binaries, not the files
+          # users actually download (setup.exe / portable / .deb / .rpm / .app.tar.gz),
+          # so they must never be published as the release manifest. SHA256SUMS.txt is
+          # rebuilt from release-artifacts/ in the "Create Release" step instead.
           rm -f release-artifacts/*.sha256
-
-          echo ""
-          echo "Core executable SHA256 checksums:"
-          cat SHA256SUMS.txt
 
           echo "Final release artifacts:"
           ls -la release-artifacts/
@@ -136,6 +125,44 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.Version-Check.outputs.version }}
         run: |
+          set -euo pipefail
+
+          # The manifest must describe the files that are actually uploaded, so rebuild
+          # it from ./release-artifacts/ rather than from per-job binary hashes.
+          shopt -s nullglob
+          artifact_files=(release-artifacts/*)
+          shopt -u nullglob
+          if [ "${#artifact_files[@]}" -eq 0 ]; then
+            echo "❌ release-artifacts/ is empty; refusing to publish a release without artifacts"
+            exit 1
+          fi
+
+          manifest=$(mktemp)
+          {
+            echo "# Version: ${VERSION}"
+            echo "# Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+            while IFS= read -r -d '' file; do
+              printf '%s  %s\n' "$(sha256sum -- "$file" | cut -c1-64)" "$(basename "$file")"
+            done < <(find release-artifacts -maxdepth 1 -type f ! -name '*.sha256' -print0 | sort -z)
+          } > "$manifest"
+          mv "$manifest" SHA256SUMS.txt
+
+          # Keep the uploaded set identical to the hashed set: a stale per-job *.sha256
+          # (or a leftover manifest) must never be published alongside SHA256SUMS.txt.
+          rm -f release-artifacts/*.sha256
+
+          # Fail if the manifest does not cover exactly the artifacts being uploaded.
+          artifact_count=$(find release-artifacts -maxdepth 1 -type f ! -name '*.sha256' | wc -l | tr -d ' ')
+          checksum_count=$(grep -cE '^[0-9a-f]{64}  ' SHA256SUMS.txt || true)
+          if [ "$artifact_count" -eq 0 ] || [ "$checksum_count" -ne "$artifact_count" ]; then
+            echo "❌ SHA256SUMS.txt covers ${checksum_count} of ${artifact_count} release artifacts"
+            exit 1
+          fi
+
+          echo "Release artifacts and SHA256SUMS.txt:"
+          cat SHA256SUMS.txt
+          ( cd release-artifacts && grep -E '^[0-9a-f]{64}  ' ../SHA256SUMS.txt | sha256sum -c - )
+
           # A release may already exist for this tag (prepared manually with curated notes).
           # In that case upload the freshly built artifacts to it instead of failing.
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
@@ -148,4 +175,3 @@ jobs:
               --notes-file release-notes.md \
               ./release-artifacts/* SHA256SUMS.txt
           fi
-
