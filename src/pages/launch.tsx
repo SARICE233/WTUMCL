@@ -8,7 +8,9 @@ import HitokotoCard from "@/components/launch/hitokoto-card";
 import LaunchGreeting from "@/components/launch/launch-greeting";
 import RecentInstanceCard from "@/components/launch/recent-instance-card";
 import WeeklyPlaytimeCard from "@/components/launch/weekly-playtime-card";
+import { useLauncherConfig } from "@/contexts/config";
 import { useGlobalData } from "@/contexts/global-data";
+import { BUILT_IN_BG_PREFIX } from "@/models/config";
 import styles from "@/styles/launch-home.module.css";
 
 // Below this available feed width the two-column layout is dropped: the feed
@@ -26,9 +28,16 @@ const LaunchPage = () => {
   const controlsRef = useRef<HTMLDivElement>(null);
   const [maxWidgetWidth, setMaxWidgetWidth] = useState<number | null>(null);
   const [isStacked, setIsStacked] = useState(false);
+  const { config } = useLauncherConfig();
   const { getInstanceList } = useGlobalData();
   const instanceList = getInstanceList() || [];
   const hasInstances = instanceList.length > 0;
+  // The graticule is drawn for the Meridian preset only. On any other wallpaper
+  // (the bundled WTUMC one included) the square grid and the concentric rings
+  // read as a leaking texture, so they are gated at the page root instead of
+  // being rendered unconditionally.
+  const showMeridianDecor =
+    config.appearance.background.choice === `${BUILT_IN_BG_PREFIX}Meridian`;
 
   // The shared Fade wrapper is a block box with height: 100%, so it is as tall
   // as the shell body (navbar included) instead of only the space below the
@@ -102,6 +111,7 @@ const LaunchPage = () => {
     <Box
       ref={pageRef}
       data-launch="page"
+      data-launch-decor={showMeridianDecor ? "meridian" : "none"}
       className={styles.page}
       position="relative"
       display="flex"

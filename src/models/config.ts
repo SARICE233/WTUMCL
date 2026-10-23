@@ -1,6 +1,10 @@
 import { BuildType } from "@/enums/misc";
 import type { HomeWidgetStateTuple } from "@/models/extension";
 
+// Shared prefix for every bundled ("built-in") background choice; the rest of
+// the value is the preset key, e.g. "%built-in:WTUMC" or "%built-in:Meridian".
+export const BUILT_IN_BG_PREFIX = "%built-in:";
+
 export interface GameConfig {
   gameJava: {
     auto: boolean;

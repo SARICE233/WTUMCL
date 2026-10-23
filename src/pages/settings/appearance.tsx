@@ -31,6 +31,7 @@ import {
 import SegmentedControl from "@/components/common/segmented";
 import { useLauncherConfig } from "@/contexts/config";
 import { useToast } from "@/contexts/toast";
+import { BUILT_IN_BG_PREFIX } from "@/models/config";
 import { ConfigService } from "@/services/config";
 import { UtilsService } from "@/services/utils";
 import { removeFileExt } from "@/utils/string";
@@ -41,7 +42,8 @@ const AppearanceSettingsPage = () => {
   const toast = useToast();
   const appearanceConfigs = config.appearance;
   const primaryColor = appearanceConfigs.theme.primaryColor;
-  const builtInBgPrefix = "%built-in:";
+  // The prefix lives in the shared config model so the launch page can use it too.
+  const builtInBgPrefix = BUILT_IN_BG_PREFIX;
   const selectedBgKey = appearanceConfigs.background.choice.replace(
     builtInBgPrefix,
     ""
