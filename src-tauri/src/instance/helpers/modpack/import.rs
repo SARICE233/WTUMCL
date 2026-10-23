@@ -80,7 +80,7 @@ pub(crate) fn locate_pack_file<R: Read + Seek>(
   }
 
   let mut candidates: Vec<String> = Vec::new();
-  for name in archive.file_names() {
+  for name in archive.file_names().flatten() {
     let normalized = name.replace('\\', "/");
     let normalized = normalized.trim_start_matches("./");
     let parts: Vec<&str> = normalized

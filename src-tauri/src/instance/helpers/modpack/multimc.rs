@@ -83,6 +83,7 @@ impl ModpackManifest for MultiMcManifest {
     let legacy_prefix = format!("{}.minecraft/", base_path);
     let has_minecraft = archive
       .file_names()
+      .flatten()
       .any(|name| name.replace('\\', "/").starts_with(&minecraft_prefix));
     let overrides_path = if has_minecraft {
       minecraft_prefix

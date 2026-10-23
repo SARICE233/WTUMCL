@@ -77,7 +77,9 @@ pub fn extract_extension_package(package_path: &Path, target_dir: &Path) -> SJMC
     let mut zip_file = zip
       .by_index(i)
       .map_err(|_| io::Error::other(ExtensionError::InvalidPackageFormat))?;
-    let relative_path = zip_file.mangled_name();
+    let relative_path = zip_file
+      .mangled_name()
+      .map_err(|_| io::Error::other(ExtensionError::InvalidPackageFormat))?;
     let output_path = target_dir.join(relative_path);
 
     if zip_file.is_dir() {
@@ -116,4 +118,65 @@ fn compress_icon(wrapper: ImageWrapper) -> ImageWrapper {
   }
 
   wrapper.scaled(scale, FilterType::Nearest)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::io::Write;
+  use std::sync::atomic::{AtomicUsize, Ordering};
+
+  static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+  struct TempDir(PathBuf);
+
+  impl Drop for TempDir {
+    fn drop(&mut self) {
+      let _ = fs::remove_dir_all(&self.0);
+    }
+  }
+
+  fn unique_path(tag: &str, extension: &str) -> PathBuf {
+    std::env::temp_dir().join(format!(
+      "sjmcl-extension-{}-{}-{}.{}",
+      tag,
+      std::process::id(),
+      TEMP_COUNTER.fetch_add(1, Ordering::Relaxed),
+      extension
+    ))
+  }
+
+  #[test]
+  fn extraction_stays_inside_target_dir() {
+    let root = TempDir(unique_path("root", "d"));
+    fs::create_dir_all(&root.0).unwrap();
+    let package = unique_path("package", "zip");
+    let target = root.0.join("target");
+
+    {
+      let mut writer = zip::ZipWriter::new(File::create(&package).unwrap());
+      let options = zip::write::SimpleFileOptions::default();
+      for (name, content) in [
+        ("ok.txt", &b"ok"[..]),
+        ("nested/ok2.txt", &b"ok2"[..]),
+        ("../escape.txt", &b"escape"[..]),
+        ("/abs.txt", &b"abs"[..]),
+      ] {
+        writer.start_file(name, options).unwrap();
+        writer.write_all(content).unwrap();
+      }
+      writer.finish().unwrap();
+    }
+
+    extract_extension_package(&package, &target).unwrap();
+    let _ = fs::remove_file(&package);
+
+    assert!(target.join("ok.txt").is_file());
+    assert!(target.join("nested/ok2.txt").is_file());
+    // Hostile entries are mangled: absolute prefixes and parent-dir components are dropped,
+    // so they must land inside the target directory instead of escaping it.
+    assert!(target.join("escape.txt").is_file());
+    assert!(target.join("abs.txt").is_file());
+    assert!(!root.0.join("escape.txt").exists());
+  }
 }
