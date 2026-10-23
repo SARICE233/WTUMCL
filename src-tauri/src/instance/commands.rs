@@ -1098,6 +1098,22 @@ fn is_reusable_partial_dir(path: &Path) -> bool {
   has_json
 }
 
+/// Reclaim the directory at `version_path` when it is only the shell of a
+/// cancelled download, and report a name conflict when it holds a real instance.
+/// A missing path is a no-op so the caller can proceed to create it.
+fn reclaim_partial_instance_dir(version_path: &Path) -> SJMCLResult<()> {
+  if !version_path.exists() {
+    return Ok(());
+  }
+
+  if !is_reusable_partial_dir(version_path) {
+    return Err(InstanceError::ConflictNameError.into());
+  }
+
+  fs::remove_dir_all(version_path).map_err(|_| InstanceError::FileOperationError)?;
+  Ok(())
+}
+
 #[tauri::command]
 pub async fn create_instance(
   app: AppHandle,
@@ -1127,13 +1143,7 @@ pub async fn create_instance(
   // Ensure the instance name is unique, but reclaim the config-only shell left by a
   // cancelled/failed download instead of reporting a name conflict (fix #1914).
   let version_path = directory.dir.join("versions").join(&name);
-  if version_path.exists() {
-    if is_reusable_partial_dir(&version_path) {
-      fs::remove_dir_all(&version_path).map_err(|_| InstanceError::FileOperationError)?;
-    } else {
-      return Err(InstanceError::ConflictNameError.into());
-    }
-  }
+  reclaim_partial_instance_dir(&version_path)?;
 
   // Guard removes version_path on any early return (errors), fix #1105 #1310
   let dir_guard = RemoveDirGuard::new(version_path.clone());
@@ -1949,7 +1959,9 @@ mod weekly_play_time_tests {
 
 #[cfg(test)]
 mod server_and_partial_instance_dir_tests {
-  use super::{GameServerInfo, is_duplicate_server, is_reusable_partial_dir};
+  use super::{
+    GameServerInfo, is_duplicate_server, is_reusable_partial_dir, reclaim_partial_instance_dir,
+  };
   use std::fs;
   use std::path::{Path, PathBuf};
   use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1988,6 +2000,29 @@ mod server_and_partial_instance_dir_tests {
     fn drop(&mut self) {
       let _ = fs::remove_dir_all(&self.0);
     }
+  }
+
+  /// Recursively records file paths and contents so a test can prove that a
+  /// sibling version directory was not touched by reclamation.
+  fn snapshot_dir(root: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut files = Vec::new();
+    let mut pending = vec![root.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+      for entry in fs::read_dir(&dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+          pending.push(path);
+        } else {
+          files.push((
+            path.strip_prefix(root).unwrap().to_path_buf(),
+            fs::read(&path).unwrap(),
+          ));
+        }
+      }
+    }
+    files.sort();
+    files
   }
 
   fn server(ip: &str, hidden: bool) -> GameServerInfo {
@@ -2074,5 +2109,97 @@ mod server_and_partial_instance_dir_tests {
     fs::write(dir.path().join("MyInstance.json"), "{}").unwrap();
     fs::write(dir.path().join("notes.txt"), "hello").unwrap();
     assert!(!is_reusable_partial_dir(dir.path()));
+  }
+
+  #[test]
+  fn reclaim_removes_config_only_shell() {
+    let root = TempDir::new("reclaim-shell");
+    let version_path = root.path().join("versions").join("MyInstance");
+    fs::create_dir_all(version_path.join("mods")).unwrap();
+    fs::write(version_path.join("MyInstance.json"), "{}").unwrap();
+    fs::write(version_path.join("sjmclcfg.json"), "{}").unwrap();
+
+    assert!(reclaim_partial_instance_dir(&version_path).is_ok());
+
+    assert!(!version_path.exists());
+    assert!(version_path.parent().unwrap().is_dir());
+  }
+
+  #[test]
+  fn reclaim_keeps_completed_instance_and_reports_conflict() {
+    let root = TempDir::new("reclaim-complete");
+    let versions = root.path().join("versions");
+    let target = versions.join("MyInstance");
+    let sibling = versions.join("SiblingInstance");
+    fs::create_dir_all(target.join("mods")).unwrap();
+    fs::write(target.join("MyInstance.json"), "{}").unwrap();
+    fs::write(target.join("MyInstance.jar"), b"client-jar-bytes").unwrap();
+    fs::create_dir_all(sibling.join("mods")).unwrap();
+    fs::write(sibling.join("SiblingInstance.json"), "{}").unwrap();
+    fs::write(sibling.join("SiblingInstance.jar"), b"sibling-jar-bytes").unwrap();
+    fs::write(sibling.join("mods").join("example.jar"), b"mod-bytes").unwrap();
+    let sibling_before = snapshot_dir(&sibling);
+
+    let error = reclaim_partial_instance_dir(&target).unwrap_err();
+
+    assert_eq!(error.0, "CONFLICT_NAME_ERROR");
+    assert!(target.is_dir());
+    assert_eq!(
+      fs::read(target.join("MyInstance.jar")).unwrap(),
+      b"client-jar-bytes".as_slice()
+    );
+    assert_eq!(
+      fs::read(target.join("MyInstance.json")).unwrap(),
+      b"{}".as_slice()
+    );
+    assert_eq!(snapshot_dir(&sibling), sibling_before);
+  }
+
+  #[test]
+  fn reclaim_rejects_regular_file() {
+    let root = TempDir::new("reclaim-file");
+    let version_path = root.path().join("versions").join("MyInstance");
+    fs::create_dir_all(version_path.parent().unwrap()).unwrap();
+    fs::write(&version_path, b"not a directory").unwrap();
+
+    let error = reclaim_partial_instance_dir(&version_path).unwrap_err();
+
+    assert_eq!(error.0, "CONFLICT_NAME_ERROR");
+    assert!(version_path.is_file());
+    assert_eq!(
+      fs::read(&version_path).unwrap(),
+      b"not a directory".as_slice()
+    );
+  }
+
+  #[test]
+  fn reclaim_is_noop_when_missing() {
+    let root = TempDir::new("reclaim-missing");
+    let version_path = root.path().join("versions").join("MyInstance");
+    assert!(!version_path.exists());
+
+    assert!(reclaim_partial_instance_dir(&version_path).is_ok());
+
+    assert!(!version_path.exists());
+  }
+
+  #[test]
+  fn reclaim_leaves_sibling_version_dir_untouched() {
+    let root = TempDir::new("reclaim-sibling");
+    let versions = root.path().join("versions");
+    let target = versions.join("MyInstance");
+    let sibling = versions.join("OtherInstance");
+    fs::create_dir_all(target.join("mods")).unwrap();
+    fs::write(target.join("MyInstance.json"), "{}").unwrap();
+    fs::create_dir_all(sibling.join("mods")).unwrap();
+    fs::write(sibling.join("OtherInstance.json"), "{}").unwrap();
+    fs::write(sibling.join("OtherInstance.jar"), b"sibling-jar-bytes").unwrap();
+    fs::write(sibling.join("mods").join("example.jar"), b"mod-bytes").unwrap();
+    let sibling_before = snapshot_dir(&sibling);
+
+    assert!(reclaim_partial_instance_dir(&target).is_ok());
+
+    assert!(!target.exists());
+    assert_eq!(snapshot_dir(&sibling), sibling_before);
   }
 }
