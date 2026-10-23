@@ -206,16 +206,17 @@ const AppearanceSettingsPage = () => {
   const FontFamilyMenu = ({
     value,
     onChange,
+    fonts,
   }: {
     value: string;
     onChange: (v: string) => void;
+    fonts: string[];
   }) => {
     // Mount only a page of fonts at a time and append more on scroll. Rendering
     // every installed font at once froze the appearance page on systems with
     // thousands of fonts installed (issue #1272).
-    const [visibleCount, setVisibleCount] = useState<number>(
-      FONT_MENU_PAGE_SIZE
-    );
+    const [visibleCount, setVisibleCount] =
+      useState<number>(FONT_MENU_PAGE_SIZE);
 
     const visibleFonts = useMemo(
       () => fonts.slice(0, visibleCount),
@@ -233,7 +234,7 @@ const AppearanceSettingsPage = () => {
           setVisibleCount((count) => count + FONT_MENU_PAGE_SIZE);
         }
       },
-      [fonts.length, visibleCount]
+      [fonts, visibleCount]
     );
 
     return (
@@ -509,6 +510,7 @@ const AppearanceSettingsPage = () => {
             <FontFamilyMenu
               value={appearanceConfigs.font.fontFamily}
               onChange={(v) => update("appearance.font.fontFamily", v)}
+              fonts={fonts}
             />
           ),
         },
@@ -531,6 +533,7 @@ const AppearanceSettingsPage = () => {
             <FontFamilyMenu
               value={appearanceConfigs.font.logFontFamily}
               onChange={(v) => update("appearance.font.logFontFamily", v)}
+              fonts={fonts}
             />
           ),
         },
