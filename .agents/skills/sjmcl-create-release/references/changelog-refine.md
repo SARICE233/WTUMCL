@@ -58,9 +58,10 @@ refine 的用词、句式、分组方式都要直接贴近它们，不要自己�
 - `Extensions:`、`Workflow:`、`Web & Docs:` 写成分组条目，再在其下写二级 bullets
 - 不要写 `###` 这类小标题
 - 英文在前，中文在后，中间用 `---` 分隔
-- 句尾按仓库现有样式直接补 `#xx @xxx`
-- 没有 PR 编号时，只保留 `@xxx`
+- 句尾按仓库现有样式直接补 PR 编号 `` `#xx` `` 与作者名 `` `@xxx` ``
+- 没有 PR 编号时，只保留 `` `@xxx` ``
 - 不要改写成括号格式，如 `(#1234)`
+- **作者名必须写成行内代码**：永远是 `` `@xxx` ``，不要写裸 `@xxx`。本仓后续会转为公开仓库，裸 `@` 会产生 mention 通知、打扰上游贡献者和无关人员；这一条优先于“对齐现有 changelog 的裸 `@` 写法”，本仓发布文案一律用代码格式。
 
 英文用词优先沿用现有 changelog 的表达习惯，如 `Support ...`、`Fix ...`、`Update ...`、`Add ...`。  
 中文用词优先沿用现有 changelog 的表达习惯，如 `支持...`、`修复...`、`更新...`、`新增...`、`调整...`。  
@@ -71,38 +72,38 @@ refine 的用词、句式、分组方式都要直接贴近它们，不要自己�
 单 PR：
 
 ```text
-- 🌟 Support automatically refreshing expired Microsoft account access tokens. #1627 @tangge233
-- 🌟 支持在微软账户 Access Token 过期后自动刷新。#1627 @tangge233
+- 🌟 Support automatically refreshing expired Microsoft account access tokens. #1627 `@tangge233`
+- 🌟 支持在微软账户 Access Token 过期后自动刷新。#1627 `@tangge233`
 ```
 
 多 PR 合并：
 
 ```text
-- 🐛 Fix display issues in the re-login modal and the extension list page. #1646 #1660 @baiyuansjtu
-- 🐛 修复重新登录对话框与扩展列表页面的显示问题。#1646 #1660 @baiyuansjtu
+- 🐛 Fix display issues in the re-login modal and the extension list page. #1646 #1660 `@baiyuansjtu`
+- 🐛 修复重新登录对话框与扩展列表页面的显示问题。#1646 #1660 `@baiyuansjtu`
 ```
 
 没有 PR 编号：
 
 ```text
-- 📦 Update Tauri core libraries and plugins to the latest versions. @UNIkeEN
-- 📦 更新 Tauri 核心库及其插件至最新版本。@UNIkeEN
+- 📦 Update Tauri core libraries and plugins to the latest versions. `@UNIkeEN`
+- 📦 更新 Tauri 核心库及其插件至最新版本。`@UNIkeEN`
 ```
 
 分组条目：
 
 ```md
 - Extensions:
-   - Add `Chakra.Table` rendering mappings to the `MarkdownContainer` component for extension usage. #1649 @zaixiZaixiSJTU
+   - Add `Chakra.Table` rendering mappings to the `MarkdownContainer` component for extension usage. #1649 `@zaixiZaixiSJTU`
 - Workflow:
-   - Add a workflow to automatically upload releases to Winget. SJMCL can now be conveniently installed via Winget on Windows. #1639 @pangbo13
+   - Add a workflow to automatically upload releases to Winget. SJMCL can now be conveniently installed via Winget on Windows. #1639 `@pangbo13`
 ```
 
 ```md
 - 扩展：
-   - 为 `MarkdownContainer` 组件新增 Chakra 表格渲染映射，供扩展使用。#1649 @zaixiZaixiSJTU
+   - 为 `MarkdownContainer` 组件新增 Chakra 表格渲染映射，供扩展使用。#1649 `@zaixiZaixiSJTU`
 - 工作流：
-   - 新增发版时自动上传 Winget 的工作流，现在可以通过 Winget 便捷安装 SJMCL（Windows 平台）。#1639 @pangbo13
+   - 新增发版时自动上传 Winget 的工作流，现在可以通过 Winget 便捷安装 SJMCL（Windows 平台）。#1639 `@pangbo13`
 ```
 
 最终结果结构：
@@ -137,3 +138,4 @@ refine 的用词、句式、分组方式都要直接贴近它们，不要自己�
 - 是否把相似 PR 做了合理合并
 - 是否同时产出了英文和中文版本
 - 是否清楚区分了“脚本 draft”和“refine 后的最终 release notes”
+- 全文是否已无裸 `@handle`（作者名全部为行内代码格式）

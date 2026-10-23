@@ -98,6 +98,14 @@ release notes 必须同时产出两份内容：
 只有当前目标 tag 是正式版本时，才执行这些步骤。  
 执行这些步骤时，要找“上一个正式版本”作为比较和归纳基线，而不是拿上一个 prerelease tag 当基线。
 
+### 八、发布文案里的作者名必须消除 mention
+
+release notes、changelog 和 GitHub Release 正文中，作者统一写成行内代码 `` `@handle` ``，不要写裸 `@handle`。
+
+- 本仓后续会转为公开仓库，裸 `@` 会对被提及者产生 mention 通知，打扰上游贡献者和无关人员。
+- 代码格式只渲染文字、不产生通知，同时保留“谁提交的”这一信息。
+- 这条约束优先于“对齐上游 changelog 的裸 `@` 写法”，本仓发布文案一律按代码格式写。
+
 ## 执行步骤
 
 ### 1. 检查仓库状态和 release 前提
@@ -293,4 +301,5 @@ push 成功后，再输出第二阶段结果。
 - 默认输出紧凑，不写长篇过程复盘。
 - 所有元信息、版本号、tag、commit 数都要来自真实 git 结果。
 - release notes 重点写变化和影响，不写逐文件流水账。
+- release notes / changelog 里的作者名一律写 `` `@handle` ``，不得出现裸 `@`。
 - 如果脚本 draft 与人工归纳不一致，优先以真实 `last_stable_tag..HEAD` 改动为准，并把 draft 明确标成参考。
