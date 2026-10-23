@@ -181,8 +181,7 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
       },
       {
         label: "validateGameFiles",
-        function: () =>
-          LaunchService.validateGameFiles(launchingIdRef.current),
+        function: () => LaunchService.validateGameFiles(launchingIdRef.current),
         isOK: (data: any) => true,
         onResCallback: (data: any) => {}, // TODO
         onErrCallback: (error: ResponseError) => {
@@ -204,16 +203,16 @@ const LaunchProcessModal: React.FC<LaunchProcessModalProps> = ({
         isOK: (data: boolean) => data,
         onResCallback: (data: boolean) => {
           const reValidate = () =>
-            LaunchService.validateSelectedPlayer(
-            launchingIdRef.current
-          ).then((response) => {
-              if (response.status === "success") {
-                setActiveStep(activeStep + 1);
-              } else {
-                setErrorPaused(true);
-                setErrorDesc(response.details);
+            LaunchService.validateSelectedPlayer(launchingIdRef.current).then(
+              (response) => {
+                if (response.status === "success") {
+                  setActiveStep(activeStep + 1);
+                } else {
+                  setErrorPaused(true);
+                  setErrorDesc(response.details);
+                }
               }
-            });
+            );
           AccountService.refreshPlayer(effectiveSelectedPlayer?.id || "").then(
             (response) => {
               if (response.status !== "success") {

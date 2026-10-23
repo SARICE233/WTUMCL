@@ -30,7 +30,7 @@ const LaunchGreeting = ({ compact }: { compact?: boolean }) => {
 
   const greetingKey = getGreetingKey(now?.getHours() ?? 12);
   // A stale/absent selection is healed by GlobalDataContext, but the first
-    // player is used immediately so the greeting never falls back while waiting.
+  // player is used immediately so the greeting never falls back while waiting.
   const playerName =
     selectedPlayer?.name ||
     getPlayerList()?.[0]?.name ||

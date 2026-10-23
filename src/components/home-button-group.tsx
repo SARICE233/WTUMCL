@@ -12,11 +12,11 @@ import {
   PopoverTrigger,
   Portal,
   Text,
-  useToken,
   Tooltip,
   VStack,
   useColorModeValue,
   useDisclosure,
+  useToken,
 } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { cloneElement, useState } from "react";
@@ -258,71 +258,73 @@ const HomeButtonGroup = () => {
           </HStack>
         )}
 
-      <Box
-        position="relative"
-        className={styles["launch-button-shell"]}
-        style={{ "--launch-ring-color": launchRingColor } as React.CSSProperties}
-        data-liquid={useLiquidGlass}
-        data-add-active={isAddZoneActive}
-        onPointerMove={handleLaunchPointerMove}
-        onPointerLeave={() => setIsAddZoneHovered(false)}
-      >
-        <Button
-          id="main-launch-button"
+        <Box
+          position="relative"
+          className={styles["launch-button-shell"]}
+          style={
+            { "--launch-ring-color": launchRingColor } as React.CSSProperties
+          }
           data-liquid={useLiquidGlass}
-          colorScheme="blackAlpha"
-          className={styles["launch-button"]}
-          onClick={() => {
-            if (selectedInstance) {
-              openSharedModal("launch", {
-                instanceId: selectedInstance.id,
-              });
-            }
-          }}
+          data-add-active={isAddZoneActive}
+          onPointerMove={handleLaunchPointerMove}
+          onPointerLeave={() => setIsAddZoneHovered(false)}
         >
-          {useLiquidGlass && <LiquidGlassEffect isDark />}
-          <VStack
-            spacing={1.5}
-            w="100%"
-            color="white"
-            position="relative"
-            zIndex={useLiquidGlass ? 3 : undefined}
-            className={styles["launch-button-label"]}
+          <Button
+            id="main-launch-button"
+            data-liquid={useLiquidGlass}
+            colorScheme="blackAlpha"
+            className={styles["launch-button"]}
+            onClick={() => {
+              if (selectedInstance) {
+                openSharedModal("launch", {
+                  instanceId: selectedInstance.id,
+                });
+              }
+            }}
           >
-            <Text fontSize="lg" fontWeight="bold">
-              {t("LaunchPage.button.launch")}
-            </Text>
-            <Text fontSize="sm" className="ellipsis-text">
-              {selectedInstance
-                ? selectedInstance.name
-                : t("LaunchPage.Text.noSelectedGame")}
-            </Text>
-          </VStack>
-        </Button>
+            {useLiquidGlass && <LiquidGlassEffect isDark />}
+            <VStack
+              spacing={1.5}
+              w="100%"
+              color="white"
+              position="relative"
+              zIndex={useLiquidGlass ? 3 : undefined}
+              className={styles["launch-button-label"]}
+            >
+              <Text fontSize="lg" fontWeight="bold">
+                {t("LaunchPage.button.launch")}
+              </Text>
+              <Text fontSize="sm" className="ellipsis-text">
+                {selectedInstance
+                  ? selectedInstance.name
+                  : t("LaunchPage.Text.noSelectedGame")}
+              </Text>
+            </VStack>
+          </Button>
 
-        {/* The old standalone add-instance icon button was removed from the
+          {/* The old standalone add-instance icon button was removed from the
             compact control group; this quarter is now its whole click target. */}
-        <button
-          type="button"
-          aria-label={t("LaunchPage.SwitchButton.tooltip.addInstance")}
-          title={t("LaunchPage.SwitchButton.tooltip.addInstance")}
-          className={`${styles["card-quarter-zone"]} ${styles["launch-add-zone"]}`}
-          data-active={isAddZoneActive}
-          onFocus={() => setIsAddZoneFocused(true)}
-          onBlur={() => setIsAddZoneFocused(false)}
-          onClick={() => router.push("/instances/add-import")}
-        >
-          <span className={styles["launch-add-surface"]} aria-hidden="true" />
-          <span className={styles["launch-add-icon"]} aria-hidden="true">
-            <svg viewBox="0 0 28 28" focusable="false">
-              <circle cx="14" cy="14" r="11.25" />
-              <path d="M14 8.5v11M8.5 14h11" />
-            </svg>
-          </span>
-        </button>
+          <button
+            type="button"
+            aria-label={t("LaunchPage.SwitchButton.tooltip.addInstance")}
+            title={t("LaunchPage.SwitchButton.tooltip.addInstance")}
+            className={`${styles["card-quarter-zone"]} ${styles["launch-add-zone"]}`}
+            data-active={isAddZoneActive}
+            onFocus={() => setIsAddZoneFocused(true)}
+            onBlur={() => setIsAddZoneFocused(false)}
+            onClick={() => router.push("/instances/add-import")}
+          >
+            <span className={styles["launch-add-surface"]} aria-hidden="true" />
+            <span className={styles["launch-add-icon"]} aria-hidden="true">
+              <svg viewBox="0 0 28 28" focusable="false">
+                <circle cx="14" cy="14" r="11.25" />
+                <path d="M14 8.5v11M8.5 14h11" />
+              </svg>
+            </span>
+          </button>
 
-        <span className={styles["launch-divider"]} aria-hidden="true" />
-      </Box>
+          <span className={styles["launch-divider"]} aria-hidden="true" />
+        </Box>
       </Flex>
     </Flex>
   );

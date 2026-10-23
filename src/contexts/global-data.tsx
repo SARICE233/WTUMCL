@@ -73,7 +73,11 @@ export const GlobalDataContextProvider: React.FC<{
     // A missing or stale selection (first run, deleted account) heals itself to
     // the first player instead of leaving the launch page without a name.
     const fallbackPlayerId = playerList?.[0]?.id;
-    if (!matchedPlayer && fallbackPlayerId && fallbackPlayerId !== selectedPlayerId) {
+    if (
+      !matchedPlayer &&
+      fallbackPlayerId &&
+      fallbackPlayerId !== selectedPlayerId
+    ) {
       update("states.shared.selectedPlayerId", fallbackPlayerId);
     }
   }, [playerList, config.states.shared.selectedPlayerId, update]);

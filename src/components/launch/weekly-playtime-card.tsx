@@ -71,11 +71,7 @@ const WeeklyPlaytimeCard = () => {
                   flex={1}
                   minH="2px"
                   borderRadius="sm"
-                  bg={
-                    isToday
-                      ? `${primaryColor}.500`
-                      : `${primaryColor}.200`
-                  }
+                  bg={isToday ? `${primaryColor}.500` : `${primaryColor}.200`}
                   h={`${Math.max(
                     ((day?.seconds ?? 0) / peakSeconds) * 100,
                     2
