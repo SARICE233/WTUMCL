@@ -139,6 +139,30 @@ fn resume_offset(current: i64) -> u64 {
   current.max(0) as u64
 }
 
+/// Clamps a resume offset against the announced size. A leftover that is not
+/// strictly shorter than the target file cannot be its prefix, so it is dropped
+/// and the transfer restarts from zero instead of splicing unrelated bytes onto
+/// the end of a wrong file.
+fn safe_resume_offset(current: i64, expected_size: Option<u64>) -> u64 {
+  let offset = resume_offset(current);
+  match expected_size {
+    Some(size) if offset >= size => 0,
+    _ => offset,
+  }
+}
+
+/// Cancellation can land before the engine ever opened the destination, leaving
+/// an empty leftover from an older run in place. An empty artifact is worse than
+/// a missing one for existence-based consumers, so the driver drops it as well;
+/// anything with real bytes is kept, because it is the base of the next resume.
+async fn discard_empty_leftover(path: &Path) {
+  if let Ok(metadata) = tokio::fs::metadata(path).await
+    && metadata.len() == 0
+  {
+    let _ = tokio::fs::remove_file(path).await;
+  }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadParam {
@@ -296,7 +320,10 @@ pub(crate) async fn download_with_policy(
         source_health().record_success(&host, started.elapsed());
         return Ok(());
       }
-      Ok(FetchOutcome::Cancelled) => return Ok(()),
+      Ok(FetchOutcome::Cancelled) => {
+        discard_empty_leftover(dest_path).await;
+        return Ok(());
+      }
       Err(error) => {
         let failures = source_health().record_failure(&host);
         log::warn!(
@@ -489,9 +516,9 @@ impl DownloadTask {
     impl Future<Output = SJMCLResult<()>> + Send,
     Arc<RwLock<PTaskHandle>>,
   )> {
-    let current = resume_offset(self.p_handle.desc.current);
-    let alt_srcs = self.alt_srcs.clone();
     let expected_size = self.expected_size;
+    let current = safe_resume_offset(self.p_handle.desc.current, expected_size);
+    let alt_srcs = self.alt_srcs.clone();
     let handle = Arc::new(RwLock::new(self.p_handle));
     let task_handle = handle.clone();
     let param = self.param.clone();
@@ -881,6 +908,35 @@ pub(crate) mod tests {
     assert_eq!(resume_offset(-1), 0);
     assert_eq!(resume_offset(i64::MIN), 0);
     assert_eq!(resume_offset(42), 42);
+  }
+
+  #[test]
+  fn safe_resume_offset_restarts_when_the_leftover_is_not_shorter_than_the_target() {
+    assert_eq!(safe_resume_offset(0, None), 0);
+    assert_eq!(safe_resume_offset(-7, Some(2048)), 0);
+    assert_eq!(safe_resume_offset(1234, Some(4096)), 1234);
+    // A complete or oversized leftover cannot be a prefix of the target file.
+    assert_eq!(safe_resume_offset(4096, Some(4096)), 0);
+    assert_eq!(safe_resume_offset(9000, Some(4096)), 0);
+    // Without an announced size the persisted offset is kept as before.
+    assert_eq!(safe_resume_offset(9000, None), 9000);
+  }
+
+  #[tokio::test]
+  async fn cancellation_discards_only_an_empty_leftover() {
+    let empty = unique_temp_path("cancel-empty");
+    std::fs::write(&empty, b"").unwrap();
+    discard_empty_leftover(&empty).await;
+    assert!(!empty.exists());
+
+    // A missing file stays missing: cleanup is idempotent.
+    discard_empty_leftover(&empty).await;
+
+    let partial = unique_temp_path("cancel-partial");
+    std::fs::write(&partial, b"partial").unwrap();
+    discard_empty_leftover(&partial).await;
+    assert_eq!(std::fs::read(&partial).unwrap(), b"partial");
+    let _ = std::fs::remove_file(&partial);
   }
 
   #[tokio::test]

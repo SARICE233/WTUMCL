@@ -79,6 +79,34 @@ pub fn get_native_library_artifacts(client_info: &McClientInfo) -> Vec<Downloads
   artifacts.into_iter().collect()
 }
 
+/// Cheap validity check shared by the file collectors.
+///
+/// The Normal policy used to accept any file that merely existed, so a zero-byte
+/// or truncated leftover from an interrupted download looked complete forever and
+/// the game started with a corrupted asset/library set (black screen). Size is a
+/// free comparison and catches exactly those leftovers; the Full policy keeps
+/// paying for the sha1 comparison.
+async fn existing_file_is_valid(
+  path: &Path,
+  expected_sha1: &str,
+  expected_size: i64,
+  check_hash: bool,
+) -> SJMCLResult<bool> {
+  if !fs::try_exists(path).await? {
+    return Ok(false);
+  }
+  if check_hash {
+    return Ok(validate_sha1(path.to_path_buf(), expected_sha1.to_string()).is_ok());
+  }
+  if expected_size <= 0 {
+    return Ok(true);
+  }
+  let Ok(metadata) = fs::metadata(path).await else {
+    return Ok(false);
+  };
+  Ok(metadata.len() == expected_size as u64)
+}
+
 pub async fn get_invalid_library_files(
   source: SourceType,
   library_path: &Path,
@@ -91,8 +119,9 @@ pub async fn get_invalid_library_files(
 
   let futs = artifacts.into_iter().map(move |artifact| async move {
     let file_path = library_path.join(&artifact.path);
-    let exists = fs::try_exists(&file_path).await?;
-    if exists && (!check_hash || validate_sha1(file_path.clone(), artifact.sha1.clone()).is_ok()) {
+    let valid =
+      existing_file_is_valid(&file_path, &artifact.sha1, artifact.size, check_hash).await?;
+    if valid {
       Ok(None)
     } else if artifact.url.is_empty() {
       Err(LaunchError::GameFilesIncomplete.into())
@@ -494,7 +523,7 @@ pub async fn get_invalid_assets(
   let assets_download_api = get_download_api(source, ResourceType::Assets)?;
 
   let asset_index_path = asset_path.join(format!("indexes/{}.json", client_info.asset_index.id));
-  let asset_index = load_asset_index(app, &asset_index_path, &client_info.asset_index.url).await?;
+  let asset_index = load_asset_index(app, &asset_index_path, &client_info.asset_index).await?;
 
   let futs = asset_index.objects.into_values().map(|item| {
     let assets_download_api = assets_download_api.clone();
@@ -503,9 +532,9 @@ pub async fn get_invalid_assets(
     async move {
       let path_in_repo = format!("{}/{}", &item.hash[..2], item.hash);
       let dest = base_path.join(format!("objects/{}", path_in_repo));
-      let exists = fs::try_exists(&dest).await?;
+      let valid = existing_file_is_valid(&dest, &item.hash, item.size, check_hash).await?;
 
-      if exists && (!check_hash || validate_sha1(dest.clone(), item.hash.clone()).is_ok()) {
+      if valid {
         Ok::<Option<PTaskParam>, sjmcl_types::error::SJMCLError>(None)
       } else {
         let src = assets_download_api
@@ -581,4 +610,92 @@ pub async fn prepare_legacy_assets(
     .await?;
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn unique_path(tag: &str) -> PathBuf {
+    let nanos = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    std::env::temp_dir().join(format!(
+      "sjmcl-file-validator-{}-{}-{}",
+      tag,
+      std::process::id(),
+      nanos
+    ))
+  }
+
+  #[tokio::test]
+  async fn normal_policy_rejects_zero_byte_and_truncated_leftovers() {
+    const EXPECTED: i64 = 4096;
+    let path = unique_path("normal");
+
+    // Missing file: still invalid, as before.
+    assert!(
+      !existing_file_is_valid(&path, "", EXPECTED, false)
+        .await
+        .unwrap()
+    );
+
+    // Zero-byte leftover: the file that used to pass an existence-only check.
+    std::fs::write(&path, b"").unwrap();
+    assert!(
+      !existing_file_is_valid(&path, "", EXPECTED, false)
+        .await
+        .unwrap()
+    );
+
+    // Truncated body.
+    std::fs::write(&path, vec![0x5a_u8; 1024]).unwrap();
+    assert!(
+      !existing_file_is_valid(&path, "", EXPECTED, false)
+        .await
+        .unwrap()
+    );
+
+    // Even a longer file is rejected: the size is part of the contract.
+    std::fs::write(&path, vec![0x5a_u8; 5000]).unwrap();
+    assert!(
+      !existing_file_is_valid(&path, "", EXPECTED, false)
+        .await
+        .unwrap()
+    );
+
+    std::fs::write(&path, vec![0x5a_u8; EXPECTED as usize]).unwrap();
+    assert!(
+      existing_file_is_valid(&path, "", EXPECTED, false)
+        .await
+        .unwrap()
+    );
+
+    // A manifest entry without a size keeps the historical existence-only check.
+    assert!(existing_file_is_valid(&path, "", 0, false).await.unwrap());
+
+    let _ = std::fs::remove_file(&path);
+  }
+
+  #[tokio::test]
+  async fn full_policy_still_hashes_instead_of_trusting_the_size() {
+    let path = unique_path("full");
+    std::fs::write(&path, b"0123456789").unwrap();
+    let wrong_sha1 = "0000000000000000000000000000000000000000";
+
+    // Same size, wrong content: only the hash check can reject it.
+    assert!(
+      existing_file_is_valid(&path, wrong_sha1, 10, false)
+        .await
+        .unwrap()
+    );
+    assert!(
+      !existing_file_is_valid(&path, wrong_sha1, 10, true)
+        .await
+        .unwrap()
+    );
+
+    let _ = std::fs::remove_file(&path);
+  }
 }
