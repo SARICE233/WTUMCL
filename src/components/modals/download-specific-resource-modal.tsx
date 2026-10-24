@@ -472,52 +472,50 @@ const DownloadSpecificResourceModal: React.FC<
     t,
   ]);
 
-  const getRecommendedFiles = useMemo((): OtherResourceFileInfo[] => {
-    if (!curInstanceVersion || !versionPacks.length) return [];
-
-    const matchingPacks = versionPacks.filter(
-      (pack) => pack.name === curInstanceVersion
-    );
-    if (!matchingPacks.length) return [];
-
-    let candidateFiles: OtherResourceFileInfo[] = [];
+  // Issue #2033: a recommendation may only come from a file that the backend
+  // attributed to the instance loader, so a NeoForge build can never be
+  // recommended for a Fabric instance even when a version declares several
+  // loaders.
+  const loaderFilteredVersionPacks = useMemo(() => {
     if (
-      resource.type === OtherResourceType.Mod &&
-      !resource.tags.includes("datapack")
+      resource.type !== OtherResourceType.Mod ||
+      resource.tags.includes("datapack")
     ) {
-      if (curInstanceResourceModLoader) {
-        for (const pack of matchingPacks) {
-          const matchingFiles = pack.items.filter(
-            (item) =>
-              item.loader &&
-              item.loader.toLowerCase() ===
-                curInstanceResourceModLoader.toLowerCase()
-          );
-          candidateFiles.push(...matchingFiles);
-        }
-      }
-    } else {
-      for (const pack of matchingPacks) {
-        candidateFiles.push(...pack.items);
-      }
+      return versionPacks;
     }
+    if (!curInstanceResourceModLoader) return [];
 
-    candidateFiles = candidateFiles.filter(
-      (item) => item.releaseType === "beta" || item.releaseType === "release"
-    );
+    return versionPacks.map((pack) => ({
+      ...pack,
+      items: pack.items.filter(
+        (item) =>
+          item.loader?.toLowerCase() ===
+          curInstanceResourceModLoader.toLowerCase()
+      ),
+    }));
+  }, [
+    versionPacks,
+    resource.type,
+    resource.tags,
+    curInstanceResourceModLoader,
+  ]);
+
+  const getRecommendedFiles = useMemo((): OtherResourceFileInfo[] => {
+    if (!curInstanceVersion || !loaderFilteredVersionPacks.length) return [];
+
+    const candidateFiles = loaderFilteredVersionPacks
+      .filter((pack) => pack.name === curInstanceVersion)
+      .flatMap((pack) => pack.items)
+      .filter(
+        (item) => item.releaseType === "beta" || item.releaseType === "release"
+      );
     if (!candidateFiles.length) return [];
 
     candidateFiles.sort(
       (a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime()
     );
     return [candidateFiles[0]];
-  }, [
-    curInstanceVersion,
-    versionPacks,
-    resource.type,
-    resource.tags,
-    curInstanceResourceModLoader,
-  ]);
+  }, [curInstanceVersion, loaderFilteredVersionPacks]);
 
   const shouldShowRecommendedSection = (): boolean => {
     const recommendedFiles = getRecommendedFiles;

@@ -3,7 +3,7 @@ pub mod misc;
 use hex;
 use misc::{
   ModrinthProject, ModrinthSearchRes, ModrinthVersionPack, get_modrinth_api, make_modrinth_request,
-  map_modrinth_file_to_version_pack,
+  map_modrinth_file_to_version_pack, select_recommended_modrinth_file,
 };
 use sha1::{Digest, Sha1};
 use sjmcl_types::error::SJMCLResult;
@@ -27,7 +27,7 @@ use crate::resource::models::{
 use crate::tasks::download::DownloadParam;
 use crate::utils::string::contains_chinese;
 
-const ALL_FILTER: &str = "All";
+pub(crate) const ALL_FILTER: &str = "All";
 
 pub async fn fetch_resource_list_by_name_modrinth(
   app: &AppHandle,
@@ -133,7 +133,11 @@ pub async fn fetch_resource_version_packs_modrinth(
   )
   .await?;
 
-  Ok(map_modrinth_file_to_version_pack(results, resource_type))
+  Ok(map_modrinth_file_to_version_pack(
+    results,
+    resource_type,
+    mod_loader,
+  ))
 }
 
 pub async fn fetch_remote_resource_by_local_modrinth(
@@ -224,21 +228,11 @@ pub async fn fetch_latest_mod_download_param_modrinth(
 
   let version_packs = fetch_resource_version_packs_modrinth(app, &query).await?;
 
-  let version_pack = version_packs.first().ok_or(ResourceError::ParseError)?;
-
-  let mut candidate_files: Vec<&OtherResourceFileInfo> = version_pack
-    .items
-    .iter()
-    .filter(|file| matches!(file.release_type.as_str(), "beta" | "release"))
-    .collect();
-
-  if candidate_files.is_empty() {
+  let Some(latest_file) =
+    select_recommended_modrinth_file(&version_packs, game_version, &mod_loader.to_string())
+  else {
     return Ok(None);
-  }
-
-  candidate_files.sort_by(|a, b| b.file_date.cmp(&a.file_date));
-
-  let latest_file = candidate_files.first().ok_or(ResourceError::ParseError)?;
+  };
 
   let download_url =
     Url::parse(&latest_file.download_url).map_err(|_| ResourceError::ParseError)?;
