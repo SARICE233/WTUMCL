@@ -19,6 +19,7 @@ export interface SelectableCardProps extends CardProps {
   description?: string;
   displayMode: "entry" | "selector";
   isLoading?: boolean;
+  isBusy?: boolean;
   isDisabled?: boolean;
   isSelected: boolean;
   isChevronShown?: boolean;
@@ -32,6 +33,7 @@ const SelectableCard: React.FC<SelectableCardProps> = ({
   description,
   displayMode,
   isLoading = false,
+  isBusy = isLoading,
   isDisabled = false,
   isSelected,
   isChevronShown = true,
@@ -87,7 +89,7 @@ const SelectableCard: React.FC<SelectableCardProps> = ({
               icon={<Icon as={LuX} boxSize={3.5} />}
               variant="ghost"
               size="xs"
-              disabled={isLoading || isDisabled}
+              disabled={isBusy || isDisabled}
               onClick={() => onCancel()}
             />
           )}
@@ -97,7 +99,7 @@ const SelectableCard: React.FC<SelectableCardProps> = ({
               icon={<Icon as={LuChevronRight} boxSize={3.5} />}
               variant="ghost"
               size="xs"
-              disabled={isLoading || isDisabled}
+              disabled={isBusy || isDisabled}
               onClick={() => onSelect()}
             />
           )}

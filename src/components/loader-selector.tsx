@@ -78,6 +78,11 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
   const [selectedId, setSelectedId] = useState("");
 
   const selectableCardListRef = useRef<HTMLDivElement>(null);
+  // Token of the version list request whose response is still wanted: bumping
+  // it when the loader type changes makes any late answer for the previous
+  // type a no-op, and the AbortController tears the in-flight one down.
+  const requestIdRef = useRef(0);
+  const requestAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (mode === "optifine") {
@@ -151,11 +156,25 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
     [primaryColor, t, onSelectModLoader, onSelectOptiFine]
   );
 
+  // Every request gets a fresh token and AbortSignal: bumping the token and
+  // aborting the controller when the type changes makes any late answer for
+  // the previous type a no-op.
+  const beginVersionListRequest = useCallback(() => {
+    requestAbortRef.current?.abort();
+    const controller = new AbortController();
+    requestAbortRef.current = controller;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    setIsLoading(true);
+    return { requestId, signal: controller.signal };
+  }, []);
+
   const handleFetchModLoaderVersionList = useCallback(
     (type: ModLoaderType) => {
-      setIsLoading(true);
+      const { requestId, signal } = beginVersionListRequest();
       ResourceService.fetchModLoaderVersionList(selectedGameVersion.id, type)
         .then((res) => {
+          if (signal.aborted || requestId !== requestIdRef.current) return;
           if (res.status === "success") {
             setVersionList(
               res.data
@@ -178,15 +197,25 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
             });
           }
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => {
+          if (signal.aborted || requestId !== requestIdRef.current) return;
+          setIsLoading(false);
+        });
     },
-    [selectedGameVersion.id, buildOptionItems, t, toast]
+    [
+      selectedGameVersion.id,
+      buildOptionItems,
+      t,
+      toast,
+      beginVersionListRequest,
+    ]
   );
 
   const handleFetchOptiFineVersionList = useCallback(() => {
-    setIsLoading(true);
+    const { requestId, signal } = beginVersionListRequest();
     ResourceService.fetchOptiFineVersionList(selectedGameVersion.id)
       .then((res) => {
+        if (signal.aborted || requestId !== requestIdRef.current) return;
         if (res.status === "success") {
           setVersionList(res.data.map(buildOptionItems));
         } else {
@@ -198,8 +227,16 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
           });
         }
       })
-      .finally(() => setIsLoading(false));
-  }, [selectedGameVersion.id, buildOptionItems, toast]);
+      .finally(() => {
+        if (signal.aborted || requestId !== requestIdRef.current) return;
+        setIsLoading(false);
+      });
+  }, [
+    selectedGameVersion.id,
+    buildOptionItems,
+    toast,
+    beginVersionListRequest,
+  ]);
 
   let selectableCardItems = modLoaderTypes
     .filter(
@@ -221,6 +258,10 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
             : t("LoaderSelector.noVersionSelected"),
         displayMode: "selector",
         isLoading,
+        // A version list is in flight: the type selector stays clickable while
+        // only the leading spinner is disabled, so a slow server cannot freeze
+        // the picker; the Cancel button keeps following the loading state.
+        isBusy: isLoading && type === selectedType,
         isSelected: type === selectedModLoader.loaderType,
         isChevronShown: selectedType !== type,
         onSelect: () => {
@@ -272,6 +313,7 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
             }),
       displayMode: "selector",
       isLoading,
+      isBusy: isLoading && selectedType === "OptiFine",
       isSelected: !!selectedOptiFine,
       isDisabled: !(
         selectedModLoader.loaderType === ModLoaderType.Forge ||
@@ -321,8 +363,14 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
     } else {
       setVersionList([]);
     }
+    // The fetch handlers only change with the game version or the translated
+    // labels, which refetch elsewhere; a late response for an older type is
+    // dropped by the request token, so no cleanup is needed here. Disposing
+    // the selector has no warning-worthy effect either.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedType]);
+
+  useEffect(() => () => requestAbortRef.current?.abort(), []);
 
   // Scroll selected item into view when version list changes or selected item changes
   useEffect(() => {
@@ -351,7 +399,7 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (!(event.target instanceof Element)) return;
       if (event.target.closest("button")) return;
-      if (item.isDisabled || item.isLoading) return;
+      if (item.isDisabled) return;
       item.onSelect();
     };
 
@@ -361,7 +409,7 @@ export const LoaderSelector: React.FC<LoaderSelectorProps> = ({
       if (event.target !== event.currentTarget) return;
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
-      if (item.isDisabled || item.isLoading) return;
+      if (item.isDisabled) return;
       item.onSelect();
     };
 
