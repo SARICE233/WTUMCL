@@ -374,3 +374,22 @@
     transform: none;
   }
 }
+/* Launch-page skin card: the section fills the free column space above the
+   launch controls, and the canvas fitted into it shrinks with the window
+   instead of pushing the controls away. */
+.playerSkinCard {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 14.5rem;
+  max-width: 14.5rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Stacked layout: the card sits above the launch button, so cap it there. */
+@media (max-width: 54rem) {
+  .playerSkinCard {
+    max-height: 16rem;
+  }
+}

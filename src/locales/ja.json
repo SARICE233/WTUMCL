@@ -1803,6 +1803,9 @@
       "previous": "前のニュース",
       "next": "次のニュース"
     },
+    "playerSkin": {
+      "title": "プレイヤーのスキン"
+    },
     "recentInstance": {
       "title": "最近のインスタンス",
       "viewAll": "すべてのインスタンス",

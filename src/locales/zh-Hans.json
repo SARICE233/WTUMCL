@@ -1803,6 +1803,9 @@
       "previous": "上一条新闻",
       "next": "下一条新闻"
     },
+    "playerSkin": {
+      "title": "玩家皮肤"
+    },
     "recentInstance": {
       "title": "最近实例",
       "viewAll": "查看全部实例",

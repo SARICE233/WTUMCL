@@ -1803,6 +1803,9 @@
       "previous": "前聞",
       "next": "後聞"
     },
+    "playerSkin": {
+      "title": "玩家形貌"
+    },
     "recentInstance": {
       "title": "近戲例",
       "viewAll": "覽諸戲例",

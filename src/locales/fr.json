@@ -1803,6 +1803,9 @@
       "previous": "Actualité précédente",
       "next": "Actualité suivante"
     },
+    "playerSkin": {
+      "title": "Apparence du joueur"
+    },
     "recentInstance": {
       "title": "Instance récente",
       "viewAll": "Toutes les instances",

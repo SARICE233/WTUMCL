@@ -6,6 +6,7 @@ import CommunityNewsFeed from "@/components/launch/community-news-feed";
 import DownloadProgressCard from "@/components/launch/download-progress-card";
 import HitokotoCard from "@/components/launch/hitokoto-card";
 import LaunchGreeting from "@/components/launch/launch-greeting";
+import PlayerSkinCard from "@/components/launch/player-skin-card";
 import RecentInstanceCard from "@/components/launch/recent-instance-card";
 import WeeklyPlaytimeCard from "@/components/launch/weekly-playtime-card";
 import { useLauncherConfig } from "@/contexts/config";
@@ -180,11 +181,15 @@ const LaunchPage = () => {
           <Flex
             ref={controlsRef}
             data-launch="launch-controls"
+            direction="column"
             justify="flex-end"
             align="flex-end"
+            gap={isStacked ? 3 : 4}
             minW={0}
+            h={isStacked ? undefined : "100%"}
             w={isStacked ? "100%" : undefined}
           >
+            <PlayerSkinCard />
             <HomeButtonGroup />
           </Flex>
         </Flex>

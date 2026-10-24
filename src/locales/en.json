@@ -1803,6 +1803,9 @@
       "previous": "Previous news",
       "next": "Next news"
     },
+    "playerSkin": {
+      "title": "Player skin"
+    },
     "recentInstance": {
       "title": "Recent instance",
       "viewAll": "View all instances",
