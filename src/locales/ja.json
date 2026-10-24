@@ -2020,6 +2020,9 @@
     "button": {
       "search": "サーチ"
     },
+    "error": {
+      "curseforgeApiKeyMissing": "CurseForge API キーが未設定です"
+    },
     "modTagList": {
       "CurseForge": {
         "All": "すべて",
@@ -2753,7 +2756,9 @@
           "description": {
             "PARSE_ERROR": "サーバー応答データ形式エラー",
             "NETWORK_ERROR": "サーバーに接続できません",
-            "NO_DOWNLOAD_API": "利用可能なダウンロード戦略がありません。ネットワーク接続を確認してください"
+            "NO_DOWNLOAD_API": "利用可能なダウンロード戦略がありません。ネットワーク接続を確認してください",
+            "CURSE_FORGE_API_KEY_MISSING": "プロジェクト直下の .env ファイル（.env.template を参照）で WTUMCL_CURSEFORGE_API_KEY を設定し、WTUMCL を再起動してください",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge からリクエストを拒否されました。WTUMCL_CURSEFORGE_API_KEY が無効、または承認されていない可能性があります"
           }
         }
       },
@@ -2763,7 +2768,9 @@
           "description": {
             "PARSE_ERROR": "サーバー応答データ形式エラー",
             "NETWORK_ERROR": "サーバーに接続できません",
-            "NO_DOWNLOAD_API": "利用可能なダウンロード戦略がありません。ネットワーク接続を確認してください"
+            "NO_DOWNLOAD_API": "利用可能なダウンロード戦略がありません。ネットワーク接続を確認してください",
+            "CURSE_FORGE_API_KEY_MISSING": "プロジェクト直下の .env ファイル（.env.template を参照）で WTUMCL_CURSEFORGE_API_KEY を設定し、WTUMCL を再起動してください",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge からリクエストを拒否されました。WTUMCL_CURSEFORGE_API_KEY が無効、または承認されていない可能性があります"
           }
         }
       },
@@ -2782,7 +2789,9 @@
           "description": {
             "PARSE_ERROR": "サーバー応答データ形式エラー",
             "NETWORK_ERROR": "サーバーに接続できません",
-            "NO_DOWNLOAD_API": "利用可能なダウンロード戦略がありません。ネットワーク接続を確認してください"
+            "NO_DOWNLOAD_API": "利用可能なダウンロード戦略がありません。ネットワーク接続を確認してください",
+            "CURSE_FORGE_API_KEY_MISSING": "プロジェクト直下の .env ファイル（.env.template を参照）で WTUMCL_CURSEFORGE_API_KEY を設定し、WTUMCL を再起動してください",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge からリクエストを拒否されました。WTUMCL_CURSEFORGE_API_KEY が無効、または承認されていない可能性があります"
           }
         }
       },

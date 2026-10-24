@@ -51,6 +51,7 @@ import {
   sortByLists,
   worldTagList,
 } from "@/enums/resource";
+import { ResourceServiceError } from "@/enums/service-error";
 import { GetStateFlag } from "@/hooks/get-state";
 import { InstanceSummary } from "@/models/instance/misc";
 import { GameClientResourceInfo, OtherResourceInfo } from "@/models/resource";
@@ -403,8 +404,16 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
             setHasMore(response.data.total > (page + 1) * pageSize);
           } else {
             setResourceList([]);
+            // CURSE_FORGE_API_KEY_MISSING is the backend code for an unset
+            // WTUMCL_CURSEFORGE_API_KEY; response.details already carries the
+            // localized hint naming it, so only the title needs replacing here.
+            const apiKeyMissing =
+              response.raw_error ===
+              ResourceServiceError.CurseForgeApiKeyMissing;
             toast({
-              title: response.message,
+              title: apiKeyMissing
+                ? t("ResourceDownloader.error.curseforgeApiKeyMissing")
+                : response.message,
               description: response.details,
               status: "error",
             });
@@ -414,7 +423,7 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
           setIsLoadingResourceList(false);
         });
     },
-    [toast]
+    [t, toast]
   );
 
   const loadMore = () => {

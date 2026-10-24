@@ -2020,6 +2020,9 @@
     "button": {
       "search": "Rechercher"
     },
+    "error": {
+      "curseforgeApiKeyMissing": "Clé API CurseForge non définie"
+    },
     "modTagList": {
       "CurseForge": {
         "All": "Tous",
@@ -2753,7 +2756,9 @@
           "description": {
             "PARSE_ERROR": "Format de données du serveur incorrect",
             "NETWORK_ERROR": "Échec du démarrage du jeu",
-            "NO_DOWNLOAD_API": "Aucune stratégie de téléchargement disponible, veuillez vérifier la connexion réseau"
+            "NO_DOWNLOAD_API": "Aucune stratégie de téléchargement disponible, veuillez vérifier la connexion réseau",
+            "CURSE_FORGE_API_KEY_MISSING": "Définissez WTUMCL_CURSEFORGE_API_KEY dans le fichier .env (voir .env.template à la racine du projet), puis redémarrez WTUMCL",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge a rejeté la requête ; WTUMCL_CURSEFORGE_API_KEY est probablement invalide ou non approuvée"
           }
         }
       },
@@ -2763,7 +2768,9 @@
           "description": {
             "PARSE_ERROR": "Format de données du serveur incorrect",
             "NETWORK_ERROR": "Échec du démarrage du jeu",
-            "NO_DOWNLOAD_API": "Aucune stratégie de téléchargement disponible, veuillez vérifier la connexion réseau"
+            "NO_DOWNLOAD_API": "Aucune stratégie de téléchargement disponible, veuillez vérifier la connexion réseau",
+            "CURSE_FORGE_API_KEY_MISSING": "Définissez WTUMCL_CURSEFORGE_API_KEY dans le fichier .env (voir .env.template à la racine du projet), puis redémarrez WTUMCL",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge a rejeté la requête ; WTUMCL_CURSEFORGE_API_KEY est probablement invalide ou non approuvée"
           }
         }
       },
@@ -2782,7 +2789,9 @@
           "description": {
             "PARSE_ERROR": "Le serveur a renvoyé des données dans un format incorrect",
             "NETWORK_ERROR": "Échec du démarrage du jeu",
-            "NO_DOWNLOAD_API": "Aucune stratégie de téléchargement disponible. Veuillez vérifier votre connexion réseau"
+            "NO_DOWNLOAD_API": "Aucune stratégie de téléchargement disponible. Veuillez vérifier votre connexion réseau",
+            "CURSE_FORGE_API_KEY_MISSING": "Définissez WTUMCL_CURSEFORGE_API_KEY dans le fichier .env (voir .env.template à la racine du projet), puis redémarrez WTUMCL",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge a rejeté la requête ; WTUMCL_CURSEFORGE_API_KEY est probablement invalide ou non approuvée"
           }
         }
       },

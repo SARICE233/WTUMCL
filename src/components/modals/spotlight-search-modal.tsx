@@ -33,6 +33,7 @@ import { useGlobalData } from "@/contexts/global-data";
 import { useRoutingHistory } from "@/contexts/routing-history";
 import { useSharedModals } from "@/contexts/shared-modal";
 import { OtherResourceSource, OtherResourceType } from "@/enums/resource";
+import { ResourceServiceError } from "@/enums/service-error";
 import { OtherResourceInfo } from "@/models/resource";
 import { ResourceService } from "@/services/resource";
 import { generatePlayerDesc } from "@/utils/account";
@@ -83,6 +84,7 @@ const SpotlightSearchModal: React.FC<Omit<ModalProps, "children">> = ({
     SearchResult[]
   >([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [curseforgeHint, setCurseforgeHint] = useState<string | null>(null);
 
   const { getPlayerList, getInstanceList } = useGlobalData();
 
@@ -255,6 +257,8 @@ const SpotlightSearchModal: React.FC<Omit<ModalProps, "children">> = ({
       const normalizedQuery = normalizeText(query);
       if (normalizedQuery.length < 2) return [];
 
+      setCurseforgeHint(null);
+
       // Priority resource types for network search - performs concurrent searches
       // 4 resource types * 2 sources * 6 results per request = 48 results before filtering
       const priorityResourceTypes = [
@@ -283,7 +287,21 @@ const SpotlightSearchModal: React.FC<Omit<ModalProps, "children">> = ({
               RESOURCES_PER_REQUEST
             );
 
-            if (signal?.aborted || response.status !== "success") {
+            if (response.status !== "success") {
+              if (
+                !signal?.aborted &&
+                source === OtherResourceSource.CurseForge &&
+                response.raw_error ===
+                  ResourceServiceError.CurseForgeApiKeyMissing
+              ) {
+                // An unset WTUMCL_CURSEFORGE_API_KEY would otherwise look like CurseForge
+                // having no results at all, so keep its localized hint for the list.
+                setCurseforgeHint(response.details);
+              }
+              return [];
+            }
+
+            if (signal?.aborted) {
               return [];
             }
 
@@ -360,6 +378,7 @@ const SpotlightSearchModal: React.FC<Omit<ModalProps, "children">> = ({
     const normalizedQuery = normalizeText(queryText);
     if (!normalizedQuery || normalizedQuery.length < 2) {
       setNetworkSearchResults([]);
+      setCurseforgeHint(null);
       setIsSearching(false);
       searchAbortControllerRef.current = null;
       return;
@@ -397,6 +416,7 @@ const SpotlightSearchModal: React.FC<Omit<ModalProps, "children">> = ({
     if (!props.isOpen) {
       setQueryText("");
       setNetworkSearchResults([]);
+      setCurseforgeHint(null);
       setIsSearching(false);
       if (searchAbortControllerRef.current) {
         searchAbortControllerRef.current.abort();
@@ -546,6 +566,11 @@ const SpotlightSearchModal: React.FC<Omit<ModalProps, "children">> = ({
                 size="sm"
               />
             </Center>
+          )}
+          {curseforgeHint && (
+            <Text fontSize="xs" className="secondary-text" mt={2}>
+              {curseforgeHint}
+            </Text>
           )}
         </ModalBody>
       </ModalContent>

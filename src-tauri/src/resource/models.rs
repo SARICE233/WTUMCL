@@ -209,6 +209,13 @@ pub enum ResourceError {
   NetworkError,
   FileOperationError,
   ClientVersionNotFound,
+  /// `WTUMCL_CURSEFORGE_API_KEY` is empty, so no request is attempted. This is a
+  /// configuration problem, not a connectivity problem.
+  CurseForgeApiKeyMissing,
+  /// CurseForge answered the request but refused it (usually 401/403 because the API
+  /// key is missing, invalid or not approved). Kept apart from `NetworkError` so the
+  /// frontend can name the credential instead of blaming the connection.
+  CurseForgeRequestRejected,
 }
 
 impl std::error::Error for ResourceError {}

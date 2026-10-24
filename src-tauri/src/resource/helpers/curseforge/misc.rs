@@ -27,6 +27,40 @@ pub fn is_curseforge_authenticated_url(url: &url::Url) -> bool {
   )
 }
 
+/// CurseForge rejects the request without a usable body sometimes, so the reason is
+/// trimmed before it is written to the log.
+const CURSEFORGE_ERROR_REASON_MAX_LEN: usize = 160;
+
+/// An unset credential is a configuration problem, so it has to be reported before
+/// the request is attempted instead of being mistaken for a connection failure.
+fn curseforge_credential_error(url: &str, api_key: &str) -> Option<SJMCLError> {
+  if api_key.trim().is_empty() {
+    log::warn!(
+      "CurseForge API {} is skipped: WTUMCL_CURSEFORGE_API_KEY is not configured",
+      url
+    );
+    return Some(ResourceError::CurseForgeApiKeyMissing.into());
+  }
+
+  None
+}
+
+/// Collapse whitespace and bound the length so an unexpected HTML error page cannot
+/// flood the log.
+fn sanitize_curseforge_error_reason(reason: &str) -> String {
+  let flattened = reason.split_whitespace().collect::<Vec<_>>().join(" ");
+  let mut trimmed = flattened.chars();
+  let mut bounded = trimmed
+    .by_ref()
+    .take(CURSEFORGE_ERROR_REASON_MAX_LEN)
+    .collect::<String>();
+  if trimmed.next().is_some() {
+    bounded.push_str("...");
+  }
+
+  bounded
+}
+
 pub async fn make_curseforge_request<T, P>(
   client: &reqwest::Client,
   url: &str,
@@ -36,6 +70,25 @@ where
   T: serde::de::DeserializeOwned,
   P: serde::Serialize,
 {
+  make_curseforge_request_with_key(client, url, request_type, CURSEFORGE_API_KEY.as_str()).await
+}
+
+/// `make_curseforge_request` with the credential injected, so the three failure modes
+/// can be verified without reading process state or reaching the network.
+async fn make_curseforge_request_with_key<T, P>(
+  client: &reqwest::Client,
+  url: &str,
+  request_type: OtherResourceRequestType<'_, P>,
+  api_key: &str,
+) -> SJMCLResult<T>
+where
+  T: serde::de::DeserializeOwned,
+  P: serde::Serialize,
+{
+  if let Some(error) = curseforge_credential_error(url, api_key) {
+    return Err(error);
+  }
+
   let request_builder = match request_type {
     OtherResourceRequestType::GetWithParams(params) => client.get(url).query(params),
     OtherResourceRequestType::Get => client.get(url),
@@ -43,13 +96,32 @@ where
   };
 
   let response = request_builder
-    .header("x-api-key", CURSEFORGE_API_KEY.as_str())
+    .header("x-api-key", api_key)
     .send()
     .await
-    .map_err(|_| ResourceError::NetworkError)?;
+    .map_err(|error| {
+      log::warn!("Failed to connect to CurseForge API {}: {}", url, error);
+      ResourceError::NetworkError
+    })?;
 
-  if !response.status().is_success() {
-    return Err(ResourceError::NetworkError.into());
+  let status = response.status();
+  if !status.is_success() {
+    let reason = response.text().await.unwrap_or_default();
+    log::warn!(
+      "CurseForge API {} returned {} with body: {}",
+      url,
+      status,
+      sanitize_curseforge_error_reason(&reason)
+    );
+
+    // CurseForge answered, so a refused request is a rejection and not a transport
+    // failure. Only a client error blames the request; a 5xx is the API being unwell,
+    // which is retried like any other connectivity problem.
+    return Err(if status.is_client_error() {
+      ResourceError::CurseForgeRequestRejected.into()
+    } else {
+      ResourceError::NetworkError.into()
+    });
   }
 
   response
@@ -530,4 +602,207 @@ pub async fn translate_description_curseforge(
 
   // Only return Ok(None) when translation fails, to avoid blocking major functionality
   Ok(result.ok())
+}
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::io::{Read, Write};
+
+  const TRANSPORT_ERROR: &str = "NETWORK_ERROR";
+  const MISSING_KEY_ERROR: &str = "CURSE_FORGE_API_KEY_MISSING";
+  const REJECTED_ERROR: &str = "CURSE_FORGE_REQUEST_REJECTED";
+
+  /// Answers one request on loopback only, so the rejection path is exercised offline.
+  fn spawn_curseforge_stub(status_line: &str, body: &str) -> String {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let response = format!(
+      "{}\r\ncontent-type: text/plain\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+      status_line,
+      body.len(),
+      body
+    );
+
+    std::thread::spawn(move || {
+      let mut chunk = [0u8; 4096];
+      let mut received = Vec::new();
+      for stream in listener.incoming() {
+        let Ok(mut stream) = stream else { break };
+        while !received.windows(4).any(|w| w == b"\r\n\r\n") {
+          match stream.read(&mut chunk) {
+            Ok(0) | Err(_) => break,
+            Ok(size) => received.extend_from_slice(&chunk[..size]),
+          }
+        }
+        let _ = stream.write_all(response.as_bytes());
+        let _ = stream.flush();
+        break;
+      }
+    });
+
+    format!("http://127.0.0.1:{}/v1/mods/search", port)
+  }
+
+  async fn error_for(client: &reqwest::Client, url: &str, api_key: &str) -> SJMCLError {
+    make_curseforge_request_with_key::<serde_json::Value, ()>(
+      client,
+      url,
+      OtherResourceRequestType::Get,
+      api_key,
+    )
+    .await
+    .unwrap_err()
+  }
+
+  #[test]
+  fn the_three_failure_modes_have_three_distinct_names() {
+    assert_eq!(
+      ResourceError::CurseForgeApiKeyMissing.to_string(),
+      MISSING_KEY_ERROR
+    );
+    assert_eq!(
+      ResourceError::CurseForgeRequestRejected.to_string(),
+      REJECTED_ERROR
+    );
+    assert_eq!(ResourceError::NetworkError.to_string(), TRANSPORT_ERROR);
+
+    let names = [MISSING_KEY_ERROR, REJECTED_ERROR, TRANSPORT_ERROR];
+    for (i, a) in names.iter().enumerate() {
+      for (j, b) in names.iter().enumerate() {
+        if i != j {
+          assert_ne!(*a, *b, "failure kinds must stay distinguishable");
+        }
+      }
+    }
+  }
+
+  #[test]
+  fn credential_guard_flags_blank_keys_only() {
+    for blank in ["", " ", "\t", "\r\n"] {
+      assert_eq!(
+        curseforge_credential_error("/v1/mods/search", blank),
+        Some(SJMCLError(MISSING_KEY_ERROR.to_string())),
+        "key {:?} must be reported as an unset credential",
+        blank
+      );
+    }
+
+    assert_eq!(
+      curseforge_credential_error("/v1/mods/search", "$2a$10$abcdef"),
+      None
+    );
+  }
+
+  #[tokio::test]
+  async fn an_unset_credential_stops_before_any_connection_is_attempted() {
+    let client = reqwest::Client::new();
+
+    // Unusable URL on purpose: had the blank key been ignored the failure would have
+    // come back as a transport error, which is the collapse being fixed.
+    let unset = error_for(&client, "not-a-valid-url", "").await;
+    let configured = error_for(&client, "not-a-valid-url", "configured-key").await;
+
+    assert_eq!(unset, SJMCLError(MISSING_KEY_ERROR.to_string()));
+    assert_eq!(configured, SJMCLError(TRANSPORT_ERROR.to_string()));
+    assert_ne!(unset, configured);
+  }
+
+  #[tokio::test]
+  async fn a_forbidden_response_is_a_rejection_and_not_a_network_error() {
+    let url = spawn_curseforge_stub(
+      "HTTP/1.1 403 Forbidden",
+      "Forbidden: API Key missing or invalid",
+    );
+    let client = reqwest::Client::new();
+
+    let rejected = error_for(&client, &url, "configured-key").await;
+
+    assert_eq!(rejected, SJMCLError(REJECTED_ERROR.to_string()));
+    assert_ne!(rejected, SJMCLError(TRANSPORT_ERROR.to_string()));
+    assert_ne!(rejected, SJMCLError(MISSING_KEY_ERROR.to_string()));
+  }
+
+  #[tokio::test]
+  async fn a_successful_response_still_deserializes() {
+    let url = spawn_curseforge_stub("HTTP/1.1 200 OK", r#"{"count": 1}"#);
+    let client = reqwest::Client::new();
+
+    let body: serde_json::Value = make_curseforge_request_with_key::<_, ()>(
+      &client,
+      &url,
+      OtherResourceRequestType::Get,
+      "configured-key",
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(body["count"], 1);
+  }
+
+  #[tokio::test]
+  async fn every_refused_client_request_is_a_rejection() {
+    for status_line in [
+      "HTTP/1.1 401 Unauthorized",
+      "HTTP/1.1 403 Forbidden",
+      "HTTP/1.1 404 Not Found",
+    ] {
+      let url = spawn_curseforge_stub(status_line, "Forbidden: API Key missing or invalid");
+      let client = reqwest::Client::new();
+
+      assert_eq!(
+        error_for(&client, &url, "configured-key").await,
+        SJMCLError(REJECTED_ERROR.to_string()),
+        "{} must be reported as a rejection",
+        status_line
+      );
+    }
+  }
+
+  #[tokio::test]
+  async fn a_server_error_stays_a_network_error() {
+    let url = spawn_curseforge_stub("HTTP/1.1 500 Internal Server Error", "upstream panicked");
+    let client = reqwest::Client::new();
+
+    assert_eq!(
+      error_for(&client, &url, "configured-key").await,
+      SJMCLError(TRANSPORT_ERROR.to_string())
+    );
+  }
+
+  #[tokio::test]
+  async fn unset_credential_wins_over_a_refusal_from_the_same_url() {
+    let url = spawn_curseforge_stub(
+      "HTTP/1.1 403 Forbidden",
+      "Forbidden: API Key missing or invalid",
+    );
+    let client = reqwest::Client::new();
+
+    assert_eq!(
+      error_for(&client, &url, "").await,
+      SJMCLError(MISSING_KEY_ERROR.to_string())
+    );
+  }
+
+  #[test]
+  fn response_reason_is_flattened_and_bounded() {
+    let noisy = "Forbidden:\n   API Key\tmissing\r\n or invalid ".repeat(30);
+    let sanitized = sanitize_curseforge_error_reason(&noisy);
+
+    assert!(!sanitized.contains('\n'));
+    assert!(!sanitized.contains('\t'));
+    assert!(
+      sanitized.ends_with("..."),
+      "overlong body must be truncated"
+    );
+    assert_eq!(
+      sanitized.chars().count(),
+      CURSEFORGE_ERROR_REASON_MAX_LEN + 3
+    );
+
+    assert_eq!(
+      sanitize_curseforge_error_reason("  Forbidden: API Key missing or invalid  "),
+      "Forbidden: API Key missing or invalid"
+    );
+    assert_eq!(sanitize_curseforge_error_reason("   \n  "), "");
+  }
 }
