@@ -18,14 +18,14 @@ The goal is simple: WTUMC members install the launcher, sign in with a community
 
 ## Features
 
-* **WTUMC Community Integration**: The community news feed at https://wtumc.top:64053/api/news is the default source, so community announcements and articles appear in the launcher's discovery page without manual setup.
-* **Community Accounts and Skins**: The community authentication server https://wtumc.top:64053/api/yggdrasil is built in. The launcher normalizes skin domains returned by the server (stripping URL schemes, ports and paths) so that community skins load correctly in game.
-* **Cross Platform**: Supports Windows 10/11, macOS 10.15+ and Linux (webkit2gtk 4.1).
-* **Efficient Instance Management**: Supports multiple game directories and instances, allowing the management of all instance resources (such as saves, mods, resource packs, shaders, screenshots, etc.) and settings in one place.
-* **Convenient Resource Download**: Supports downloading game clients, mod loaders, various game resources and modpacks from CurseForge and Modrinth.
-* **Multi-Account System Support**: Built-in Microsoft login and third-party authentication server support, including authlib-injector compatible servers and the OAuth login flow proposed by the Yggdrasil Connect proposal.
-* **External Service Collaboration**: Works with external webpages, applications and Agent services through `wtumcl://` deeplinks and MCP services, delivering convenient features and automation capabilities.
-* **Open Extension System**: Keeps the SJMCL extension system and package format, so existing community extensions remain usable while new ones can be developed for WTUMCL.
+- **WTUMC Community Integration**: The community news feed at https://wtumc.top:64053/api/news is the default source, so community announcements and articles appear in the launcher's discovery page without manual setup.
+- **Community Accounts and Skins**: The community authentication server https://wtumc.top:64053/api/yggdrasil is built in. The launcher normalizes skin domains returned by the server (stripping URL schemes, ports and paths) so that community skins load correctly in game.
+- **Cross Platform**: Supports Windows 10/11, macOS 10.15+ and Linux (webkit2gtk 4.1).
+- **Efficient Instance Management**: Supports multiple game directories and instances, allowing the management of all instance resources (such as saves, mods, resource packs, shaders, screenshots, etc.) and settings in one place.
+- **Convenient Resource Download**: Supports downloading game clients, mod loaders, various game resources and modpacks from CurseForge and Modrinth.
+- **Multi-Account System Support**: Built-in Microsoft login and third-party authentication server support, including authlib-injector compatible servers and the OAuth login flow proposed by the Yggdrasil Connect proposal.
+- **External Service Collaboration**: Works with external webpages, applications and Agent services through `wtumcl://` deeplinks and MCP services, delivering convenient features and automation capabilities.
+- **Open Extension System**: Keeps the SJMCL extension system and package format, so existing community extensions remain usable while new ones can be developed for WTUMCL.
 
 > Note: some features may be limited by region, platform, or bundle type.
 
@@ -37,10 +37,10 @@ The goal is simple: WTUMC members install the launcher, sign in with a community
 
 ## WTUMC Community Services
 
-| Service | Address | Purpose |
-|---------|---------|---------|
-| Community site | https://wtumc.top:64053 | Community home page, announcements and user entry |
-| Community news feed | https://wtumc.top:64053/api/news | Default news source in the launcher |
+| Service                  | Address                               | Purpose                                                      |
+| ------------------------ | ------------------------------------- | ------------------------------------------------------------ |
+| Community site           | https://wtumc.top:64053               | Community home page, announcements and user entry            |
+| Community news feed      | https://wtumc.top:64053/api/news      | Default news source in the launcher                          |
 | Community authentication | https://wtumc.top:64053/api/yggdrasil | Yggdrasil / authlib-injector endpoint for community accounts |
 
 These services are operated by WTUMC and are the recommended defaults for community members. Accounts and skins from other authlib-injector compatible servers can still be added manually.
@@ -51,19 +51,19 @@ Download the latest build from [GitHub Releases](https://github.com/SARICE233/WT
 
 WTUMCL currently supports the following platforms:
 
-| Platform  | Versions            | Architectures              | Provided Bundles                        |
-|-----------|---------------------|----------------------------|-----------------------------------------|
-| Windows   | 10 and above        | `aarch64`, `i686`, `x86_64` | installer `.exe`, portable `.exe`       |
-| macOS     | 10.15 and above     | `aarch64`, `x86_64`        | `.app`, `.dmg`                          |
-| Linux     | webkit2gtk 4.1 (e.g., Ubuntu 22.04) | `aarch64`, `x86_64` | `.deb`, `.rpm`, portable binary |
+| Platform | Versions                            | Architectures               | Provided Bundles                  |
+| -------- | ----------------------------------- | --------------------------- | --------------------------------- |
+| Windows  | 10 and above                        | `aarch64`, `i686`, `x86_64` | installer `.exe`, portable `.exe` |
+| macOS    | 10.15 and above                     | `aarch64`, `x86_64`         | `.app`, `.dmg`                    |
+| Linux    | webkit2gtk 4.1 (e.g., Ubuntu 22.04) | `aarch64`, `x86_64`         | `.deb`, `.rpm`, portable binary   |
 
 ## Build from Source
 
 To build WTUMCL yourself, install the following prerequisites:
 
-* Node.js 22 or newer and pnpm 10 or newer;
-* Rust 1.98.1 or newer;
-* the [Tauri system dependencies](https://tauri.app/start/prerequisites/) for your operating system.
+- Node.js 22 or newer and pnpm 10 or newer;
+- Rust 1.98.1 or newer;
+- the [Tauri system dependencies](https://tauri.app/start/prerequisites/) for your operating system.
 
 Then clone the repository and build:
 
@@ -92,15 +92,21 @@ WTUMCL inherits the SJMCL extension system and package format. Existing extensio
 
 ![Contributors](https://contrib.rocks/image?repo=UNIkeEN/SJMCL "Contributors")
 
-## License
+## Copyright
 
 Copyright © 2024-2026 SJMCL Team.
 
-Modifications © 2026 WTUMC.
+Modifications since 2026-10-20 © 2026 WTUMC (Wuhan Textile University Minecraft Community).
+
+WTUMCL is based on [SJMCL](https://github.com/UNIkeEN/SJMCL) and changes the launcher's branding, launch page, download pipeline and community-service integration. Internal identifiers (config file names, crate names) intentionally keep their upstream spelling for compatibility.
 
 > NOT AN OFFICIAL MINECRAFT SERVICE. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
+## License
+
 WTUMCL is distributed under [GNU General Public License v3.0](LICENSE).
+
+The Corresponding Source of the release binaries is published at <https://github.com/SARICE233/WTUMCL/tree/v1.4.0>; GitHub also attaches a source archive to every release.
 
 By GPLv3 License term 7, we require that when you distribute a modified version of the software, you must obey GPLv3 License as well as the following [additional terms](LICENSE.EXTRA):
 
@@ -112,5 +118,5 @@ Besides, per term of use of our website, when distributing a modified version of
 
 ## Contact
 
-* WTUMC community site: https://wtumc.top:64053
-* Issue tracker: https://github.com/SARICE233/WTUMCL/issues
+- WTUMC community site: https://wtumc.top:64053
+- Issue tracker: https://github.com/SARICE233/WTUMCL/issues

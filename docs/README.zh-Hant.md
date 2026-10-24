@@ -18,14 +18,14 @@ WTUMCL 是面向**武漢紡織大學 MC 社群（WTUMC）**的 SJMCL 社群版�
 
 ## 功能特性
 
-* **WTUMC 社群整合**：預設使用社群新聞源 https://wtumc.top:64053/api/news，啟動器的探索頁無需手動設定即可顯示社群公告與文章。
-* **社群帳戶與外觀**：內建社群認證伺服器 https://wtumc.top:64053/api/yggdrasil；啟動器會正規化認證伺服器回傳的外觀網域（移除協定標頭、連接埠與路徑），確保社群外觀在遊戲內正常載入。
-* **跨平臺支援**：相容 Windows 10/11、macOS 10.15+ 與 Linux（webkit2gtk 4.1）。
-* **高效的實例管理**：支援多個遊戲目錄與實例，集中管理所有實例資源（如存檔、模組、資源包、光影包、截圖等）與設定。
-* **便捷的資源下載**：支援從 CurseForge 與 Modrinth 等源下載遊戲用戶端、模組載入器、各類遊戲資源與模組包。
-* **多帳戶系統支援**：內建 Microsoft 登入與第三方認證伺服器支援，相容 authlib-injector 認證伺服器以及 Yggdrasil Connect 的 OAuth 登入流程規範提案。
-* **外部服務協同**：透過 `wtumcl://` 深度連結與 MCP 服務，與外部網頁、程式及 Agent 服務協同運作，提供一系列便捷功能與自動化能力。
-* **開放擴充系統**：沿用 SJMCL 的擴充系統與擴充包格式，現有社群擴充仍可使用，也可按同樣方式為 WTUMCL 開發新擴充。
+- **WTUMC 社群整合**：預設使用社群新聞源 https://wtumc.top:64053/api/news，啟動器的探索頁無需手動設定即可顯示社群公告與文章。
+- **社群帳戶與外觀**：內建社群認證伺服器 https://wtumc.top:64053/api/yggdrasil；啟動器會正規化認證伺服器回傳的外觀網域（移除協定標頭、連接埠與路徑），確保社群外觀在遊戲內正常載入。
+- **跨平臺支援**：相容 Windows 10/11、macOS 10.15+ 與 Linux（webkit2gtk 4.1）。
+- **高效的實例管理**：支援多個遊戲目錄與實例，集中管理所有實例資源（如存檔、模組、資源包、光影包、截圖等）與設定。
+- **便捷的資源下載**：支援從 CurseForge 與 Modrinth 等源下載遊戲用戶端、模組載入器、各類遊戲資源與模組包。
+- **多帳戶系統支援**：內建 Microsoft 登入與第三方認證伺服器支援，相容 authlib-injector 認證伺服器以及 Yggdrasil Connect 的 OAuth 登入流程規範提案。
+- **外部服務協同**：透過 `wtumcl://` 深度連結與 MCP 服務，與外部網頁、程式及 Agent 服務協同運作，提供一系列便捷功能與自動化能力。
+- **開放擴充系統**：沿用 SJMCL 的擴充系統與擴充包格式，現有社群擴充仍可使用，也可按同樣方式為 WTUMCL 開發新擴充。
 
 > 注意：部分功能可能受地區、執行平臺或程式發行類型限制。
 
@@ -37,10 +37,10 @@ WTUMCL 是面向**武漢紡織大學 MC 社群（WTUMC）**的 SJMCL 社群版�
 
 ## WTUMC 社群服務
 
-| 服務 | 位址 | 用途 |
-|------|------|------|
-| 社群網站 | https://wtumc.top:64053 | 社群首頁、公告與使用者入口 |
-| 社群新聞源 | https://wtumc.top:64053/api/news | 啟動器預設新聞資料來源 |
+| 服務           | 位址                                  | 用途                                                 |
+| -------------- | ------------------------------------- | ---------------------------------------------------- |
+| 社群網站       | https://wtumc.top:64053               | 社群首頁、公告與使用者入口                           |
+| 社群新聞源     | https://wtumc.top:64053/api/news      | 啟動器預設新聞資料來源                               |
 | 社群認證伺服器 | https://wtumc.top:64053/api/yggdrasil | 社群帳戶使用的 Yggdrasil / authlib-injector 認證端點 |
 
 以上服務由 WTUMC 營運，是社群成員推薦使用的預設設定。其他相容 authlib-injector 的認證伺服器帳戶與外觀仍可手動加入。
@@ -51,19 +51,19 @@ WTUMCL 是面向**武漢紡織大學 MC 社群（WTUMC）**的 SJMCL 社群版�
 
 WTUMCL 目前支援以下平臺：
 
-| 平臺    | 系統版本            | 架構               | 提供的發行類型                              |
-|---------|---------------------|--------------------|--------------------------------------------|
-| Windows | 10 及以上           | `aarch64`, `i686`, `x86_64` | 安裝版 `.exe`，便攜版 `.exe` |
-| macOS   | 10.15 及以上        | `aarch64`, `x86_64` | `.app`，`.dmg`                   |
-| Linux   | webkit2gtk 4.1（如 Ubuntu 22.04） | `aarch64`, `x86_64` | `.deb`，`.rpm`，便攜版二進位檔 |
+| 平臺    | 系統版本                          | 架構                        | 提供的發行類型                 |
+| ------- | --------------------------------- | --------------------------- | ------------------------------ |
+| Windows | 10 及以上                         | `aarch64`, `i686`, `x86_64` | 安裝版 `.exe`，便攜版 `.exe`   |
+| macOS   | 10.15 及以上                      | `aarch64`, `x86_64`         | `.app`，`.dmg`                 |
+| Linux   | webkit2gtk 4.1（如 Ubuntu 22.04） | `aarch64`, `x86_64`         | `.deb`，`.rpm`，便攜版二進位檔 |
 
 ## 從原始碼建置
 
 自行建置 WTUMCL 前，請準備：
 
-* Node.js 22 或更新版本，以及 pnpm 10 或更新版本；
-* Rust 1.98.1 或更新版本；
-* 對應作業系統的 [Tauri 系統相依套件](https://tauri.app/start/prerequisites/)。
+- Node.js 22 或更新版本，以及 pnpm 10 或更新版本；
+- Rust 1.98.1 或更新版本；
+- 對應作業系統的 [Tauri 系統相依套件](https://tauri.app/start/prerequisites/)。
 
 然後複製倉庫並建置：
 
@@ -96,12 +96,14 @@ WTUMCL 沿用 SJMCL 的擴充系統與擴充包格式。現有擴充保持相容
 
 版權所有 © 2024-2026 SJMCL 團隊。
 
-本分支修改 © 2026 武漢紡織大學 MC 社群（WTUMC）。
+本分支自 2026-10-20 起對上游程式碼有所修改，修改 © 2026 武漢紡織大學 MC 社群（WTUMC）。
 
 > 本軟體並非官方 Minecraft 服務，未獲得 Mojang 或 Microsoft 批准或關聯。
 > NOT AN OFFICIAL MINECRAFT SERVICE. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 本專案基於 [GNU 通用公眾授權條款 v3.0](../LICENSE) 發佈。
+
+發佈產物對應的原始碼公開於 <https://github.com/SARICE233/WTUMCL/tree/v1.4.0>，GitHub 亦為每個 Release 附帶原始碼封存。內部識別名稱（設定檔名、crate 名）沿用上游拼寫，以相容既有使用者資料。
 
 依據 GPLv3 第 7 條款，當您分發本軟體的修改版本時，除遵守 GPLv3 外，還須遵守以下[附加條款](../LICENSE.EXTRA)：
 
@@ -113,5 +115,5 @@ WTUMCL 沿用 SJMCL 的擴充系統與擴充包格式。現有擴充保持相容
 
 ## 聯絡我們
 
-* WTUMC 社群網站：https://wtumc.top:64053
-* 問題回報：[GitHub Issues](https://github.com/SARICE233/WTUMCL/issues)
+- WTUMC 社群網站：https://wtumc.top:64053
+- 問題回報：[GitHub Issues](https://github.com/SARICE233/WTUMCL/issues)
