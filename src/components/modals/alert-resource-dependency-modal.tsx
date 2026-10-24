@@ -40,6 +40,11 @@ interface AlertResourceDependencyModalProps extends Omit<
   downloadOriginalResource: () => void;
 }
 
+// This dialog is opened on top of the resource download dialog, so it needs its
+// own layer above the default modal layer (1400); relying on the mount order of
+// the shared modals keeps it beneath its parent window (issue 2077).
+const dependencyModalZIndex = 1450;
+
 const AlertResourceDependencyModal: React.FC<
   AlertResourceDependencyModalProps
 > = ({
@@ -186,9 +191,10 @@ const AlertResourceDependencyModal: React.FC<
         }
         isFullClickZone
         onClick={() => {
-          if (dependencies.length < 2) {
-            modalProps.onClose();
-          }
+          // close this dialog before opening the download prompt of the selected
+          // dependency so the new prompt is mounted above (and reachable from)
+          // the content behind it, no matter how many dependencies are listed
+          modalProps.onClose();
           openSharedModal("download-specific-resource", {
             resource,
             curInstanceMajorVersion,
@@ -206,10 +212,11 @@ const AlertResourceDependencyModal: React.FC<
       scrollBehavior="inside"
       size={{ base: "md", lg: "lg", xl: "xl" }}
       returnFocusOnClose={false}
+      blockScrollOnMount={false}
       {...modalProps}
     >
-      <ModalOverlay />
-      <ModalContent h="100%">
+      <ModalOverlay zIndex={dependencyModalZIndex} />
+      <ModalContent h="100%" containerProps={{ zIndex: dependencyModalZIndex }}>
         <ModalHeader>
           {t("AlertResourceDependencyModal.header.title")}
         </ModalHeader>

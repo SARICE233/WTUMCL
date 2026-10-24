@@ -656,6 +656,12 @@
       "installToInstance": "インスタンスにインストール",
       "installToCurrentInstance": "現在のインスタンスにインストール",
       "install": "インストール"
+    },
+    "notification": {
+      "downloadTaskScheduled": "ダウンロードタスクを作成しました",
+      "instanceUnavailable": "現在のインスタンスは利用できないため、インストール先のインスタンスを選択してください",
+      "cacheDirNotSet": "ダウンロードキャッシュディレクトリが設定されていません。先に設定で指定してください",
+      "noVersionSelected": "先にバージョンファイルを選択してください"
     }
   },
   "DownloadTasksPage": {

@@ -656,6 +656,12 @@
       "installToInstance": "安裝到實例",
       "installToCurrentInstance": "安裝到目前實例",
       "install": "安裝"
+    },
+    "notification": {
+      "downloadTaskScheduled": "已建立下載任務",
+      "instanceUnavailable": "目前實例無法使用，請選擇要安裝到的實例",
+      "cacheDirNotSet": "未設定下載快取目錄，請先在設定中配置",
+      "noVersionSelected": "請先選擇一個版本檔案"
     }
   },
   "DownloadTasksPage": {

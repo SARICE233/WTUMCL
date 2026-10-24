@@ -175,7 +175,7 @@ const DownloadSpecificResourceModal: React.FC<
   };
 
   const handleScheduleProgressiveTaskGroup = useCallback(
-    (taskGroup: string, params: TaskParam[]) => {
+    (taskGroup: string, params: TaskParam[]) =>
       TaskService.scheduleProgressiveTaskGroup(taskGroup, params).then(
         (response) => {
           // success toast will now be called by task context group listener
@@ -186,9 +186,9 @@ const DownloadSpecificResourceModal: React.FC<
               status: "error",
             });
           }
+          return response;
         }
-      );
-    },
+      ),
     [toast]
   ); // this is because TaskContext is now inside the SharedModalContext, use a separated function to avoid circular dependency
 
@@ -265,7 +265,15 @@ const DownloadSpecificResourceModal: React.FC<
   // resource dependencies alert
   const withDependencyCheck = useCallback(
     (action: () => void) => {
-      if (!selectedItem) return;
+      if (!selectedItem) {
+        toast({
+          title: t(
+            "DownloadSpecificResourceModal.notification.noVersionSelected"
+          ),
+          status: "warning",
+        });
+        return;
+      }
       if (selectedItem.dependencies.length > 0 && !isModpack) {
         openSharedModal("alert-resource-dependency", {
           dependencies: selectedItem.dependencies,
@@ -287,6 +295,8 @@ const DownloadSpecificResourceModal: React.FC<
       curInstanceMajorVersion,
       curInstanceVersion,
       curInstanceModLoader,
+      toast,
+      t,
     ]
   );
 
@@ -361,7 +371,17 @@ const DownloadSpecificResourceModal: React.FC<
             sha1: selectedItem.sha1,
             taskType: TaskTypeEnums.Download,
           },
-        ]);
+        ]).then((response) => {
+          if (response.status === "success") {
+            toast({
+              title: t(
+                "DownloadSpecificResourceModal.notification.downloadTaskScheduled"
+              ),
+              description: getSelectedFileName(selectedItem),
+              status: "success",
+            });
+          }
+        });
         modalProps.onClose();
       } else {
         toast({
@@ -379,19 +399,46 @@ const DownloadSpecificResourceModal: React.FC<
       handleScheduleProgressiveTaskGroup,
       modalProps,
       toast,
+      t,
     ]
   );
 
   const handleInstallToCurrentInstance = useCallback(() => {
-    if (!routeInstanceId) return;
-    const instance = getInstanceList()?.find((i) => i.id === routeInstanceId);
-    if (instance) handleInstallToInstance(instance);
-  }, [routeInstanceId, getInstanceList, handleInstallToInstance]);
+    const instance = routeInstanceId
+      ? getInstanceList()?.find((i) => i.id === routeInstanceId)
+      : undefined;
+    if (instance) {
+      handleInstallToInstance(instance);
+      return;
+    }
+    // the route no longer resolves to an instance: report it and let the user
+    // pick a target instead of dropping the click without any feedback
+    toast({
+      title: t(
+        "DownloadSpecificResourceModal.notification.instanceUnavailable"
+      ),
+      status: "warning",
+    });
+    onInstanceSelectorPopoverOpen();
+  }, [
+    routeInstanceId,
+    getInstanceList,
+    handleInstallToInstance,
+    toast,
+    t,
+    onInstanceSelectorPopoverOpen,
+  ]);
 
   const handleInstallModpack = useCallback(async () => {
     if (!selectedItem) return;
     const cacheDir = config.download.cache.directory.trim();
-    if (!cacheDir) return;
+    if (!cacheDir) {
+      toast({
+        title: t("DownloadSpecificResourceModal.notification.cacheDirNotSet"),
+        status: "error",
+      });
+      return;
+    }
     const fileName = sanitizeFileName(selectedItem.fileName);
     const destPath = await join(cacheDir, fileName);
     handleScheduleProgressiveTaskGroup("modpack", [
@@ -401,7 +448,17 @@ const DownloadSpecificResourceModal: React.FC<
         sha1: selectedItem.sha1,
         taskType: TaskTypeEnums.Download,
       },
-    ]);
+    ]).then((response) => {
+      if (response.status === "success") {
+        toast({
+          title: t(
+            "DownloadSpecificResourceModal.notification.downloadTaskScheduled"
+          ),
+          description: fileName,
+          status: "success",
+        });
+      }
+    });
     closeSharedModal("download-specific-resource");
     closeSharedModal("download-modpack");
     router.push("/downloads");
@@ -411,6 +468,8 @@ const DownloadSpecificResourceModal: React.FC<
     handleScheduleProgressiveTaskGroup,
     closeSharedModal,
     router,
+    toast,
+    t,
   ]);
 
   const getRecommendedFiles = useMemo((): OtherResourceFileInfo[] => {

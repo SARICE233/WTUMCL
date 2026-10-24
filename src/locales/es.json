@@ -656,6 +656,12 @@
       "installToInstance": "Instalar en Instancia",
       "installToCurrentInstance": "Instalar en Instancia Actual",
       "install": "Instalar"
+    },
+    "notification": {
+      "downloadTaskScheduled": "Tarea de descarga programada",
+      "instanceUnavailable": "La instancia actual no está disponible, elige una instancia en la que instalar",
+      "cacheDirNotSet": "El directorio de caché de descargas no está configurado, configúralo primero en los ajustes",
+      "noVersionSelected": "Selecciona primero un archivo de versión"
     }
   },
   "DownloadTasksPage": {

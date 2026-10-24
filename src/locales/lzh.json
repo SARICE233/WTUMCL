@@ -656,6 +656,12 @@
       "installToInstance": "裝入例",
       "installToCurrentInstance": "裝入今例",
       "install": "裝"
+    },
+    "notification": {
+      "downloadTaskScheduled": "引務已立",
+      "instanceUnavailable": "今例不可用，請擇所裝之例",
+      "cacheDirNotSet": "未設引快取夾，請先於設定中設之",
+      "noVersionSelected": "請先擇一版案"
     }
   },
   "DownloadTasksPage": {

@@ -656,6 +656,12 @@
       "installToInstance": "Installer dans une instance",
       "installToCurrentInstance": "Installer dans l'instance actuelle",
       "install": "Installer"
+    },
+    "notification": {
+      "downloadTaskScheduled": "Tâche de téléchargement planifiée",
+      "instanceUnavailable": "L'instance actuelle est indisponible, veuillez choisir une instance dans laquelle installer",
+      "cacheDirNotSet": "Le répertoire de cache de téléchargement n'est pas défini, définissez-le d'abord dans les paramètres",
+      "noVersionSelected": "Veuillez d'abord sélectionner un fichier de version"
     }
   },
   "DownloadTasksPage": {

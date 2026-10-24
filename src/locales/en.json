@@ -656,6 +656,12 @@
       "installToInstance": "Install to Instance",
       "installToCurrentInstance": "Install to Current Instance",
       "install": "Install"
+    },
+    "notification": {
+      "downloadTaskScheduled": "Download task scheduled",
+      "instanceUnavailable": "The current instance is unavailable, please choose an instance to install into",
+      "cacheDirNotSet": "The download cache directory is not set, please set it in settings first",
+      "noVersionSelected": "Please select a version file first"
     }
   },
   "DownloadTasksPage": {
