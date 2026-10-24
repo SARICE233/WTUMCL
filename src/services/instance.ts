@@ -48,6 +48,18 @@ export class InstanceService {
   }
 
   /**
+   * RETRIEVE the per-day play time of the last `days` days across all instances.
+   * @param {number} days - The number of days in the window, today included.
+   * @returns {Promise<InvokeResponse<WeeklyPlayTime>>}
+   */
+  @responseHandler("instance")
+  static async getPlayTimeRange(
+    days: number
+  ): Promise<InvokeResponse<WeeklyPlayTime>> {
+    return await invoke("get_play_time_range", { days });
+  }
+
+  /**
    * CREATE the new instance (include download client, resource and create config).
    * @param {GameDirectory} directory - The directory where the instance should be created.
    * @param {string} name - The name of the instance.

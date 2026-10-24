@@ -87,6 +87,7 @@ pub async fn run() {
     builder
       .invoke_handler(tauri::generate_handler![
         instance::commands::get_weekly_play_time,
+        instance::commands::get_play_time_range,
         discover::commands::fetch_hitokoto,
         launcher_config::commands::retrieve_launcher_config,
         launcher_config::commands::update_launcher_config,

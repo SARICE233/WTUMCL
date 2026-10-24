@@ -1796,8 +1796,10 @@
       "details": "戲例詳情"
     },
     "weeklyPlaytime": {
-      "title": "本週遊玩",
-      "subtitle": "邇七日之遊時"
+      "title": "遊時",
+      "subtitle": "邇 {{days}} 日之遊時",
+      "days": "{{days}}日",
+      "today": "今日"
     },
     "SwitchButton": {
       "tooltip": {

@@ -130,3 +130,11 @@ export interface WeeklyPlayTime {
   weekSeconds: number;
   todaySeconds: number;
 }
+
+/** Play time windows selectable on the launch page. */
+export const PLAY_TIME_WINDOWS = [7, 14, 30] as const;
+
+export type PlayTimeWindow = (typeof PLAY_TIME_WINDOWS)[number];
+
+/** The window used when the user has not picked one. */
+export const DEFAULT_PLAY_TIME_WINDOW: PlayTimeWindow = 14;

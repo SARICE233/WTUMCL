@@ -1848,6 +1848,8 @@ pub struct WeeklyPlayTimeDay {
   pub seconds: u128,
 }
 
+/// Play time per day over a window of days. `week_seconds` is the sum inside
+/// that window and is kept under its original name for the 7-day command.
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WeeklyPlayTime {
@@ -1858,34 +1860,43 @@ pub struct WeeklyPlayTime {
 
 const WEEKLY_PLAY_TIME_DAYS: usize = 7;
 
-fn aggregate_play_time(buckets: &[&[DailyPlayTime]], today: chrono::NaiveDate) -> WeeklyPlayTime {
+fn aggregate_play_time(
+  buckets: &[&[DailyPlayTime]],
+  today: chrono::NaiveDate,
+  days: usize,
+) -> WeeklyPlayTime {
   let mut seconds_by_date: HashMap<String, u128> = HashMap::new();
   for bucket in buckets.iter().flat_map(|list| list.iter()) {
     let entry = seconds_by_date.entry(bucket.date.clone()).or_default();
     *entry = entry.saturating_add(bucket.seconds);
   }
 
-  let mut days = Vec::with_capacity(WEEKLY_PLAY_TIME_DAYS);
+  let mut window = Vec::with_capacity(days);
   let mut week_seconds = 0_u128;
-  for offset in (0..WEEKLY_PLAY_TIME_DAYS).rev() {
+  for offset in (0..days).rev() {
     let date = (today - chrono::Duration::days(offset as i64))
       .format("%Y-%m-%d")
       .to_string();
     let seconds = seconds_by_date.get(&date).copied().unwrap_or(0);
     week_seconds = week_seconds.saturating_add(seconds);
-    days.push(WeeklyPlayTimeDay { date, seconds });
+    window.push(WeeklyPlayTimeDay { date, seconds });
   }
-  let today_seconds = days.last().map(|day| day.seconds).unwrap_or(0);
+  let today_seconds = window.last().map(|day| day.seconds).unwrap_or(0);
 
   WeeklyPlayTime {
-    days,
+    days: window,
     week_seconds,
     today_seconds,
   }
 }
 
+/// Play time per day over the last `days` days (today included) across all
+/// instances. Dates without any recorded play time are filled with zero.
+/// Windows longer than the per-instance retention (`MAX_DAILY_PLAY_TIME_DAYS`,
+/// currently 14) report zero for the days already pruned by
+/// `Instance::record_daily_play_time`.
 #[tauri::command]
-pub async fn get_weekly_play_time(app: AppHandle) -> SJMCLResult<WeeklyPlayTime> {
+pub async fn get_play_time_range(app: AppHandle, days: usize) -> SJMCLResult<WeeklyPlayTime> {
   let summaries = retrieve_instance_list(app).await?;
 
   let mut buckets = Vec::with_capacity(summaries.len());
@@ -1907,7 +1918,13 @@ pub async fn get_weekly_play_time(app: AppHandle) -> SJMCLResult<WeeklyPlayTime>
   Ok(aggregate_play_time(
     &bucket_slices,
     chrono::Local::now().date_naive(),
+    days,
   ))
+}
+
+#[tauri::command]
+pub async fn get_weekly_play_time(app: AppHandle) -> SJMCLResult<WeeklyPlayTime> {
+  get_play_time_range(app, WEEKLY_PLAY_TIME_DAYS).await
 }
 
 #[cfg(test)]
@@ -1935,7 +1952,7 @@ mod weekly_play_time_tests {
     ];
     let second = vec![bucket("2026-10-22", 200)];
 
-    let result = aggregate_play_time(&[first.as_slice(), second.as_slice()], today());
+    let result = aggregate_play_time(&[first.as_slice(), second.as_slice()], today(), 7);
 
     assert_eq!(result.days.len(), 7);
     assert_eq!(result.days.first().unwrap().date, "2026-10-16");
@@ -1948,12 +1965,35 @@ mod weekly_play_time_tests {
 
   #[test]
   fn missing_data_yields_zero_filled_days() {
-    let result = aggregate_play_time(&[], today());
+    let result = aggregate_play_time(&[], today(), 7);
 
     assert_eq!(result.days.len(), 7);
     assert_eq!(result.week_seconds, 0);
     assert_eq!(result.today_seconds, 0);
     assert!(result.days.iter().all(|day| day.seconds == 0));
+  }
+
+  #[test]
+  fn window_length_follows_the_days_parameter() {
+    let buckets = vec![bucket("2026-10-22", 60), bucket("2026-10-14", 30)];
+    let slices = [buckets.as_slice()];
+
+    for days in [7_usize, 14, 30] {
+      let result = aggregate_play_time(&slices, today(), days);
+
+      assert_eq!(result.days.len(), days);
+      assert_eq!(result.days.first().unwrap().date, {
+        let first = today() - chrono::Duration::days(days as i64 - 1);
+        first.format("%Y-%m-%d").to_string()
+      });
+      assert_eq!(result.days.last().unwrap().date, "2026-10-22");
+      assert_eq!(result.today_seconds, 60);
+    }
+
+    // The 8-day-back bucket only counts once the window reaches it.
+    assert_eq!(aggregate_play_time(&slices, today(), 7).week_seconds, 60);
+    assert_eq!(aggregate_play_time(&slices, today(), 14).week_seconds, 90);
+    assert_eq!(aggregate_play_time(&slices, today(), 30).week_seconds, 90);
   }
 }
 

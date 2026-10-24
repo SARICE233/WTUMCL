@@ -1796,8 +1796,10 @@
       "details": "インスタンス詳細"
     },
     "weeklyPlaytime": {
-      "title": "今週のプレイ",
-      "subtitle": "直近7日間のプレイ時間"
+      "title": "プレイ時間",
+      "subtitle": "直近 {{days}} 日間のプレイ時間",
+      "days": "{{days}}日",
+      "today": "今日"
     },
     "SwitchButton": {
       "tooltip": {

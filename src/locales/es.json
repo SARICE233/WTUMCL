@@ -1796,8 +1796,10 @@
       "details": "Detalles de la instancia"
     },
     "weeklyPlaytime": {
-      "title": "Esta semana",
-      "subtitle": "Tiempo de juego de los últimos 7 días"
+      "title": "Tiempo de juego",
+      "subtitle": "Tiempo de juego de los últimos {{days}} días",
+      "days": "{{days}} d",
+      "today": "Hoy"
     },
     "SwitchButton": {
       "tooltip": {

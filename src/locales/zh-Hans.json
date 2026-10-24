@@ -1796,8 +1796,10 @@
       "details": "实例详情"
     },
     "weeklyPlaytime": {
-      "title": "本周游玩",
-      "subtitle": "最近 7 天的游玩时长"
+      "title": "游玩时长",
+      "subtitle": "最近 {{days}} 天的游玩时长",
+      "days": "{{days}}天",
+      "today": "今天"
     },
     "SwitchButton": {
       "tooltip": {
