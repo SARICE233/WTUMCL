@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.10.0.schema.json
-PackageIdentifier: SJMC.SJMCL
+PackageIdentifier: SARICE233.WTUMCL
 PackageVersion: __VERSION__
 DefaultLocale: en-US
 ManifestType: version

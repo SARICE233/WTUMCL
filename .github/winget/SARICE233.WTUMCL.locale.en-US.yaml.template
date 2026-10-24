@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+PackageIdentifier: SARICE233.WTUMCL
+PackageVersion: __VERSION__
+PackageLocale: en-US
+Publisher: WTUMC
+PublisherUrl: https://wtumc.top:64053
+PublisherSupportUrl: https://github.com/SARICE233/WTUMCL/issues
+Author: WTUMC
+PackageName: WTUMCL
+PackageUrl: https://github.com/SARICE233/WTUMCL
+License: GPL-3.0-only with additional terms (see LICENSE.EXTRA)
+LicenseUrl: https://github.com/SARICE233/WTUMCL/blob/main/LICENSE.EXTRA
+ShortDescription: WTUMCL is a fork of SJMCL, an open-source cross-platform Minecraft launcher maintained by the WTUMC community.
+Description: WTUMCL (Wuhan Textile University Minecraft Club Launcher) is a fork of SJMCL, a modern cross-platform Minecraft launcher built on the Tauri framework, maintained by the WTUMC community.
+Tags:
+  - mc
+  - minecraft
+ReleaseNotesUrl: https://github.com/SARICE233/WTUMCL/releases/tag/__RELEASE_TAG__
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

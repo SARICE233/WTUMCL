@@ -245,7 +245,7 @@ git config user.email "你的邮箱"
 
 ## 7.5 WTUMC 社区服务对接
 
-站点：`https://wtumc.top:64053`（武汉纺织大学 MC 社区，源码在 `F:\Desktop\GEMINI-WEB\WTUMCweb-1.0-alpha`）。
+站点：`https://wtumc.top:64053`（武汉纺织大学 MC 社区；该 web 项目源码未镜像到本仓库）。
 
 | 能力 | 端点 | 接入方式 |
 | --- | --- | --- |
@@ -270,7 +270,7 @@ git config user.email "你的邮箱"
 - ~~用户协议正文~~ 已完成：`docs/TOS.md` 正式条款（2026-10-20）
 - **其余上游文档链接**：语言文件中 `helpUrl`、用户群等仍指向 `mc.sjtu.cn`（描述的是继承自上游的功能文档），后续可迁移
 - **GitHub Secrets 改名**：仓库设置里的 `SJMCL_*` 需改成 `WTUMCL_*`（用户决定暂时搁置）
-- **banner/图标源文件**：设计源图仍在 `F:\Desktop\WTUMC-AI-VEDIO\`，如需重生成图标按第 9 节方法
+- **banner/图标源文件**：设计源图不在本仓库中，如需重生成图标按第 9 节方法
 - 按要求：**尚未向 origin 推送任何内容**
 
 ## 9. 图标生成方法（复现用）

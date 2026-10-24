@@ -17,7 +17,7 @@ SJMCL 当前支持以下版本。
 如果您认为在我们的启动器中发现了安全漏洞，请按照以下步骤向我们报告：
 
 1. **请勿**为安全漏洞创建 GitHub 议题
-2. 发送邮件至 [launcher@sjmc.club](mailto:launcher@sjmc.club)
+2. 发送邮件至 [wtumclfeedback@wtumc.top](mailto:wtumclfeedback@wtumc.top)
    - 邮件主题请以 `[SJMCL Security]` 开头
    - 请尽可能提供有关该漏洞的详细信息
 

@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.10.0.schema.json
+PackageIdentifier: SARICE233.WTUMCL
+PackageVersion: __VERSION__
+PackageLocale: zh-CN
+Publisher: WTUMC
+PublisherUrl: https://wtumc.top:64053
+PublisherSupportUrl: https://github.com/SARICE233/WTUMCL/issues
+Author: WTUMC（武汉纺织大学 MC 社区）
+PackageName: WTUMCL
+PackageUrl: https://github.com/SARICE233/WTUMCL
+License: GPL-3.0-only with additional terms (see LICENSE.EXTRA)
+LicenseUrl: https://github.com/SARICE233/WTUMCL/blob/main/LICENSE.EXTRA
+ShortDescription: WTUMCL 是 SJMCL 的分支版本，一款开源跨平台 Minecraft 启动器。
+Description: WTUMCL（武汉纺织大学 MC 社区启动器）是 SJMCL 的分支版本，一款基于 Tauri 框架打造的现代化、跨平台 Minecraft 启动器，由武汉纺织大学 MC 社区维护。
+Tags:
+  - mc
+  - minecraft
+  - 我的世界
+ReleaseNotesUrl: https://github.com/SARICE233/WTUMCL/releases/tag/__RELEASE_TAG__
+ManifestType: locale
+ManifestVersion: 1.10.0

@@ -17,7 +17,7 @@ The following releases of SJMCL are currently supported.
 If you believe you have found a security vulnerability in our launcher, please report it to us through the following steps:
 
 1. **DO NOT** create a GitHub issue for security vulnerabilities
-2. Send an email to [launcher@sjmc.club](mailto:launcher@sjmc.club)
+2. Send an email to [wtumclfeedback@wtumc.top](mailto:wtumclfeedback@wtumc.top)
    - Start your email subject with `[SJMCL Security]`
    - Provide as much information as possible about the vulnerability
 

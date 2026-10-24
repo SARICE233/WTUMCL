@@ -2,6 +2,45 @@
 
 SJMCL 遵循 [语义化版本规范 2.0.0](https://semver.org/lang/zh-CN/)。
 
+## 1.4.0
+
+`2026-10-24`
+
+- 🔥 启动器全面更名为 WTUMCL，更换新的 Logo 与图标集，更新发布者元数据，并在应用、CLI 与语言文件中统一使用 WTUMC 命名。`@Ice_Koiamey`
+- 🔥 重建启动页并接入 WTUMC 社区服务，包含社区新闻、本周游玩时长、一言与统一的下载进度卡片。`@Ice_Koiamey`
+- 🔥 重构下载链路：新增 `DownloadEngine` 抽象，按文件逐个镜像重试并统计镜像健康度，支持用户自定义下载源与清单体积预检。`@Ice_Koiamey`
+- 🌟 支持游戏崩溃窗口自动关闭，并在 macOS 上补齐允许关闭的能力。#1976 `@Dainsleif` `@UNIkeEN`
+- 🌟 新增 JSUMC 高校社区新闻源，并更新默认社区新闻源。#2025 #2031 `@Dainsleif` `@zaixiZaixiSJTU`
+- 🌟 为前端与启动页按钮应用液态玻璃（liquid glass）效果。`@UNIkeEN`
+- 🌟 社区新闻区展示三张真实新闻卡片，并在轮换时整行平滑滑动而不是直接替换。`@Ice_Koiamey`
+- 🌟 迁移旧版配置默认值，并自动选择合适的便携游戏目录。`@Ice_Koiamey`
+- 🌟 为 WTU-MC 皮肤站新增静态预置认证服务器信息。`@Ice_Koiamey`
+- 🐛 修复 Snap 包因缺少商店图标导致的发布失败。#2027 `@PangBo`
+- 🐛 修复 AUR 包仍依赖已移除的 `libsoup` 的问题。#2035 `@ZhechengHu`
+- 🐛 修复发现页社区新闻来源标题文字对齐问题。#2037 `@zaixiZaixiSJTU`
+- 🐛 修复 26.x 世界数据格式解析，并隐藏不存在的旧版字段。`@icgnos`
+- 🐛 修复因缓存资源索引过期、文件体积未校验导致的启动失败。`@Ice_Koiamey`
+- 🐛 修复下载长时间卡住的问题：从镜像地址推导兜底源、不健康主机自动跳过、截断下载自动重试。`@Ice_Koiamey`
+- 🐛 修复部分任务分组未运行时，下载进度卡片显示为固定 0% 的问题。`@Ice_Koiamey`
+- 🐛 修复经纬主题的网格纹样泄漏到 WTUMC 壁纸预设的问题。`@Ice_Koiamey`
+- 🐛 修复已列出的扁平镜像导致用户自定义下载源被忽略的问题。`@Ice_Koiamey`
+- 🐛 修复一言服务不可用时，一言卡片只返回 WTUMC 两句文案的问题。`@Ice_Koiamey`
+- 🐛 修复字体菜单丢失已配置字体的问题。#1272 `@Ice_Koiamey`
+- ⚡️ 优化经纬背景网格细节，并在窗口隐藏时暂停其动画。`@Ice_Koiamey`
+- ⚡️ 降低下载任务开销，并合并进度更新以减少渲染次数。`@Ice_Koiamey`
+- 🛠 使用动态 NBT 解析跨游戏版本的世界数据。`@UNIkeEN`
+- 🛠 通过 Tauri 的 API 退出启动器，移除 `tauri-plugin-process` 依赖。`@UNIkeEN`
+- 🛠 创建实例时兼容真实世界中形态各异的整合包清单。`@Ice_Koiamey`
+- 📦 升级 Tauri 及官方插件，以及前端依赖 `next`、`sharp`、`source-map-js`。#2017 #2020 #2021 `@UNIkeEN` `@dependabot[bot]`
+- 📦 修复启动器与 CLI 依赖中 RustSec 审计发现的问题。`@UNIkeEN`
+- 📦 更新内置 Minecraft 版本列表与 mcmod 数据。#2028 #2030 #2053 `@github-actions[bot]`
+- 工作流：
+   - 更新构建元数据中的品牌信息，并移除本分支不再使用的上游工作流。`@Ice_Koiamey`
+- 网页与文档：
+   - 新增二次开发准备说明，记录授权义务、工具链与发版前提。`@Ice_Koiamey`
+   - 新增简体中文贡献指南与安全指南。#1964 `@ZhuoqiangCai`
+   - 更新 1.3.2 的 changelog 与 `AGENTS.md` 中的项目结构。#2019 `@github-actions[bot]` `@UNIkeEN`
+
 ## 1.3.2
 
 `2026-10-08`
