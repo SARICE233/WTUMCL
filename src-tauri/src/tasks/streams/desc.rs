@@ -96,7 +96,12 @@ where
   }
 
   pub fn start(&mut self) {
-    self.status = PStatus::InProgress
+    // A retry attempt reports its start again: it must not overwrite a pause
+    // (or a terminal state) that arrived while the previous attempt was backing
+    // off. Resume is the only transition out of Stopped (#2079).
+    if self.status == PStatus::Waiting || self.status == PStatus::InProgress {
+      self.status = PStatus::InProgress
+    }
   }
 
   pub fn stop(&mut self) {

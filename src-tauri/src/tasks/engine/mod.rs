@@ -95,8 +95,9 @@ pub trait ProgressSink: Send + Sync {
   }
 
   /// Reports that the whole body was written, before SHA-1 validation runs.
-  /// The production sink uses it to complete the task descriptor exactly when
-  /// the old `ProgressStream` did.
+  /// The production sink persists the final byte count here; the task itself is
+  /// completed only after the artifact has been published, so a restart cannot
+  /// restore a finished task whose destination is missing (#2079).
   fn on_complete(&mut self) {}
 }
 
@@ -154,6 +155,7 @@ mod tests {
 
   use crate::tasks::download::DownloadParam;
   use crate::tasks::download::download_with_policy;
+  use crate::tasks::download::part_path_for;
   use crate::tasks::download::tests::{FakeHttpServer, FakeReply, sha1_hex, unique_temp_path};
 
   fn http_client() -> Client {
@@ -216,6 +218,7 @@ mod tests {
       &[],
       param.size,
       &legacy_dest,
+      &part_path_for(&legacy_dest, 1),
       0,
       None,
       None,
@@ -291,10 +294,19 @@ mod tests {
       sha1: None,
       size: None,
     };
-    let legacy_error =
-      download_with_policy(&client, &param, &[], None, &legacy_dest, 0, None, None)
-        .await
-        .expect_err("the legacy path must fail as well");
+    let legacy_error = download_with_policy(
+      &client,
+      &param,
+      &[],
+      None,
+      &legacy_dest,
+      &part_path_for(&legacy_dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect_err("the legacy path must fail as well");
 
     assert!(engine_error.0.contains("404"), "{}", engine_error.0);
     assert!(legacy_error.0.contains("404"), "{}", legacy_error.0);

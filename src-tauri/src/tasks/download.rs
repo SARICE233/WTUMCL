@@ -163,6 +163,97 @@ async fn discard_empty_leftover(path: &Path) {
   }
 }
 
+/// Temporary path one task transfers into before the artifact is published.
+///
+/// The name is keyed by the task id, so two downloads that target the same
+/// destination never share a part file: each task only truncates and resumes
+/// bytes it wrote itself (#2078). The suffix is stable for one task id, which
+/// keeps a resumed task on the file it already owns.
+pub(crate) fn part_path_for(dest: &Path, task_id: u32) -> PathBuf {
+  let mut part_path = dest.as_os_str().to_owned();
+  part_path.push(format!(".part-{task_id}"));
+  PathBuf::from(part_path)
+}
+
+/// Whether `path` already holds exactly the artifact this task was asked for.
+///
+/// Reusing a conflicting destination is only allowed with evidence: the known
+/// size must match and, when the caller announced a SHA-1, the content hash
+/// must match it. Without a hash the file only has to be non-empty, which still
+/// rejects the truncated leftover a failed transfer would leave behind.
+async fn destination_matches(path: &Path, sha1: Option<&str>, expected_size: Option<u64>) -> bool {
+  let Ok(metadata) = tokio::fs::metadata(path).await else {
+    return false;
+  };
+  if !metadata.is_file() {
+    return false;
+  }
+  if let Some(size) = expected_size
+    && metadata.len() != size
+  {
+    return false;
+  }
+  match sha1 {
+    Some(truth) => {
+      crate::tasks::engine::sequential::validate_dest_sha1(path.to_path_buf(), truth.to_string())
+        .await
+        .is_ok()
+    }
+    None => metadata.len() > 0,
+  }
+}
+
+/// Publishes a complete part file at `dest_path`.
+///
+/// A destination that already holds the artifact is reused and the duplicate
+/// part file is dropped, so a repeated or concurrent download of the same URL
+/// does not rewrite a file another task just finished. Anything else at the
+/// destination is replaced by the rename only when the rename succeeds: when it
+/// fails, the destination is left exactly as it was and the task reports the
+/// failure instead of deleting a file it did not produce (#2078).
+async fn publish_download(
+  part_path: &Path,
+  dest_path: &Path,
+  sha1: Option<&str>,
+  expected_size: Option<u64>,
+) -> SJMCLResult<()> {
+  if part_path == dest_path {
+    // Nothing to publish: the transfer already wrote the destination in place.
+    return Ok(());
+  }
+  if destination_matches(dest_path, sha1, expected_size).await {
+    let _ = tokio::fs::remove_file(part_path).await;
+    return Ok(());
+  }
+
+  let mut last_error = None;
+  for attempt in 0..3 {
+    match tokio::fs::rename(part_path, dest_path).await {
+      Ok(()) => return Ok(()),
+      Err(error) => {
+        // The destination can appear between the check above and the rename, or
+        // stay locked for a moment by whoever is publishing it: accept it only
+        // when it verifies, and never remove it. Another process publishing the
+        // same artifact makes Windows refuse the rename for a moment, so retry
+        // a few times before giving up.
+        if destination_matches(dest_path, sha1, expected_size).await {
+          let _ = tokio::fs::remove_file(part_path).await;
+          return Ok(());
+        }
+        last_error = Some(error);
+        if attempt < 2 {
+          tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+      }
+    }
+  }
+  let error = last_error.unwrap_or_else(|| std::io::Error::other("rename did not run"));
+  Err(SJMCLError(format!(
+    "Download failed: could not publish {} ({error}); the existing destination was left untouched",
+    dest_path.display()
+  )))
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadParam {
@@ -248,12 +339,18 @@ fn candidates_for(param: &DownloadParam, alt_srcs: &[Url]) -> Vec<Url> {
 /// turns a transient outage into a permanently failing task. The per-source
 /// transfer itself is delegated to [`DownloadEngine`]; this function only owns
 /// the failover policy.
+///
+/// The bytes are staged in `part_path`, which every task derives from its own
+/// id, and only published to `dest_path` once the transfer is complete; two
+/// tasks downloading the same artifact therefore never write into (or delete)
+/// the same file.
 pub(crate) async fn download_with_policy(
   client: &Client,
   param: &DownloadParam,
   alt_srcs: &[Url],
   expected_size: Option<u64>,
   dest_path: &Path,
+  part_path: &Path,
   initial_offset: u64,
   limiter: Option<Limiter>,
   task_handle: Option<Arc<RwLock<PTaskHandle>>>,
@@ -300,7 +397,7 @@ pub(crate) async fn download_with_policy(
     // The engine receives one source per call: source order and health are the
     // driver's responsibility, the transfer contract is the engine's.
     let plan = FetchPlan {
-      dest: dest_path.to_path_buf(),
+      dest: part_path.to_path_buf(),
       size: expected_size,
       sha1: param.sha1.clone(),
       sources: vec![source.clone()],
@@ -318,10 +415,17 @@ pub(crate) async fn download_with_policy(
     match engine.fetch(client, &plan, sink.as_mut()).await {
       Ok(FetchOutcome::Completed) => {
         source_health().record_success(&host, started.elapsed());
+        publish_download(part_path, dest_path, param.sha1.as_deref(), expected_size).await?;
+        // Completion is recorded only after publication: marking it when the
+        // body ended would restore a task as finished after a restart while the
+        // destination is still missing (#2079).
+        if let Some(handle) = task_handle.as_ref() {
+          handle.write().unwrap().mark_completed();
+        }
         return Ok(());
       }
       Ok(FetchOutcome::Cancelled) => {
-        discard_empty_leftover(dest_path).await;
+        discard_empty_leftover(part_path).await;
         return Ok(());
       }
       Err(error) => {
@@ -333,8 +437,10 @@ pub(crate) async fn download_with_policy(
         attempts.push(format!("{source}: {}", error.0));
         last_error = Some(error.0);
         // Partial bytes belong to this source only; the next one may not honour
-        // the same range, so drop them instead of risking a spliced file.
-        let _ = tokio::fs::remove_file(dest_path).await;
+        // the same range, so drop this task's part file instead of risking a
+        // spliced artifact. The destination is never touched here: it may hold
+        // the finished output of a concurrent download.
+        let _ = tokio::fs::remove_file(part_path).await;
       }
     }
   }
@@ -422,10 +528,12 @@ impl ProgressSink for TaskProgressSink {
   }
 
   fn on_complete(&mut self) {
+    // Persist the final byte count, but leave the completion transition to the
+    // driver: the task is done only once the artifact has been published.
     let incr = std::mem::take(&mut self.pending);
     let mut handle = self.handle.write().unwrap();
     handle.add_progress(incr);
-    handle.mark_completed();
+    handle.flush_progress();
   }
 }
 
@@ -518,6 +626,10 @@ impl DownloadTask {
   )> {
     let expected_size = self.expected_size;
     let current = safe_resume_offset(self.p_handle.desc.current, expected_size);
+    // Each task transfers into its own part file, keyed by the task id, so two
+    // tasks targeting one destination never share or truncate each other's
+    // bytes, and a restarted task finds its own partial file again (#2078).
+    let part_path = part_path_for(&self.dest_path, self.p_handle.desc.task_id);
     let alt_srcs = self.alt_srcs.clone();
     let handle = Arc::new(RwLock::new(self.p_handle));
     let task_handle = handle.clone();
@@ -534,6 +646,7 @@ impl DownloadTask {
           &alt_srcs,
           expected_size,
           &self.dest_path,
+          &part_path,
           current,
           limiter,
           Some(task_handle),
@@ -559,6 +672,8 @@ impl DownloadTask {
 #[cfg(test)]
 pub(crate) mod tests {
   use super::*;
+  use crate::tasks::PHandle;
+  use crate::tasks::streams::reporter::{Reporter, Sink};
   use sha1::{Digest, Sha1};
   use std::pin::Pin;
   use std::task::{Context, Poll};
@@ -1245,9 +1360,19 @@ pub(crate) mod tests {
       size: None,
     };
 
-    download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
-      .await
-      .expect("the truncated first body must be retried and succeed");
+    download_with_policy(
+      &client,
+      &param,
+      &[],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("the truncated first body must be retried and succeed");
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
@@ -1283,9 +1408,19 @@ pub(crate) mod tests {
     };
     let alt = [Url::parse(&alive.url).unwrap()];
 
-    download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
-      .await
-      .expect("the healthy second source must be used");
+    download_with_policy(
+      &client,
+      &param,
+      &alt[..],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("the healthy second source must be used");
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
@@ -1340,9 +1475,19 @@ pub(crate) mod tests {
     ];
 
     let started = std::time::Instant::now();
-    download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
-      .await
-      .expect("the third source must serve the file after the stalled second one");
+    download_with_policy(
+      &client,
+      &param,
+      &alt[..],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("the third source must serve the file after the stalled second one");
     let elapsed = started.elapsed();
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
@@ -1389,9 +1534,19 @@ pub(crate) mod tests {
     };
     let alt = [second_url, third_url];
 
-    let error = download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
-      .await
-      .expect_err("all three sources fail, so the task must fail");
+    let error = download_with_policy(
+      &client,
+      &param,
+      &alt[..],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect_err("all three sources fail, so the task must fail");
 
     assert!(error.0.contains("after trying 3 source(s)"), "{}", error.0);
     assert!(error.0.contains(&first.url), "{}", error.0);
@@ -1438,9 +1593,19 @@ pub(crate) mod tests {
     };
     let alt = [second_url];
 
-    download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
-      .await
-      .expect("every source being unhealthy must fail open, not fail the task");
+    download_with_policy(
+      &client,
+      &param,
+      &alt[..],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("every source being unhealthy must fail open, not fail the task");
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
@@ -1488,9 +1653,19 @@ pub(crate) mod tests {
     };
     let alt_srcs = [alt_url];
 
-    download_with_policy(&client, &param, &alt_srcs[..], None, &dest, 0, None, None)
-      .await
-      .expect("the healthy alternative must serve the download");
+    download_with_policy(
+      &client,
+      &param,
+      &alt_srcs[..],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("the healthy alternative must serve the download");
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     assert_eq!(primary.request_heads.lock().unwrap().len(), 0);
@@ -1524,9 +1699,19 @@ pub(crate) mod tests {
       size: None,
     };
 
-    download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
-      .await
-      .expect("a single disabled source must still be tried");
+    download_with_policy(
+      &client,
+      &param,
+      &[],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("a single disabled source must still be tried");
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     assert_eq!(server.request_heads.lock().unwrap().len(), 1);
@@ -1580,9 +1765,19 @@ pub(crate) mod tests {
     };
     let alt = [second_url];
 
-    let error = download_with_policy(&client, &param, &alt[..], None, &dest, 0, None, None)
-      .await
-      .expect_err("fail-open still reports an error when the retried sources fail");
+    let error = download_with_policy(
+      &client,
+      &param,
+      &alt[..],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect_err("fail-open still reports an error when the retried sources fail");
 
     assert!(error.0.contains("after trying 2 source(s)"), "{}", error.0);
     assert!(error.0.contains(&first.url), "{}", error.0);
@@ -1616,7 +1811,18 @@ pub(crate) mod tests {
       size: None,
     };
 
-    let result = download_with_policy(&client, &param, &[], None, &dest, 0, None, None).await;
+    let result = download_with_policy(
+      &client,
+      &param,
+      &[],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await;
 
     assert!(result.is_err(), "exhausted SHA1 retries must fail the task");
     assert_eq!(server.request_heads.lock().unwrap().len(), attempts);
@@ -1651,9 +1857,19 @@ pub(crate) mod tests {
       size: None,
     };
 
-    download_with_policy(&client, &param, &[], None, &dest, 0, None, None)
-      .await
-      .expect("an interrupted body must be resumed with a Range request");
+    download_with_policy(
+      &client,
+      &param,
+      &[],
+      None,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("an interrupted body must be resumed with a Range request");
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     let heads = server.request_heads.lock().unwrap().clone();
@@ -1692,9 +1908,19 @@ pub(crate) mod tests {
     };
     let alt = [Url::parse(&healthy.url).unwrap()];
 
-    download_with_policy(&client, &param, &alt[..], param.size, &dest, 0, None, None)
-      .await
-      .expect("a source with a wrong announced size must fall over to the next one");
+    download_with_policy(
+      &client,
+      &param,
+      &alt[..],
+      param.size,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("a source with a wrong announced size must fall over to the next one");
 
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     assert_eq!(validate_dest_sha1(dest.clone(), truth).await, Ok(()));
@@ -1730,9 +1956,19 @@ pub(crate) mod tests {
 
     // With no declared size there is nothing to compare against, so the
     // announced 1024 bytes are accepted and the transfer proceeds.
-    download_with_policy(&client, &param, &[], param.size, &dest, 0, None, None)
-      .await
-      .expect("size: None must disable the Content-Length precheck");
+    download_with_policy(
+      &client,
+      &param,
+      &[],
+      param.size,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("size: None must disable the Content-Length precheck");
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
 
     // The very same response is rejected once a size is declared, proving the
@@ -1740,9 +1976,19 @@ pub(crate) mod tests {
     // comparison.
     let mut declared = param.clone();
     declared.size = Some(4096);
-    let error = download_with_policy(&client, &declared, &[], declared.size, &dest, 0, None, None)
-      .await
-      .expect_err("a declared size must reject the mismatching announcement");
+    let error = download_with_policy(
+      &client,
+      &declared,
+      &[],
+      declared.size,
+      &dest,
+      &part_path_for(&dest, 1),
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect_err("a declared size must reject the mismatching announcement");
     assert!(
       error
         .0
@@ -1773,7 +2019,8 @@ pub(crate) mod tests {
     }]);
     let client = download_client_builder().no_proxy().build().unwrap();
     let dest = unique_temp_path("size-resume");
-    std::fs::write(&dest, &payload[..2048]).unwrap();
+    let part = part_path_for(&dest, 1);
+    std::fs::write(&part, &payload[..2048]).unwrap();
     let param = DownloadParam {
       src: Url::parse(&server.url).unwrap(),
       dest: PathBuf::from("file.bin"),
@@ -1784,9 +2031,19 @@ pub(crate) mod tests {
 
     // A 206 response announces only the tail (6144 bytes), not the whole
     // artifact (8192), so the declared size must not be compared here.
-    download_with_policy(&client, &param, &[], param.size, &dest, 2048, None, None)
-      .await
-      .expect("a resumed request must not be rejected by the size precheck");
+    download_with_policy(
+      &client,
+      &param,
+      &[],
+      param.size,
+      &dest,
+      &part,
+      2048,
+      None,
+      None,
+    )
+    .await
+    .expect("a resumed request must not be rejected by the size precheck");
     assert_eq!(std::fs::read(&dest).unwrap(), payload);
     let heads = server.request_heads.lock().unwrap().clone();
     assert_eq!(heads.len(), 1);
@@ -1795,6 +2052,327 @@ pub(crate) mod tests {
       "the test must exercise the resumed path, got: {}",
       heads[0]
     );
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  struct NullTestSink;
+
+  impl Sink for NullTestSink {
+    fn report_progress(
+      &self,
+      _task_id: u32,
+      _task_group: Option<&str>,
+      _current: i64,
+      _total: i64,
+      _percentage: u32,
+      _estimated_time: Option<f64>,
+      _speed: f64,
+    ) {
+    }
+
+    fn report_completion(&self, _task_id: u32, _task_group: Option<&str>) {}
+
+    fn report_stopped(&self, _task_id: u32, _task_group: Option<&str>) {}
+
+    fn report_cancelled(&self, _task_id: u32, _task_group: Option<&str>) {}
+
+    fn report_started(&self, _task_id: u32, _task_group: Option<&str>, _total: i64) {}
+
+    fn report_failed(&self, _task_id: u32, _task_group: Option<&str>, _reason: String) {}
+  }
+
+  type TestHandle = Arc<RwLock<PHandle<NullTestSink, ()>>>;
+
+  fn test_handle(task_id: u32) -> TestHandle {
+    let desc = PDesc::<()>::new(
+      task_id,
+      Some(format!("paused-retry-{task_id}")),
+      0,
+      (),
+      PStatus::InProgress,
+    );
+    Arc::new(RwLock::new(PHandle::new(
+      desc,
+      Duration::from_secs(1),
+      unique_temp_path("handle"),
+      Reporter::new(0, Duration::from_secs(1), NullTestSink),
+    )))
+  }
+
+  /// Engine callback surface backed by a task handle, mirroring the production
+  /// `TaskProgressSink` without needing a Tauri `AppHandle`.
+  struct HandleSink {
+    handle: TestHandle,
+  }
+
+  impl ProgressSink for HandleSink {
+    fn on_bytes(&mut self, delta: u64) {
+      let mut handle = self.handle.write().unwrap();
+      handle.add_progress(delta as i64);
+      handle.flush_progress();
+    }
+
+    fn on_total(&mut self, total: i64) {
+      self.handle.write().unwrap().set_total(total);
+    }
+
+    fn on_started(&mut self) {
+      self.handle.write().unwrap().mark_started();
+    }
+
+    fn is_cancelled(&self) -> bool {
+      self.handle.read().unwrap().status().is_cancelled()
+    }
+
+    fn wait_if_paused(&mut self) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
+      Box::pin(std::future::poll_fn(|cx| {
+        let mut handle = self.handle.write().unwrap();
+        if !handle.status().is_stopped() {
+          return Poll::Ready(());
+        }
+        handle.store_waker(cx.waker().clone());
+        Poll::Pending
+      }))
+    }
+  }
+
+  async fn wait_for_requests(server: &FakeHttpServer, expected: usize) {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    while server.request_heads.lock().unwrap().len() < expected {
+      assert!(
+        tokio::time::Instant::now() < deadline,
+        "timed out waiting for {expected} request(s)"
+      );
+      tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+  }
+
+  #[tokio::test]
+  async fn concurrent_downloads_of_the_same_destination_keep_the_finished_file() {
+    // #2078: two tasks fetch the same artifact into the same destination. Each
+    // task must stage its bytes in its own part file, so the slower transfer
+    // cannot truncate the winner mid-flight, and a duplicate may only reuse a
+    // destination that verifies.
+    let payload: Vec<u8> = (0..8192).map(|index| (index % 241) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let server = FakeHttpServer::spawn(vec![
+      FakeReply::BodyEndedByClose {
+        body: payload.clone(),
+      },
+      FakeReply::BodyEndedByClose {
+        body: payload.clone(),
+      },
+      FakeReply::BodyEndedByClose {
+        body: payload.clone(),
+      },
+    ]);
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("same-destination");
+    let part_a = part_path_for(&dest, 1);
+    let part_b = part_path_for(&dest, 2);
+    assert_ne!(part_a, part_b, "each task must own a distinct part file");
+
+    let sizes = Some(payload.len() as u64);
+    let param = |filename: &str| DownloadParam {
+      src: Url::parse(&server.url).unwrap(),
+      dest: PathBuf::from("file.bin"),
+      filename: Some(filename.to_string()),
+      sha1: Some(truth.clone()),
+      size: sizes,
+    };
+
+    let first_param = param("first.bin");
+    let second_param = param("second.bin");
+    let (first, second) = tokio::join!(
+      download_with_policy(
+        &client,
+        &first_param,
+        &[],
+        sizes,
+        &dest,
+        &part_a,
+        0,
+        None,
+        None
+      ),
+      download_with_policy(
+        &client,
+        &second_param,
+        &[],
+        sizes,
+        &dest,
+        &part_b,
+        0,
+        None,
+        None
+      ),
+    );
+    first.expect("the first concurrent download must succeed");
+    second.expect("the second concurrent download must succeed");
+
+    // The finished artifact survives both publications with its content intact.
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    validate_dest_sha1(dest.clone(), truth.clone())
+      .await
+      .expect("the surviving destination must hold the announced artifact");
+    assert!(
+      !part_a.exists(),
+      "the first task must clean up its own part file"
+    );
+    assert!(
+      !part_b.exists(),
+      "the second task must clean up its own part file"
+    );
+
+    // A repeated download of the same artifact is idempotent: it verifies the
+    // existing destination and leaves the finished bytes untouched.
+    let part_c = part_path_for(&dest, 3);
+    download_with_policy(
+      &client,
+      &param("third.bin"),
+      &[],
+      sizes,
+      &dest,
+      &part_c,
+      0,
+      None,
+      None,
+    )
+    .await
+    .expect("a repeated download of the same artifact must reuse the file");
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    assert!(!part_c.exists());
+
+    let _ = std::fs::remove_file(&dest);
+  }
+
+  #[tokio::test]
+  async fn pause_during_retry_then_resume_reaches_a_schedulable_or_terminal_state() {
+    // #2079: a pause that lands while the engine is backing off between retry
+    // attempts must survive the next attempt's start report. The group may only
+    // see states it can act on: stopped (schedulable, resume resumes it) or a
+    // terminal state — never "active" with a parked task underneath.
+    let state = test_handle(40);
+    state.write().unwrap().mark_stopped();
+    state.write().unwrap().mark_started();
+    assert!(
+      state.read().unwrap().status().is_stopped(),
+      "a retry attempt must not overwrite a pause"
+    );
+    state.write().unwrap().mark_resumed();
+    assert!(state.read().unwrap().status().is_in_progress());
+    state.write().unwrap().mark_started();
+    state.write().unwrap().mark_cancelled();
+    state.write().unwrap().mark_resumed();
+    state.write().unwrap().mark_started();
+    assert!(
+      state.read().unwrap().status().is_cancelled(),
+      "a cancelled task must stay terminal across resume/start replays"
+    );
+
+    // The engine itself must park before issuing the next request when the
+    // pause arrives mid-retry, and continue once the task is resumed.
+    let payload: Vec<u8> = (0..8192).map(|index| (index % 239) as u8).collect();
+    let truth = sha1_hex(&payload);
+    let dead = FakeHttpServer::spawn(vec![
+      FakeReply::Status {
+        code: 500,
+        reason: "Internal Server Error",
+      },
+      FakeReply::Status {
+        code: 500,
+        reason: "Internal Server Error",
+      },
+      FakeReply::Status {
+        code: 500,
+        reason: "Internal Server Error",
+      },
+    ]);
+    let alive = FakeHttpServer::spawn(vec![FakeReply::BodyEndedByClose {
+      body: payload.clone(),
+    }]);
+    let client = download_client_builder().no_proxy().build().unwrap();
+    let dest = unique_temp_path("paused-retry");
+    let part = part_path_for(&dest, 40);
+    let handle = test_handle(40);
+
+    let dead_url = Url::parse(&dead.url).unwrap();
+    let alive_url = Url::parse(&alive.url).unwrap();
+    let task_handle = handle.clone();
+    let task_part = part.clone();
+    let task_client = client.clone();
+    let task_truth = truth.clone();
+    let worker = tokio::spawn(async move {
+      let mut sink = HandleSink {
+        handle: task_handle,
+      };
+      let first = SequentialEngine::new()
+        .fetch(
+          &task_client,
+          &FetchPlan {
+            dest: task_part.clone(),
+            size: None,
+            sha1: Some(task_truth.clone()),
+            sources: vec![dead_url],
+            resume_offset: 0,
+          },
+          &mut sink,
+        )
+        .await;
+      // The dead source is expected to fail; only its state transitions matter.
+      assert!(first.is_err(), "a source answering 500 must fail the fetch");
+      SequentialEngine::new()
+        .fetch(
+          &task_client,
+          &FetchPlan {
+            dest: task_part,
+            size: None,
+            sha1: Some(task_truth),
+            sources: vec![alive_url],
+            resume_offset: 0,
+          },
+          &mut sink,
+        )
+        .await
+    });
+
+    // Pause as soon as the dead source has been contacted, while the retry
+    // budget is still spending its attempts: the fail-over must then park at
+    // the engine's next loop iteration instead of issuing the next request.
+    wait_for_requests(&dead, 1).await;
+    handle.write().unwrap().mark_stopped();
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    assert!(
+      handle.read().unwrap().status().is_stopped(),
+      "the pause must survive the retry and failover reports"
+    );
+    assert_eq!(
+      alive.request_heads.lock().unwrap().len(),
+      0,
+      "a paused task must not fail over to the next source"
+    );
+    assert!(!part.exists(), "a paused task must not write the part file");
+
+    handle.write().unwrap().mark_resumed();
+    assert!(handle.read().unwrap().status().is_in_progress());
+    let outcome = tokio::time::timeout(Duration::from_secs(30), worker)
+      .await
+      .expect("the resumed transfer must finish instead of staying parked")
+      .expect("the transfer task must not panic");
+    outcome.expect("the second source must complete the transfer");
+
+    // Publication and completion follow the same order as in production.
+    publish_download(&part, &dest, Some(&truth), Some(payload.len() as u64))
+      .await
+      .expect("the completed part file must be published");
+    handle.write().unwrap().mark_completed();
+    assert!(handle.read().unwrap().status().is_completed());
+    assert_eq!(std::fs::read(&dest).unwrap(), payload);
+    validate_dest_sha1(dest.clone(), sha1_hex(&payload))
+      .await
+      .unwrap();
+    assert!(!part.exists(), "publication must consume the part file");
+
     let _ = std::fs::remove_file(&dest);
   }
 }

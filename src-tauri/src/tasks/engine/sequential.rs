@@ -148,6 +148,12 @@ impl SequentialEngine {
     let mut first_attempt = true;
 
     loop {
+      // A pause can arrive while the previous attempt is backing off, or while a
+      // failed source hands over to the next one, so the retry path parks here
+      // instead of trusting only the state captured when the fetch started
+      // (#2079). Cancellation is checked right after the park, so a cancelled
+      // task leaves the loop instead of issuing another request.
+      sink.wait_if_paused().await;
       if sink.is_cancelled() {
         let _ = tokio::fs::remove_file(&plan.dest).await;
         return Ok(FetchOutcome::Cancelled);

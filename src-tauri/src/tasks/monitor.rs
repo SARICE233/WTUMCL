@@ -453,15 +453,61 @@ impl TaskMonitor {
   }
 
   pub async fn resume_progressive_task_group(&self, task_group: String) {
-    if let Some(group) = self.group_map.write().unwrap().get_mut(&task_group) {
-      group.status = GEventStatus::Started;
+    let mut schedulable = false;
+    let mut failed = false;
+    let mut cancelled = false;
+    let mut inspected = 0usize;
 
-      // Resume existing stopped tasks
+    {
+      let mut group_map = self.group_map.write().unwrap();
+      let Some(group) = group_map.get_mut(&task_group) else {
+        return;
+      };
+
       for handle in group.phs.values() {
-        if handle.read().unwrap().desc.status.is_stopped() {
+        inspected += 1;
+        let status = handle.read().unwrap().desc.status.clone();
+        if status.is_stopped() {
+          // Resume is the only way out of a pause; a retry attempt never does
+          // it implicitly (#2079).
           handle.write().unwrap().mark_resumed();
+          schedulable = true;
+        } else if status.is_in_progress() || status.is_waiting() {
+          schedulable = true;
+        } else if status == PStatus::Failed {
+          failed = true;
+        } else if status.is_cancelled() {
+          cancelled = true;
         }
       }
+
+      if inspected == 0 {
+        // An empty group has nothing to schedule and nothing to announce.
+        return;
+      }
+
+      if schedulable {
+        group.status = GEventStatus::Started;
+      } else if failed {
+        // Nothing is left to schedule: announce the terminal state the tasks
+        // reached instead of leaving the group "started" forever (#2079).
+        group.status = GEventStatus::Failed;
+      } else if cancelled {
+        group.status = GEventStatus::Cancelled;
+      } else {
+        group.status = GEventStatus::Completed;
+      }
+    }
+
+    if !schedulable {
+      if failed {
+        GEvent::emit_group_failed(&self.app_handle, &task_group);
+      } else if cancelled {
+        GEvent::emit_group_cancelled(&self.app_handle, &task_group);
+      } else {
+        GEvent::emit_group_completed(&self.app_handle, &task_group);
+      }
+      return;
     }
 
     // Re-send all stored stopped futures for this task group

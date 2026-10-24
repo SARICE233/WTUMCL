@@ -52,6 +52,12 @@ where
   }
 
   pub fn mark_resumed(&mut self) {
+    // Resuming only applies to a paused task; repeating the call (or calling it
+    // for a task that is already running or finished) must neither rewrite the
+    // descriptor nor replay a start event (#2079).
+    if !self.desc.status.is_stopped() {
+      return;
+    }
     self.desc.resume();
     self.desc.save(&self.path).unwrap();
     self.reporter.report_started(
@@ -72,6 +78,13 @@ where
     self
       .reporter
       .report_cancelled(self.desc.task_id, self.desc.task_group.as_deref());
+
+    // Wake up a transfer parked in `wait_if_paused`: without this a cancelled
+    // task would stay blocked in that await until the next chunk or pause
+    // request wakes it (#2079).
+    if let Some(waker) = self.waker.take() {
+      waker.wake();
+    }
   }
 
   pub fn mark_completed(&mut self) {
@@ -83,6 +96,12 @@ where
   }
 
   pub fn mark_started(&mut self) {
+    // Only a waiting or running task may start: a retry attempt that reports its
+    // start must not overwrite a pause that arrived during the previous back-off
+    // and must not emit a "started" event for a task that is not running (#2079).
+    if !matches!(self.desc.status, PStatus::Waiting | PStatus::InProgress) {
+      return;
+    }
     self.desc.start();
     self.desc.save(&self.path).unwrap();
     self.reporter.report_started(
