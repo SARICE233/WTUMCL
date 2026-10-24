@@ -346,6 +346,15 @@
         }
       }
     },
+    "launchPage": {
+      "title": "Página de inicio",
+      "settings": {
+        "showInfoFeed": {
+          "title": "Información de la página de inicio",
+          "description": "Muestra las noticias de la comunidad y la frase del día en la página de inicio. El saludo, la instancia reciente, el progreso de descarga y el tiempo de juego se muestran de todos modos."
+        }
+      }
+    },
     "accessibility": {
       "title": "Accesibilidad de Pantalla",
       "settings": {

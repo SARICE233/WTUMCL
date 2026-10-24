@@ -346,6 +346,15 @@
         }
       }
     },
+    "launchPage": {
+      "title": "起動ページ",
+      "settings": {
+        "showInfoFeed": {
+          "title": "起動ページの情報フィード",
+          "description": "起動ページにコミュニティニュースと今日の一言を表示します。あいさつ、最近のインスタンス、ダウンロードの進捗、プレイ時間は常に表示されます。"
+        }
+      }
+    },
     "accessibility": {
       "title": "アクセシビリティ表示",
       "settings": {

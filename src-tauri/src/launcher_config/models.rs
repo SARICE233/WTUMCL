@@ -341,6 +341,10 @@ structstruck::strike! {
         #[default = 100]
         pub font_size: usize, // as percent
       },
+      pub launch_page: struct {
+        #[default = true]
+        pub show_info_feed: bool,
+      },
       #[serde(
         default,
         deserialize_with = "deserialize_background"

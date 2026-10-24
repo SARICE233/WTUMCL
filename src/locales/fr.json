@@ -346,6 +346,15 @@
         }
       }
     },
+    "launchPage": {
+      "title": "Page de lancement",
+      "settings": {
+        "showInfoFeed": {
+          "title": "Fil d'actualité de la page de lancement",
+          "description": "Affiche les actualités de la communauté et la phrase du jour sur la page de lancement. Le message d'accueil, l'instance récente, la progression du téléchargement et le temps de jeu restent visibles dans tous les cas."
+        }
+      }
+    },
     "accessibility": {
       "title": "Accessibilité",
       "settings": {

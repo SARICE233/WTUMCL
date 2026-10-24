@@ -606,6 +606,28 @@ const AppearanceSettingsPage = () => {
       ],
     },
     {
+      title: t("AppearanceSettingsPage.launchPage.title"),
+      items: [
+        {
+          title: t(
+            "AppearanceSettingsPage.launchPage.settings.showInfoFeed.title"
+          ),
+          description: t(
+            "AppearanceSettingsPage.launchPage.settings.showInfoFeed.description"
+          ),
+          children: (
+            <Switch
+              colorScheme={primaryColor}
+              isChecked={appearanceConfigs.launchPage.showInfoFeed}
+              onChange={(e) => {
+                update("appearance.launchPage.showInfoFeed", e.target.checked);
+              }}
+            />
+          ),
+        },
+      ],
+    },
+    {
       title: t("AppearanceSettingsPage.accessibility.title"),
       items: [
         {

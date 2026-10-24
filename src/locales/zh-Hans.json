@@ -346,6 +346,15 @@
         }
       }
     },
+    "launchPage": {
+      "title": "启动页",
+      "settings": {
+        "showInfoFeed": {
+          "title": "启动页信息流",
+          "description": "在启动页显示社区新闻与每日一言。问候语、最近实例、下载进度与游玩时长始终显示。"
+        }
+      }
+    },
     "accessibility": {
       "title": "辅助显示",
       "settings": {

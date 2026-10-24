@@ -379,3 +379,39 @@ mod login_flag_migration_tests {
     assert!(!config.basic_info.allow_full_login_feature);
   }
 }
+
+#[cfg(test)]
+mod launch_page_feed_tests {
+  use crate::launcher_config::models::LauncherConfig;
+
+  #[test]
+  fn show_info_feed_defaults_to_on() {
+    assert!(
+      LauncherConfig::default()
+        .appearance
+        .launch_page
+        .show_info_feed
+    );
+  }
+
+  #[test]
+  fn legacy_config_without_the_feed_flag_keeps_the_feed_on() {
+    // Configs written before the flag existed must not lose the launch feed.
+    let legacy = r#"{"appearance":{"theme":{"primaryColor":"red"}}}"#;
+    let config: LauncherConfig = serde_json::from_str(legacy).expect("legacy config should load");
+
+    assert!(config.appearance.launch_page.show_info_feed);
+  }
+
+  #[test]
+  fn the_feed_flag_round_trips_as_camel_case() {
+    let mut config = LauncherConfig::default();
+    config.appearance.launch_page.show_info_feed = false;
+
+    let json = serde_json::to_value(&config).unwrap();
+    assert_eq!(json["appearance"]["launchPage"]["showInfoFeed"], false);
+
+    let parsed: LauncherConfig = serde_json::from_value(json).unwrap();
+    assert!(!parsed.appearance.launch_page.show_info_feed);
+  }
+}

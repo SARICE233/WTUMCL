@@ -120,6 +120,9 @@ export interface LauncherConfig {
       logFontFamily: string;
       fontSize: number;
     };
+    launchPage: {
+      showInfoFeed: boolean;
+    };
     background: {
       choice: string;
       randomCustom: boolean;
@@ -318,6 +321,9 @@ export const defaultConfig: LauncherConfig = {
       fontFamily: "%built-in",
       fontSize: 100,
       logFontFamily: "%built-in",
+    },
+    launchPage: {
+      showInfoFeed: true,
     },
     background: {
       choice: "%built-in:WTUMC",

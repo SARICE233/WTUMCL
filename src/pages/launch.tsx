@@ -38,6 +38,9 @@ const LaunchPage = () => {
   // being rendered unconditionally.
   const showMeridianDecor =
     config.appearance.background.choice === `${BUILT_IN_BG_PREFIX}Meridian`;
+  // The information feed column (news + daily quote) can be switched off in
+  // Settings > Appearance; the greeting and progress widgets always stay.
+  const showInfoFeed = config.appearance.launchPage.showInfoFeed;
 
   // The shared Fade wrapper is a block box with height: 100%, so it is as tall
   // as the shell body (navbar included) instead of only the space below the
@@ -154,8 +157,12 @@ const LaunchPage = () => {
           <WeeklyPlaytimeCard />
           {hasInstances && <RecentInstanceCard />}
           <DownloadProgressCard />
-          <HitokotoCard />
-          <CommunityNewsFeed />
+          {showInfoFeed && (
+            <>
+              <HitokotoCard />
+              <CommunityNewsFeed />
+            </>
+          )}
         </Flex>
 
         <Flex

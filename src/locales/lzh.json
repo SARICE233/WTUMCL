@@ -346,6 +346,15 @@
         }
       }
     },
+    "launchPage": {
+      "title": "啟動之頁",
+      "settings": {
+        "showInfoFeed": {
+          "title": "啟動頁之訊息流",
+          "description": "示社聞與日一言於啟動之頁。問候、近戲例、下載之進與遊時之數，皆不因是而隱。"
+        }
+      }
+    },
     "accessibility": {
       "title": "輔示",
       "settings": {

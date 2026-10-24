@@ -346,6 +346,15 @@
         }
       }
     },
+    "launchPage": {
+      "title": "啟動頁",
+      "settings": {
+        "showInfoFeed": {
+          "title": "啟動頁訊息流",
+          "description": "在啟動頁顯示社群新聞與每日一言。問候語、最近實例、下載進度與遊玩時長始終顯示。"
+        }
+      }
+    },
     "accessibility": {
       "title": "無障礙顯示",
       "settings": {

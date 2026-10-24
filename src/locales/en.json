@@ -346,6 +346,15 @@
         }
       }
     },
+    "launchPage": {
+      "title": "Launch Page",
+      "settings": {
+        "showInfoFeed": {
+          "title": "Launch Page Information Feed",
+          "description": "Show the community news and the daily quote on the launch page. The greeting, recent instance, download progress and play time widgets stay visible either way."
+        }
+      }
+    },
     "accessibility": {
       "title": "Display Accessibility",
       "settings": {
