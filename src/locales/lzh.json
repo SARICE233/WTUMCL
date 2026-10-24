@@ -85,7 +85,13 @@
       "add3rdPartyServer": "增鑒權伺服器",
       "sourceHomepage": "詣主葉",
       "deleteServer": "刪此伺服器",
-      "importFromOtherLaunchers": "自他啟者導入"
+      "importFromOtherLaunchers": "自他啟者導入",
+      "manageSkin": "司外觀",
+      "changeCape": "易蓑衣"
+    },
+    "toast": {
+      "noSelectedPlayer": "請先擇一戲者",
+      "skinNotEditable": "唯離線戲者得於此易其外觀與蓑衣"
     },
     "playerTypeList": {
       "all": "諸源悉覽"

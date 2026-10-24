@@ -85,7 +85,13 @@
       "add3rdPartyServer": "新增認證伺服器",
       "sourceHomepage": "訪問首頁",
       "deleteServer": "刪除此伺服器",
-      "importFromOtherLaunchers": "從其他啟動器匯入"
+      "importFromOtherLaunchers": "從其他啟動器匯入",
+      "manageSkin": "管理外觀",
+      "changeCape": "更換披風"
+    },
+    "toast": {
+      "noSelectedPlayer": "請先選擇一個角色",
+      "skinNotEditable": "只有離線角色可以在這裡更換外觀或披風"
     },
     "playerTypeList": {
       "all": "全部來源"

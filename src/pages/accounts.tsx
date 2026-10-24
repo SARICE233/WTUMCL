@@ -11,6 +11,7 @@ import {
   VStack,
   useDisclosure,
 } from "@chakra-ui/react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import router from "next/router";
 import { useEffect, useState } from "react";
@@ -26,19 +27,22 @@ import {
   LuPlus,
   LuServer,
   LuServerOff,
+  LuShirt,
   LuUsersRound,
+  LuWind,
 } from "react-icons/lu";
 import NavMenu from "@/components/common/nav-menu";
 import { Section } from "@/components/common/section";
 import SegmentedControl from "@/components/common/segmented";
 import AddPlayerModal from "@/components/modals/add-player-modal";
 import ImportAccountInfoModal from "@/components/modals/import-account-info-modal";
+import ManageSkinModal from "@/components/modals/manage-skin-modal";
 import PlayersView from "@/components/players-view";
 import { useLauncherConfig } from "@/contexts/config";
 import { useGlobalData } from "@/contexts/global-data";
 import { useSharedModals } from "@/contexts/shared-modal";
 import { useToast } from "@/contexts/toast";
-import { PlayerType } from "@/enums/account";
+import { PlayerType, SkinModel, TextureType } from "@/enums/account";
 import { AuthServer, Player } from "@/models/account";
 import { AccountService } from "@/services/account";
 
@@ -56,6 +60,7 @@ const AccountsPage = () => {
   const [selectedPlayerType, setSelectedPlayerType] = useState<string>("all");
   const [playerList, setPlayerList] = useState<Player[]>([]);
   const [authServerList, setAuthServerList] = useState<AuthServer[]>([]);
+  const [isCapeLoading, setIsCapeLoading] = useState(false);
 
   const {
     isOpen: isAddPlayerModalOpen,
@@ -67,6 +72,12 @@ const AccountsPage = () => {
     isOpen: isImportAccountInfoModalOpen,
     onOpen: onImportAccountInfoModalOpen,
     onClose: onImportAccountInfoModalClose,
+  } = useDisclosure();
+
+  const {
+    isOpen: isManageSkinModalOpen,
+    onOpen: onManageSkinModalOpen,
+    onClose: onManageSkinModalClose,
   } = useDisclosure();
 
   useEffect(() => {
@@ -148,6 +159,89 @@ const AccountsPage = () => {
           authServerList.find((server) => server.authUrl === type)?.authUrl ===
             player.authServer?.authUrl
       );
+    }
+  };
+
+  // Only offline players store their textures in the launcher account storage,
+  // so the preset and upload paths of ManageSkinModal apply to them alone.
+  const isSkinEditable =
+    selectedPlayer?.playerType === PlayerType.Offline &&
+    filterPlayersByType(selectedPlayerType).some(
+      (player) => player.id === selectedPlayer.id
+    );
+
+  const selectedSkinTexture = selectedPlayer?.textures.find(
+    (texture) => texture.textureType === TextureType.Skin
+  );
+
+  const selectedCapeTexture = selectedPlayer?.textures.find(
+    (texture) => texture.textureType === TextureType.Cape
+  );
+
+  const getSkinEditablePlayer = (): Player | undefined => {
+    if (!selectedPlayer) {
+      toast({
+        title: t("AccountsPage.toast.noSelectedPlayer"),
+        status: "error",
+      });
+      return undefined;
+    }
+    if (!isSkinEditable) {
+      toast({
+        title: t("AccountsPage.toast.skinNotEditable"),
+        status: "error",
+      });
+      return undefined;
+    }
+    return selectedPlayer;
+  };
+
+  const handleOpenSkinManager = () => {
+    if (getSkinEditablePlayer()) {
+      onManageSkinModalOpen();
+    }
+  };
+
+  const handleChangeCape = async () => {
+    const player = getSkinEditablePlayer();
+    if (!player) {
+      return;
+    }
+    const capePath = await open({
+      multiple: false,
+      filters: [
+        {
+          name: t("General.dialog.filterName.image"),
+          extensions: ["png"],
+        },
+      ],
+    });
+    if (!capePath) {
+      return;
+    }
+    setIsCapeLoading(true);
+    try {
+      const response = await AccountService.updatePlayerSkinOfflineLocal(
+        player.id,
+        capePath,
+        TextureType.Cape,
+        SkinModel.Default
+      );
+      if (response.status === "success") {
+        getPlayerList(true);
+        toast({
+          title: response.message,
+          status: "success",
+        });
+      } else {
+        toast({
+          title: response.message,
+          description: response.details,
+          status: "error",
+        });
+      }
+    } finally {
+      setIsCapeLoading(false);
     }
   };
 
@@ -294,6 +388,27 @@ const AccountsPage = () => {
                     />
                   </Tooltip>
                 )}
+                <Tooltip label={t("AccountsPage.button.manageSkin")}>
+                  <IconButton
+                    aria-label="manageSkin"
+                    size="xs"
+                    fontSize="sm"
+                    variant="ghost"
+                    icon={<LuShirt />}
+                    onClick={handleOpenSkinManager}
+                  />
+                </Tooltip>
+                <Tooltip label={t("AccountsPage.button.changeCape")}>
+                  <IconButton
+                    aria-label="changeCape"
+                    size="xs"
+                    fontSize="sm"
+                    variant="ghost"
+                    icon={<LuWind />}
+                    isLoading={isCapeLoading}
+                    onClick={handleChangeCape}
+                  />
+                </Tooltip>
                 <SegmentedControl
                   selected={selectedViewType}
                   onSelectItem={(s) => {
@@ -351,6 +466,15 @@ const AccountsPage = () => {
         currAuthServers={authServerList}
         currPlayers={playerList}
       />
+      {selectedPlayer && (
+        <ManageSkinModal
+          isOpen={isManageSkinModalOpen}
+          onClose={onManageSkinModalClose}
+          playerId={selectedPlayer.id}
+          skin={selectedSkinTexture}
+          cape={selectedCapeTexture}
+        />
+      )}
     </>
   );
 };

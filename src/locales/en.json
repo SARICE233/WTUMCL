@@ -85,7 +85,13 @@
       "add3rdPartyServer": "Add auth server",
       "sourceHomepage": "View Homepage",
       "deleteServer": "Delete Auth Server",
-      "importFromOtherLaunchers": "Import"
+      "importFromOtherLaunchers": "Import",
+      "manageSkin": "Manage Skin",
+      "changeCape": "Change Cape"
+    },
+    "toast": {
+      "noSelectedPlayer": "Select a player first",
+      "skinNotEditable": "Only offline players can change their skin or cape here"
     },
     "playerTypeList": {
       "all": "All Source"

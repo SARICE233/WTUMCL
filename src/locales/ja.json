@@ -85,7 +85,13 @@
       "add3rdPartyServer": "認証サーバー追加",
       "sourceHomepage": "ホームページへ",
       "deleteServer": "サーバー削除",
-      "importFromOtherLaunchers": "他のランチャーからインポート"
+      "importFromOtherLaunchers": "他のランチャーからインポート",
+      "manageSkin": "スキン管理",
+      "changeCape": "ケープ変更"
+    },
+    "toast": {
+      "noSelectedPlayer": "先にプレイヤーを選択してください",
+      "skinNotEditable": "ここでスキンやケープを変更できるのはオフラインプレイヤーのみです"
     },
     "playerTypeList": {
       "all": "すべてのソース"

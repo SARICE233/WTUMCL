@@ -85,7 +85,13 @@
       "add3rdPartyServer": "Ajouter un serveur d'authentification",
       "sourceHomepage": "Visiter la page d'accueil",
       "deleteServer": "Supprimer ce serveur",
-      "importFromOtherLaunchers": "Importer depuis d'autres launchers"
+      "importFromOtherLaunchers": "Importer depuis d'autres launchers",
+      "manageSkin": "Gérer le skin",
+      "changeCape": "Changer de cape"
+    },
+    "toast": {
+      "noSelectedPlayer": "Sélectionnez d'abord un joueur",
+      "skinNotEditable": "Seuls les joueurs hors ligne peuvent changer de skin ou de cape ici"
     },
     "playerTypeList": {
       "all": "Les sources"

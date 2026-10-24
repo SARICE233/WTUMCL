@@ -85,7 +85,13 @@
       "add3rdPartyServer": "添加认证服务器",
       "sourceHomepage": "访问主页",
       "deleteServer": "删除此服务器",
-      "importFromOtherLaunchers": "从其他启动器导入"
+      "importFromOtherLaunchers": "从其他启动器导入",
+      "manageSkin": "管理皮肤",
+      "changeCape": "更换披风"
+    },
+    "toast": {
+      "noSelectedPlayer": "请先选择一个角色",
+      "skinNotEditable": "只有离线角色可以在这里更换皮肤或披风"
     },
     "playerTypeList": {
       "all": "全部来源"
