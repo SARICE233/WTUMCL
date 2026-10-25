@@ -1867,23 +1867,60 @@
     }
   },
   "ManageSkinModal": {
-    "skinManage": "Gérer les skins",
+    "skinManage": "Skins et capes",
     "default": "Par défaut",
     "steve": "Steve",
     "alex": "Alex",
     "upload": "Choisir un skin local",
     "skin": "Skin",
     "cape": "Cape",
+    "section": {
+      "skin": "Skin",
+      "cape": "Cape"
+    },
     "model": {
       "label": "Modèle",
-      "default": "Largeur",
-      "slim": "Mince"
+      "default": "Classique (Steve, bras larges)",
+      "slim": "Mince (Alex, bras fins)"
     },
-    "alert": {
-      "microsoftCape": {
-        "title": "Changement de cape non pris en charge",
-        "description": "WTUMCL ne peut pas encore proposer de téléversement de cape pour les comptes Microsoft."
-      }
+    "capeList": {
+      "loading": "Chargement des capes...",
+      "none": "Aucune cape",
+      "empty": "Ce compte n'a aucune cape",
+      "failed": "Échec du chargement de la liste des capes",
+      "unknown": "Cape inconnue"
+    },
+    "capeAlias": {
+      "Migrator": "Cape Migrator",
+      "MapMaker": "Cape de créateur de cartes Realms",
+      "Moderator": "Cape de modérateur Mojira",
+      "Translator-Chinese": "Cape de traducteur chinois Crowdin",
+      "Translator": "Cape de traducteur",
+      "Cobalt": "Cape Cobalt",
+      "Vanilla": "Cape Vanilla",
+      "Minecon2011": "Cape Minecon 2011",
+      "Minecon2012": "Cape Minecon 2012",
+      "Minecon2013": "Cape Minecon 2013",
+      "Minecon2015": "Cape Minecon 2015",
+      "Minecon2016": "Cape Minecon 2016",
+      "Cherry Blossom": "Cape Cherry Blossom",
+      "15th Anniversary": "Cape du 15e anniversaire",
+      "Purple Heart": "Cape du cœur violet",
+      "Follower's": "Cape du follower",
+      "MCC 15th Year": "Cape des 15 ans de MCC",
+      "Minecraft Experience": "Cape de sauvetage des villageois",
+      "Mojang Office": "Cape du bureau Mojang",
+      "Home": "Cape du foyer",
+      "Menace": "Cape Menace",
+      "Yearn": "Cape Yearn",
+      "Common": "Cape commune",
+      "Pan": "Cape crêpe",
+      "Founder's": "Cape du fondateur",
+      "Copper": "Cape en cuivre",
+      "Zombie Horse": "Cape de cheval-zombie",
+      "Builder": "Cape de bâtisseur",
+      "Crafter": "Cape d'artisan",
+      "Aurora": "Cape Aurora"
     }
   },
   "ManualAddJavaPathModal": {
@@ -2588,6 +2625,34 @@
             "INVALID": "Le type de personnage est incorrect",
             "TEXTURE_ERROR": "Le format de la texture est incorrect",
             "NO_TEXTURE_API": "La modification de texture n'est pas disponible pour ce serveur"
+          }
+        }
+      },
+      "listPlayerCapes": {
+        "success": "Liste des capes récupérée",
+        "error": {
+          "title": "Échec de la récupération de la liste des capes",
+          "description": {
+            "NOT_FOUND": "Le joueur n'existe pas",
+            "INVALID": "La cape sélectionnée n'est pas valide",
+            "EXPIRED": "Le jeton d'accès a expiré, veuillez vous reconnecter",
+            "NETWORK_ERROR": "Impossible de se connecter au serveur d'authentification",
+            "PARSE_ERROR": "Le serveur a renvoyé des données dans un format incorrect",
+            "NO_TEXTURE_API": "Ce compte ne prend pas en charge le changement de cape"
+          }
+        }
+      },
+      "updatePlayerCape": {
+        "success": "Cape active mise à jour",
+        "error": {
+          "title": "Échec de la mise à jour de la cape active",
+          "description": {
+            "NOT_FOUND": "Le joueur n'existe pas",
+            "INVALID": "La cape sélectionnée n'est pas valide",
+            "EXPIRED": "Le jeton d'accès a expiré, veuillez vous reconnecter",
+            "NETWORK_ERROR": "Impossible de se connecter au serveur d'authentification",
+            "PARSE_ERROR": "Le serveur a renvoyé des données dans un format incorrect",
+            "NO_TEXTURE_API": "Ce compte ne prend pas en charge le changement de cape"
           }
         }
       },

@@ -12,6 +12,14 @@ export interface Texture {
   preset?: PresetRole;
 }
 
+// one cape of a player's Minecraft profile, as returned by the backend
+export interface PlayerCapeInfo {
+  id: string;
+  alias: string;
+  image: string;
+  active: boolean;
+}
+
 // player (frontend display format)
 export interface Player {
   id: string;

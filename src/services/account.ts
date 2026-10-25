@@ -10,6 +10,7 @@ import {
   DeviceAuthResponseInfo,
   MicrosoftFriendList,
   Player,
+  PlayerCapeInfo,
 } from "@/models/account";
 import { InvokeResponse } from "@/models/response";
 import { responseHandler } from "@/utils/response";
@@ -191,6 +192,34 @@ export class AccountService {
       textureType,
       skinModel,
     });
+  }
+
+  /**
+   * LIST every cape of a player's Minecraft profile.
+   * @param {string} playerId - The player ID of the player to be listed.
+   * @returns {Promise<InvokeResponse<PlayerCapeInfo[]>>}
+   */
+  @responseHandler("account")
+  static async listPlayerCapes(
+    playerId: string
+  ): Promise<InvokeResponse<PlayerCapeInfo[]>> {
+    return await invoke("list_player_capes", { playerId });
+  }
+
+  /**
+   * UPDATE the active cape of a player, or clear it when capeId is null.
+   * Only Microsoft accounts can switch capes; other account types keep their
+   * own cape upload path.
+   * @param {string} playerId - The player ID of the player to be updated.
+   * @param {string | null} capeId - The cape ID to activate, or null for no cape.
+   * @returns {Promise<InvokeResponse<void>>}
+   */
+  @responseHandler("account")
+  static async updatePlayerCape(
+    playerId: string,
+    capeId: string | null
+  ): Promise<InvokeResponse<void>> {
+    return await invoke("update_player_cape", { playerId, capeId });
   }
 
   /**

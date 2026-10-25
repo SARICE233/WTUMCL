@@ -1867,23 +1867,60 @@
     }
   },
   "ManageSkinModal": {
-    "skinManage": "Administrar skin",
+    "skinManage": "Skins y capas",
     "default": "Predeterminado",
     "steve": "Steve",
     "alex": "Alex",
     "upload": "Elegir skin local",
     "skin": "Skin",
     "cape": "Capa",
+    "section": {
+      "skin": "Skin",
+      "cape": "Capa"
+    },
     "model": {
       "label": "Modelo",
-      "default": "Ancho",
-      "slim": "Estrecho"
+      "default": "Clásico (Steve, brazos anchos)",
+      "slim": "Delgado (Alex, brazos delgados)"
     },
-    "alert": {
-      "microsoftCape": {
-        "title": "Cambio de capa no compatible",
-        "description": "WTUMCL no puede ofrecer actualmente el servicio de subida de capas para cuentas de Microsoft."
-      }
+    "capeList": {
+      "loading": "Cargando capas...",
+      "none": "Sin capa",
+      "empty": "Esta cuenta no tiene capas",
+      "failed": "No se pudo cargar la lista de capas",
+      "unknown": "Capa desconocida"
+    },
+    "capeAlias": {
+      "Migrator": "Capa Migrator",
+      "MapMaker": "Capa de creador de mapas de Realms",
+      "Moderator": "Capa de moderador de Mojira",
+      "Translator-Chinese": "Capa de traductor chino de Crowdin",
+      "Translator": "Capa de traductor",
+      "Cobalt": "Capa Cobalt",
+      "Vanilla": "Capa Vanilla",
+      "Minecon2011": "Capa de Minecon 2011",
+      "Minecon2012": "Capa de Minecon 2012",
+      "Minecon2013": "Capa de Minecon 2013",
+      "Minecon2015": "Capa de Minecon 2015",
+      "Minecon2016": "Capa de Minecon 2016",
+      "Cherry Blossom": "Capa Cherry Blossom",
+      "15th Anniversary": "Capa del 15.º aniversario",
+      "Purple Heart": "Capa del corazón púrpura",
+      "Follower's": "Capa del seguidor",
+      "MCC 15th Year": "Capa del 15.º año de MCC",
+      "Minecraft Experience": "Capa de rescate de aldeanos",
+      "Mojang Office": "Capa de la oficina de Mojang",
+      "Home": "Capa del hogar",
+      "Menace": "Capa Menace",
+      "Yearn": "Capa Yearn",
+      "Common": "Capa común",
+      "Pan": "Capa de tortita",
+      "Founder's": "Capa del fundador",
+      "Copper": "Capa de cobre",
+      "Zombie Horse": "Capa de caballo zombi",
+      "Builder": "Capa de constructor",
+      "Crafter": "Capa de artesano",
+      "Aurora": "Capa Aurora"
     }
   },
   "ManualAddJavaPathModal": {
@@ -2588,6 +2625,34 @@
             "INVALID": "El tipo de jugador es inválido",
             "TEXTURE_ERROR": "El formato de la textura es incorrecto",
             "NO_TEXTURE_API": "La modificación de texturas no está disponible para este servidor"
+          }
+        }
+      },
+      "listPlayerCapes": {
+        "success": "Lista de capas obtenida correctamente",
+        "error": {
+          "title": "Error al obtener la lista de capas",
+          "description": {
+            "NOT_FOUND": "El jugador no existe",
+            "INVALID": "La capa seleccionada no es válida",
+            "EXPIRED": "El token de acceso ha caducado, vuelve a iniciar sesión",
+            "NETWORK_ERROR": "No se puede conectar al servidor de autenticación",
+            "PARSE_ERROR": "El servidor devolvió datos con un formato incorrecto",
+            "NO_TEXTURE_API": "Esta cuenta no admite cambiar la capa"
+          }
+        }
+      },
+      "updatePlayerCape": {
+        "success": "Capa activa actualizada correctamente",
+        "error": {
+          "title": "Error al actualizar la capa activa",
+          "description": {
+            "NOT_FOUND": "El jugador no existe",
+            "INVALID": "La capa seleccionada no es válida",
+            "EXPIRED": "El token de acceso ha caducado, vuelve a iniciar sesión",
+            "NETWORK_ERROR": "No se puede conectar al servidor de autenticación",
+            "PARSE_ERROR": "El servidor devolvió datos con un formato incorrecto",
+            "NO_TEXTURE_API": "Esta cuenta no admite cambiar la capa"
           }
         }
       },

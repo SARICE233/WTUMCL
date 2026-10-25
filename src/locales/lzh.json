@@ -1867,23 +1867,60 @@
     }
   },
   "ManageSkinModal": {
-    "skinManage": "司外觀",
+    "skinManage": "外觀與蓑衣",
     "default": "本",
     "steve": "史迪武",
     "alex": "艾麗思",
     "upload": "擇本機外觀",
     "skin": "外觀",
     "cape": "蓑衣",
+    "section": {
+      "skin": "外觀",
+      "cape": "蓑衣"
+    },
     "model": {
       "label": "形",
-      "default": "寬",
-      "slim": "纖"
+      "default": "經典（史迪武，粗臂）",
+      "slim": "纖細（艾麗思，細臂）"
     },
-    "alert": {
-      "microsoftCape": {
-        "title": "蓑衣之改未可",
-        "description": "WTUMCL 暫未能為微軟戲者上傳蓑衣。"
-      }
+    "capeList": {
+      "loading": "方載蓑衣……",
+      "none": "無蓑衣",
+      "empty": "此戶暫無蓑衣",
+      "failed": "蓑衣之錄未得",
+      "unknown": "未知蓑衣"
+    },
+    "capeAlias": {
+      "Migrator": "遷者蓑衣",
+      "MapMaker": "Realms 輿圖師蓑衣",
+      "Moderator": "Mojira 司理蓑衣",
+      "Translator-Chinese": "Crowdin 華譯蓑衣",
+      "Translator": "譯者蓑衣",
+      "Cobalt": "Cobalt 蓑衣",
+      "Vanilla": "原版蓑衣",
+      "Minecon2011": "Minecon 2011 蓑衣",
+      "Minecon2012": "Minecon 2012 蓑衣",
+      "Minecon2013": "Minecon 2013 蓑衣",
+      "Minecon2015": "Minecon 2015 蓑衣",
+      "Minecon2016": "Minecon 2016 蓑衣",
+      "Cherry Blossom": "櫻花蓑衣",
+      "15th Anniversary": "十五週年蓑衣",
+      "Purple Heart": "紫心蓑衣",
+      "Follower's": "從者蓑衣",
+      "MCC 15th Year": "MCC 十五週年蓑衣",
+      "Minecraft Experience": "救民蓑衣",
+      "Mojang Office": "Mojang 官署蓑衣",
+      "Home": "家園蓑衣",
+      "Menace": "侵者蓑衣",
+      "Yearn": "渴望蓑衣",
+      "Common": "常蓑衣",
+      "Pan": "薄餅蓑衣",
+      "Founder's": "創始蓑衣",
+      "Copper": "銅蓑衣",
+      "Zombie Horse": "殭馬蓑衣",
+      "Builder": "匠者蓑衣",
+      "Crafter": "工匠蓑衣",
+      "Aurora": "極光蓑衣"
     }
   },
   "ManualAddJavaPathModal": {
@@ -2588,6 +2625,34 @@
             "INVALID": "戲者型別謬",
             "TEXTURE_ERROR": "材質之式誤",
             "NO_TEXTURE_API": "此認證服不可改材質"
+          }
+        }
+      },
+      "listPlayerCapes": {
+        "success": "蓑衣之錄已得",
+        "error": {
+          "title": "蓑衣之錄未得",
+          "description": {
+            "NOT_FOUND": "戲者不存",
+            "INVALID": "所擇蓑衣無效",
+            "EXPIRED": "符已過期，請復入",
+            "NETWORK_ERROR": "未能連於認證之服",
+            "PARSE_ERROR": "所返數據之形有誤",
+            "NO_TEXTURE_API": "此戶不可改蓑衣"
+          }
+        }
+      },
+      "updatePlayerCape": {
+        "success": "蓑衣之改已成",
+        "error": {
+          "title": "蓑衣之改未成",
+          "description": {
+            "NOT_FOUND": "戲者不存",
+            "INVALID": "所擇蓑衣無效",
+            "EXPIRED": "符已過期，請復入",
+            "NETWORK_ERROR": "未能連於認證之服",
+            "PARSE_ERROR": "所返數據之形有誤",
+            "NO_TEXTURE_API": "此戶不可改蓑衣"
           }
         }
       },

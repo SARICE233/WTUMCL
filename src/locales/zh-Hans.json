@@ -1867,23 +1867,60 @@
     }
   },
   "ManageSkinModal": {
-    "skinManage": "管理皮肤",
+    "skinManage": "皮肤与披风",
     "default": "默认",
     "steve": "Steve",
     "alex": "Alex",
     "upload": "选择本地皮肤",
     "skin": "皮肤",
     "cape": "披风",
+    "section": {
+      "skin": "皮肤",
+      "cape": "披风"
+    },
     "model": {
       "label": "模型",
-      "default": "宽型",
-      "slim": "纤细"
+      "default": "经典（Steve，粗手臂）",
+      "slim": "纤细（Alex，细手臂）"
     },
-    "alert": {
-      "microsoftCape": {
-        "title": "披风更改暂不可用",
-        "description": "WTUMCL 暂无法为微软账户提供披风上传服务。"
-      }
+    "capeList": {
+      "loading": "正在加载披风……",
+      "none": "无披风",
+      "empty": "此账户暂无可用披风",
+      "failed": "披风列表加载失败",
+      "unknown": "未知披风"
+    },
+    "capeAlias": {
+      "Migrator": "迁移者披风",
+      "MapMaker": "Realms 地图制作者披风",
+      "Moderator": "Mojira 管理员披风",
+      "Translator-Chinese": "Crowdin 中文翻译者披风",
+      "Translator": "翻译者披风",
+      "Cobalt": "Cobalt 披风",
+      "Vanilla": "原版披风",
+      "Minecon2011": "Minecon 2011 参与者披风",
+      "Minecon2012": "Minecon 2012 参与者披风",
+      "Minecon2013": "Minecon 2013 参与者披风",
+      "Minecon2015": "Minecon 2015 参与者披风",
+      "Minecon2016": "Minecon 2016 参与者披风",
+      "Cherry Blossom": "樱花披风",
+      "15th Anniversary": "15 周年纪念披风",
+      "Purple Heart": "紫色心形披风",
+      "Follower's": "追随者披风",
+      "MCC 15th Year": "MCC 15 周年披风",
+      "Minecraft Experience": "村民救援披风",
+      "Mojang Office": "Mojang 办公室披风",
+      "Home": "家园披风",
+      "Menace": "入侵披风",
+      "Yearn": "渴望披风",
+      "Common": "普通披风",
+      "Pan": "薄煎饼披风",
+      "Founder's": "创始人披风",
+      "Copper": "铜披风",
+      "Zombie Horse": "僵尸马披风",
+      "Builder": "建造者披风",
+      "Crafter": "工匠披风",
+      "Aurora": "极光披风"
     }
   },
   "ManualAddJavaPathModal": {
@@ -2588,6 +2625,34 @@
             "INVALID": "角色类型错误",
             "TEXTURE_ERROR": "角色材质格式不正确",
             "NO_TEXTURE_API": "暂不能使用该认证服务器的材质更改功能"
+          }
+        }
+      },
+      "listPlayerCapes": {
+        "success": "成功获取披风列表",
+        "error": {
+          "title": "获取披风列表失败",
+          "description": {
+            "NOT_FOUND": "角色不存在",
+            "INVALID": "所选披风无效",
+            "EXPIRED": "令牌已过期，请重新登录",
+            "NETWORK_ERROR": "无法连接至认证服务器",
+            "PARSE_ERROR": "服务器返回数据格式错误",
+            "NO_TEXTURE_API": "此账户不支持更改披风"
+          }
+        }
+      },
+      "updatePlayerCape": {
+        "success": "成功更改披风",
+        "error": {
+          "title": "更改披风失败",
+          "description": {
+            "NOT_FOUND": "角色不存在",
+            "INVALID": "所选披风无效",
+            "EXPIRED": "令牌已过期，请重新登录",
+            "NETWORK_ERROR": "无法连接至认证服务器",
+            "PARSE_ERROR": "服务器返回数据格式错误",
+            "NO_TEXTURE_API": "此账户不支持更改披风"
           }
         }
       },

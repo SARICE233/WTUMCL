@@ -1867,23 +1867,60 @@
     }
   },
   "ManageSkinModal": {
-    "skinManage": "スキン管理",
+    "skinManage": "スキンとケープ",
     "default": "デフォルト",
     "steve": "Steve",
     "alex": "Alex",
     "upload": "ローカルスキンを選択",
     "skin": "スキン",
     "cape": "ケープ",
+    "section": {
+      "skin": "スキン",
+      "cape": "ケープ"
+    },
     "model": {
       "label": "モデル",
-      "default": "デフォルト",
-      "slim": "スリム"
+      "default": "クラシック（Steve・太い腕）",
+      "slim": "スリム（Alex・細い腕）"
     },
-    "alert": {
-      "microsoftCape": {
-        "title": "ケープの変更は未対応",
-        "description": "WTUMCL は現在、Microsoft アカウントのケープをアップロードできない。"
-      }
+    "capeList": {
+      "loading": "ケープを読み込み中...",
+      "none": "ケープなし",
+      "empty": "このアカウントに利用可能なケープはありません",
+      "failed": "ケープ一覧の読み込みに失敗しました",
+      "unknown": "不明なケープ"
+    },
+    "capeAlias": {
+      "Migrator": "移行者のケープ",
+      "MapMaker": "Realms マップメーカーのケープ",
+      "Moderator": "Mojira モデレーターのケープ",
+      "Translator-Chinese": "Crowdin 中国語翻訳者のケープ",
+      "Translator": "翻訳者のケープ",
+      "Cobalt": "Cobalt ケープ",
+      "Vanilla": "バニラのケープ",
+      "Minecon2011": "Minecon 2011 ケープ",
+      "Minecon2012": "Minecon 2012 ケープ",
+      "Minecon2013": "Minecon 2013 ケープ",
+      "Minecon2015": "Minecon 2015 ケープ",
+      "Minecon2016": "Minecon 2016 ケープ",
+      "Cherry Blossom": "桜のケープ",
+      "15th Anniversary": "15 周年記念ケープ",
+      "Purple Heart": "パープルハートのケープ",
+      "Follower's": "フォロワーのケープ",
+      "MCC 15th Year": "MCC 15 周年ケープ",
+      "Minecraft Experience": "村人救出のケープ",
+      "Mojang Office": "Mojang オフィスのケープ",
+      "Home": "ホームのケープ",
+      "Menace": "メナスのケープ",
+      "Yearn": "イヤーンのケープ",
+      "Common": "コモンのケープ",
+      "Pan": "パンケーキのケープ",
+      "Founder's": "創設者のケープ",
+      "Copper": "銅のケープ",
+      "Zombie Horse": "ゾンビホースのケープ",
+      "Builder": "ビルダーのケープ",
+      "Crafter": "クラフターのケープ",
+      "Aurora": "オーロラのケープ"
     }
   },
   "ManualAddJavaPathModal": {
@@ -2588,6 +2625,34 @@
             "INVALID": "無効なキャラクタータイプ",
             "TEXTURE_ERROR": "テクスチャの形式が正しくない",
             "NO_TEXTURE_API": "このサーバーではテクスチャの変更を利用できない"
+          }
+        }
+      },
+      "listPlayerCapes": {
+        "success": "ケープ一覧を取得しました",
+        "error": {
+          "title": "ケープ一覧の取得に失敗しました",
+          "description": {
+            "NOT_FOUND": "プレイヤーが存在しません",
+            "INVALID": "選択したケープは無効です",
+            "EXPIRED": "アクセストークンの有効期限が切れました。再度ログインしてください",
+            "NETWORK_ERROR": "認証サーバーに接続できません",
+            "PARSE_ERROR": "サーバーが返したデータの形式が正しくありません",
+            "NO_TEXTURE_API": "このアカウントはケープの変更に対応していません"
+          }
+        }
+      },
+      "updatePlayerCape": {
+        "success": "ケープを変更しました",
+        "error": {
+          "title": "ケープの変更に失敗しました",
+          "description": {
+            "NOT_FOUND": "プレイヤーが存在しません",
+            "INVALID": "選択したケープは無効です",
+            "EXPIRED": "アクセストークンの有効期限が切れました。再度ログインしてください",
+            "NETWORK_ERROR": "認証サーバーに接続できません",
+            "PARSE_ERROR": "サーバーが返したデータの形式が正しくありません",
+            "NO_TEXTURE_API": "このアカウントはケープの変更に対応していません"
           }
         }
       },

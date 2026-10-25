@@ -1867,23 +1867,60 @@
     }
   },
   "ManageSkinModal": {
-    "skinManage": "Manage Skin",
+    "skinManage": "Skins & Capes",
     "default": "Default",
     "steve": "Steve",
     "alex": "Alex",
     "upload": "Choose Local Skin",
     "skin": "Skin",
     "cape": "Cape",
+    "section": {
+      "skin": "Skin",
+      "cape": "Cape"
+    },
     "model": {
       "label": "Model",
-      "default": "Wide",
-      "slim": "Slim"
+      "default": "Classic (Steve, wide arms)",
+      "slim": "Slim (Alex, slim arms)"
     },
-    "alert": {
-      "microsoftCape": {
-        "title": "Cape Change Not Supported",
-        "description": "WTUMCL cannot currently provide cape upload services for Microsoft accounts."
-      }
+    "capeList": {
+      "loading": "Loading capes...",
+      "none": "No Cape",
+      "empty": "This account has no capes",
+      "failed": "Failed to load the cape list",
+      "unknown": "Unknown Cape"
+    },
+    "capeAlias": {
+      "Migrator": "Migrator Cape",
+      "MapMaker": "Realms Map Maker Cape",
+      "Moderator": "Mojira Moderator Cape",
+      "Translator-Chinese": "Crowdin Chinese Translator Cape",
+      "Translator": "Translator Cape",
+      "Cobalt": "Cobalt Cape",
+      "Vanilla": "Vanilla Cape",
+      "Minecon2011": "Minecon 2011 Cape",
+      "Minecon2012": "Minecon 2012 Cape",
+      "Minecon2013": "Minecon 2013 Cape",
+      "Minecon2015": "Minecon 2015 Cape",
+      "Minecon2016": "Minecon 2016 Cape",
+      "Cherry Blossom": "Cherry Blossom Cape",
+      "15th Anniversary": "15th Anniversary Cape",
+      "Purple Heart": "Purple Heart Cape",
+      "Follower's": "Follower's Cape",
+      "MCC 15th Year": "MCC 15th Year Cape",
+      "Minecraft Experience": "Villager Rescue Cape",
+      "Mojang Office": "Mojang Office Cape",
+      "Home": "Home Cape",
+      "Menace": "Menace Cape",
+      "Yearn": "Yearn Cape",
+      "Common": "Common Cape",
+      "Pan": "Pancake Cape",
+      "Founder's": "Founder's Cape",
+      "Copper": "Copper Cape",
+      "Zombie Horse": "Zombie Horse Cape",
+      "Builder": "Builder Cape",
+      "Crafter": "Crafter Cape",
+      "Aurora": "Aurora Cape"
     }
   },
   "ManualAddJavaPathModal": {
@@ -2588,6 +2625,34 @@
             "INVALID": "The player type is invalid",
             "TEXTURE_ERROR": "Texture format is incorrect",
             "NO_TEXTURE_API": "Texture modifying is not available for this server"
+          }
+        }
+      },
+      "listPlayerCapes": {
+        "success": "Successfully retrieved the cape list",
+        "error": {
+          "title": "Failed to retrieve the cape list",
+          "description": {
+            "NOT_FOUND": "The player does not exist",
+            "INVALID": "The selected cape is invalid",
+            "EXPIRED": "The access token has expired, please re-login",
+            "NETWORK_ERROR": "Failed to connect to the server",
+            "PARSE_ERROR": "The server returned data in an incorrect format",
+            "NO_TEXTURE_API": "This account does not support changing the cape"
+          }
+        }
+      },
+      "updatePlayerCape": {
+        "success": "Successfully updated the active cape",
+        "error": {
+          "title": "Failed to update the active cape",
+          "description": {
+            "NOT_FOUND": "The player does not exist",
+            "INVALID": "The selected cape is invalid",
+            "EXPIRED": "The access token has expired, please re-login",
+            "NETWORK_ERROR": "Failed to connect to the server",
+            "PARSE_ERROR": "The server returned data in an incorrect format",
+            "NO_TEXTURE_API": "This account does not support changing the cape"
           }
         }
       },
