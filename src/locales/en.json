@@ -2045,7 +2045,7 @@
       "search": "Search"
     },
     "error": {
-      "curseforgeApiKeyMissing": "CurseForge API key not set"
+      "curseforgeApiKeyMissing": "CurseForge credentials unavailable"
     },
     "modTagList": {
       "CurseForge": {
@@ -2781,8 +2781,8 @@
             "PARSE_ERROR": "The server returned data in an incorrect format",
             "NETWORK_ERROR": "Failed to connect to the server",
             "NO_DOWNLOAD_API": "No download strategy available, please check internet connection",
-            "CURSE_FORGE_API_KEY_MISSING": "Set WTUMCL_CURSEFORGE_API_KEY in the .env file (see .env.template at the project root), then restart WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rejected the request; WTUMCL_CURSEFORGE_API_KEY is probably invalid or not approved"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge credentials are unavailable, please contact the developer",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rejected the request, please contact the developer"
           }
         }
       },
@@ -2793,8 +2793,8 @@
             "PARSE_ERROR": "The server returned data in an incorrect format",
             "NETWORK_ERROR": "Failed to connect to the server",
             "NO_DOWNLOAD_API": "No download strategy available, please check internet connection",
-            "CURSE_FORGE_API_KEY_MISSING": "Set WTUMCL_CURSEFORGE_API_KEY in the .env file (see .env.template at the project root), then restart WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rejected the request; WTUMCL_CURSEFORGE_API_KEY is probably invalid or not approved"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge credentials are unavailable, please contact the developer",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rejected the request, please contact the developer"
           }
         }
       },
@@ -2814,8 +2814,8 @@
             "PARSE_ERROR": "The server returned data in an incorrect format",
             "NETWORK_ERROR": "Failed to connect to the server",
             "NO_DOWNLOAD_API": "No download strategy available, please check internet connection",
-            "CURSE_FORGE_API_KEY_MISSING": "Set WTUMCL_CURSEFORGE_API_KEY in the .env file (see .env.template at the project root), then restart WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rejected the request; WTUMCL_CURSEFORGE_API_KEY is probably invalid or not approved"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge credentials are unavailable, please contact the developer",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rejected the request, please contact the developer"
           }
         }
       },

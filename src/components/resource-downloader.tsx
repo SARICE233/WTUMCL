@@ -404,14 +404,16 @@ const ResourceDownloader: React.FC<ResourceDownloaderProps> = ({
             setHasMore(response.data.total > (page + 1) * pageSize);
           } else {
             setResourceList([]);
-            // CURSE_FORGE_API_KEY_MISSING is the backend code for an unset
-            // WTUMCL_CURSEFORGE_API_KEY; response.details already carries the
-            // localized hint naming it, so only the title needs replacing here.
-            const apiKeyMissing =
+            // Both CurseForge credential codes mean the bundled key is unusable
+            // (revoked, rate limited) rather than that the player configured anything
+            // wrong; response.details already carries the localized hint.
+            const curseforgeCredentialError =
               response.raw_error ===
-              ResourceServiceError.CurseForgeApiKeyMissing;
+                ResourceServiceError.CurseForgeApiKeyMissing ||
+              response.raw_error ===
+                ResourceServiceError.CurseForgeRequestRejected;
             toast({
-              title: apiKeyMissing
+              title: curseforgeCredentialError
                 ? t("ResourceDownloader.error.curseforgeApiKeyMissing")
                 : response.message,
               description: response.details,

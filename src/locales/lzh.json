@@ -2045,7 +2045,7 @@
       "search": "尋"
     },
     "error": {
-      "curseforgeApiKeyMissing": "未設 CurseForge API 鑰"
+      "curseforgeApiKeyMissing": "CurseForge 憑證不可用"
     },
     "modTagList": {
       "CurseForge": {
@@ -2781,8 +2781,8 @@
             "PARSE_ERROR": "伺服器返回資料正規化謬矣",
             "NETWORK_ERROR": "不能連線到伺服器",
             "NO_DOWNLOAD_API": "無可用的引策略，請驗網路連線",
-            "CURSE_FORGE_API_KEY_MISSING": "請於專案根本之 .env 檔（參 .env.template）設 WTUMCL_CURSEFORGE_API_KEY，而後重啟 WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒此請求，WTUMCL_CURSEFORGE_API_KEY 恐無效或未獲准"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge 憑證不可用，請告於開發者",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒此請求，請告於開發者"
           }
         }
       },
@@ -2793,8 +2793,8 @@
             "PARSE_ERROR": "伺服器返回資料正規化謬矣",
             "NETWORK_ERROR": "不能連線到伺服器",
             "NO_DOWNLOAD_API": "無可用的引策略，請驗網路連線",
-            "CURSE_FORGE_API_KEY_MISSING": "請於專案根本之 .env 檔（參 .env.template）設 WTUMCL_CURSEFORGE_API_KEY，而後重啟 WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒此請求，WTUMCL_CURSEFORGE_API_KEY 恐無效或未獲准"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge 憑證不可用，請告於開發者",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒此請求，請告於開發者"
           }
         }
       },
@@ -2814,8 +2814,8 @@
             "PARSE_ERROR": "伺服器返回資料正規化謬矣",
             "NETWORK_ERROR": "不能連線到伺服器",
             "NO_DOWNLOAD_API": "無可用的引策略，請驗網路連線",
-            "CURSE_FORGE_API_KEY_MISSING": "請於專案根本之 .env 檔（參 .env.template）設 WTUMCL_CURSEFORGE_API_KEY，而後重啟 WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒此請求，WTUMCL_CURSEFORGE_API_KEY 恐無效或未獲准"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge 憑證不可用，請告於開發者",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒此請求，請告於開發者"
           }
         }
       },

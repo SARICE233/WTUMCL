@@ -72,9 +72,10 @@ export enum ResourceServiceError {
   NetworkError = "NETWORK_ERROR",
   FileOperationError = "FILE_OPERATION_ERROR",
   ClientVersionNotFound = "CLIENT_VERSION_NOT_FOUND",
-  // WTUMCL_CURSEFORGE_API_KEY is empty, so no CurseForge request is attempted at all.
+  // The resolved credential (bundled or developer override) is empty, so no CurseForge
+  // request is attempted at all.
   CurseForgeApiKeyMissing = "CURSE_FORGE_API_KEY_MISSING",
-  // CurseForge answered but refused the request, usually because the key is invalid.
+  // CurseForge answered but refused the request, e.g. the bundled key was revoked.
   CurseForgeRequestRejected = "CURSE_FORGE_REQUEST_REJECTED",
 }
 

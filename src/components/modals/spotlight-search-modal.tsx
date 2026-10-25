@@ -291,11 +291,13 @@ const SpotlightSearchModal: React.FC<Omit<ModalProps, "children">> = ({
               if (
                 !signal?.aborted &&
                 source === OtherResourceSource.CurseForge &&
-                response.raw_error ===
-                  ResourceServiceError.CurseForgeApiKeyMissing
+                (response.raw_error ===
+                  ResourceServiceError.CurseForgeApiKeyMissing ||
+                  response.raw_error ===
+                    ResourceServiceError.CurseForgeRequestRejected)
               ) {
-                // An unset WTUMCL_CURSEFORGE_API_KEY would otherwise look like CurseForge
-                // having no results at all, so keep its localized hint for the list.
+                // The bundled credential can still be rejected (rate limit, revocation);
+                // without the hint an empty list looks like CurseForge having no matches.
                 setCurseforgeHint(response.details);
               }
               return [];

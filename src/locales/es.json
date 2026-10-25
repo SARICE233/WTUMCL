@@ -2045,7 +2045,7 @@
       "search": "Buscar"
     },
     "error": {
-      "curseforgeApiKeyMissing": "Falta la clave de API de CurseForge"
+      "curseforgeApiKeyMissing": "Credenciales de CurseForge no disponibles"
     },
     "modTagList": {
       "CurseForge": {
@@ -2781,8 +2781,8 @@
             "PARSE_ERROR": "El servidor devolvió datos en un formato incorrecto",
             "NETWORK_ERROR": "Error al conectar con el servidor",
             "NO_DOWNLOAD_API": "No hay estrategia de descarga disponible, verifique su conexión a internet",
-            "CURSE_FORGE_API_KEY_MISSING": "Establece WTUMCL_CURSEFORGE_API_KEY en el archivo .env (consulta .env.template en la raíz del proyecto) y reinicia WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rechazó la solicitud; WTUMCL_CURSEFORGE_API_KEY probablemente no es válida o no está aprobada"
+            "CURSE_FORGE_API_KEY_MISSING": "Las credenciales de CurseForge no están disponibles; contacta con el desarrollador",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rechazó la solicitud; contacta con el desarrollador"
           }
         }
       },
@@ -2793,8 +2793,8 @@
             "PARSE_ERROR": "El servidor devolvió datos en un formato incorrecto",
             "NETWORK_ERROR": "Error al conectar con el servidor",
             "NO_DOWNLOAD_API": "No hay estrategia de descarga disponible, verifique su conexión a internet",
-            "CURSE_FORGE_API_KEY_MISSING": "Establece WTUMCL_CURSEFORGE_API_KEY en el archivo .env (consulta .env.template en la raíz del proyecto) y reinicia WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rechazó la solicitud; WTUMCL_CURSEFORGE_API_KEY probablemente no es válida o no está aprobada"
+            "CURSE_FORGE_API_KEY_MISSING": "Las credenciales de CurseForge no están disponibles; contacta con el desarrollador",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rechazó la solicitud; contacta con el desarrollador"
           }
         }
       },
@@ -2814,8 +2814,8 @@
             "PARSE_ERROR": "El servidor devolvió datos en un formato incorrecto",
             "NETWORK_ERROR": "Error al conectar con el servidor",
             "NO_DOWNLOAD_API": "No hay estrategia de descarga disponible, verifique su conexión a internet",
-            "CURSE_FORGE_API_KEY_MISSING": "Establece WTUMCL_CURSEFORGE_API_KEY en el archivo .env (consulta .env.template en la raíz del proyecto) y reinicia WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rechazó la solicitud; WTUMCL_CURSEFORGE_API_KEY probablemente no es válida o no está aprobada"
+            "CURSE_FORGE_API_KEY_MISSING": "Las credenciales de CurseForge no están disponibles; contacta con el desarrollador",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge rechazó la solicitud; contacta con el desarrollador"
           }
         }
       },

@@ -2045,7 +2045,7 @@
       "search": "搜索"
     },
     "error": {
-      "curseforgeApiKeyMissing": "未配置 CurseForge API 密钥"
+      "curseforgeApiKeyMissing": "CurseForge 凭据不可用"
     },
     "modTagList": {
       "CurseForge": {
@@ -2781,8 +2781,8 @@
             "PARSE_ERROR": "服务器返回数据格式错误",
             "NETWORK_ERROR": "无法连接到服务器",
             "NO_DOWNLOAD_API": "无可用的下载策略，请检查网络连接",
-            "CURSE_FORGE_API_KEY_MISSING": "请在项目根目录的 .env 文件（参考 .env.template）中设置 WTUMCL_CURSEFORGE_API_KEY，然后重启 WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒绝了请求，WTUMCL_CURSEFORGE_API_KEY 可能无效或未获批准"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge 凭据不可用，请联系开发者",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 请求被拒绝，请联系开发者"
           }
         }
       },
@@ -2793,8 +2793,8 @@
             "PARSE_ERROR": "服务器返回数据格式错误",
             "NETWORK_ERROR": "无法连接到服务器",
             "NO_DOWNLOAD_API": "无可用的下载策略，请检查网络连接",
-            "CURSE_FORGE_API_KEY_MISSING": "请在项目根目录的 .env 文件（参考 .env.template）中设置 WTUMCL_CURSEFORGE_API_KEY，然后重启 WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒绝了请求，WTUMCL_CURSEFORGE_API_KEY 可能无效或未获批准"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge 凭据不可用，请联系开发者",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 请求被拒绝，请联系开发者"
           }
         }
       },
@@ -2814,8 +2814,8 @@
             "PARSE_ERROR": "服务器返回数据格式错误",
             "NETWORK_ERROR": "无法连接到服务器",
             "NO_DOWNLOAD_API": "无可用的下载策略，请检查网络连接",
-            "CURSE_FORGE_API_KEY_MISSING": "请在项目根目录的 .env 文件（参考 .env.template）中设置 WTUMCL_CURSEFORGE_API_KEY，然后重启 WTUMCL",
-            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 拒绝了请求，WTUMCL_CURSEFORGE_API_KEY 可能无效或未获批准"
+            "CURSE_FORGE_API_KEY_MISSING": "CurseForge 凭据不可用，请联系开发者",
+            "CURSE_FORGE_REQUEST_REJECTED": "CurseForge 请求被拒绝，请联系开发者"
           }
         }
       },

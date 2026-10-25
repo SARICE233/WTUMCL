@@ -13,11 +13,24 @@ use crate::resource::models::{
   ResourceError,
 };
 
+/// WTUMCL ships a working CurseForge credential: asking every player to apply for an
+/// API key and fill in a .env file made CurseForge browsing unavailable on a fresh
+/// install. WTUMCL_CURSEFORGE_API_KEY stays available as a developer-only override.
+const BUILTIN_CURSEFORGE_API_KEY: &str =
+  "";
+
+/// A non-blank override wins over the bundled credential, while a missing, empty or
+/// blank value falls back to it, so a stale .env entry cannot disable CurseForge.
+fn resolve_curseforge_api_key(override_value: Option<String>) -> String {
+  override_value
+    .map(|value| value.trim().to_owned())
+    .filter(|value| !value.is_empty())
+    .unwrap_or_else(|| BUILTIN_CURSEFORGE_API_KEY.to_owned())
+}
+
 lazy_static! {
-  pub static ref CURSEFORGE_API_KEY: String = {
-    env::var("WTUMCL_CURSEFORGE_API_KEY")
-      .unwrap_or_else(|_| env!("WTUMCL_CURSEFORGE_API_KEY").to_string())
-  };
+  pub static ref CURSEFORGE_API_KEY: String =
+    resolve_curseforge_api_key(env::var("WTUMCL_CURSEFORGE_API_KEY").ok());
 }
 
 pub fn is_curseforge_authenticated_url(url: &url::Url) -> bool {
@@ -31,12 +44,13 @@ pub fn is_curseforge_authenticated_url(url: &url::Url) -> bool {
 /// trimmed before it is written to the log.
 const CURSEFORGE_ERROR_REASON_MAX_LEN: usize = 160;
 
-/// An unset credential is a configuration problem, so it has to be reported before
-/// the request is attempted instead of being mistaken for a connection failure.
+/// The resolved credential is the bundled key unless a developer override is set, so
+/// this guard only fires for a blank resolution; even then the problem must be reported
+/// before the request is attempted instead of being mistaken for a connection failure.
 fn curseforge_credential_error(url: &str, api_key: &str) -> Option<SJMCLError> {
   if api_key.trim().is_empty() {
     log::warn!(
-      "CurseForge API {} is skipped: WTUMCL_CURSEFORGE_API_KEY is not configured",
+      "CurseForge API {} is skipped: the resolved API key is empty",
       url
     );
     return Some(ResourceError::CurseForgeApiKeyMissing.into());
@@ -607,6 +621,52 @@ pub async fn translate_description_curseforge(
 mod tests {
   use super::*;
   use std::io::{Read, Write};
+
+  #[test]
+  fn the_builtin_credential_is_a_complete_curseforge_key() {
+    assert_eq!(BUILTIN_CURSEFORGE_API_KEY.len(), 60);
+    assert_eq!(
+      BUILTIN_CURSEFORGE_API_KEY.trim(),
+      BUILTIN_CURSEFORGE_API_KEY
+    );
+    assert!(
+      BUILTIN_CURSEFORGE_API_KEY.starts_with("$2a$10$"),
+      "bundled keys keep the bcrypt prefix; a mangled copy would break every request"
+    );
+    assert!(!BUILTIN_CURSEFORGE_API_KEY.contains(char::is_whitespace));
+  }
+
+  #[test]
+  fn a_missing_override_uses_the_builtin_credential() {
+    assert_eq!(resolve_curseforge_api_key(None), BUILTIN_CURSEFORGE_API_KEY);
+  }
+
+  #[test]
+  fn a_blank_override_uses_the_builtin_credential() {
+    for blank in ["", " ", "   "] {
+      assert_eq!(
+        resolve_curseforge_api_key(Some(blank.to_string())),
+        BUILTIN_CURSEFORGE_API_KEY,
+        "override {:?} must not blank out the bundled credential",
+        blank
+      );
+    }
+  }
+
+  #[test]
+  fn a_configured_override_replaces_the_builtin_credential() {
+    assert_eq!(resolve_curseforge_api_key(Some(" x ".to_string())), "x");
+
+    let override_value = Some("another-key".to_string());
+    assert_eq!(
+      resolve_curseforge_api_key(override_value.clone()),
+      "another-key"
+    );
+    assert_ne!(
+      resolve_curseforge_api_key(override_value),
+      BUILTIN_CURSEFORGE_API_KEY
+    );
+  }
 
   const TRANSPORT_ERROR: &str = "NETWORK_ERROR";
   const MISSING_KEY_ERROR: &str = "CURSE_FORGE_API_KEY_MISSING";
