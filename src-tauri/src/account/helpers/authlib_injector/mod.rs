@@ -6,3 +6,4 @@ pub mod metadata;
 pub mod models;
 pub mod oauth;
 pub mod password;
+pub mod texture;

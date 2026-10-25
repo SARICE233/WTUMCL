@@ -13,7 +13,7 @@ use crate::account::helpers::microsoft::models::{
   MicrosoftFriend, MicrosoftFriendAction, MicrosoftFriendList, MicrosoftPresenceStatus,
 };
 use crate::account::helpers::offline::load_preset_skin;
-use crate::account::helpers::skin::draw_avatar;
+use crate::account::helpers::texture::draw_avatar;
 use crate::account::models::{AccountError, PlayerInfo, PresetRole};
 use crate::utils::image::ImageWrapper;
 

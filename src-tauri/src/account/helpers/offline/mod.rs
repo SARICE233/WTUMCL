@@ -6,26 +6,20 @@ use strum::IntoEnumIterator;
 use tauri::AppHandle;
 use uuid::Uuid;
 
+use crate::account::helpers::texture::load_preset_skin_info;
 use crate::account::models::{
-  AccountError, PlayerInfo, PlayerType, PresetRole, SkinModel, Texture, TextureType,
+  AccountError, PlayerInfo, PlayerType, PresetRole, Texture, TextureType,
 };
-use crate::utils::fs::get_app_resource_filepath;
 use crate::utils::image::load_image_from_dir;
 
 pub fn load_preset_skin(app: &AppHandle, preset_role: PresetRole) -> SJMCLResult<Vec<Texture>> {
-  let texture_path = get_app_resource_filepath(app, &format!("assets/skins/{}.png", preset_role))
-    .map_err(|_| AccountError::TextureError)?;
-
+  let (texture_path, model) = load_preset_skin_info(app, preset_role.clone())?;
   let texture_img = load_image_from_dir(&texture_path).ok_or(AccountError::TextureError)?;
 
   Ok(vec![Texture {
     texture_type: TextureType::Skin,
     image: texture_img.into(),
-    model: if preset_role == PresetRole::Alex {
-      SkinModel::Slim
-    } else {
-      SkinModel::Default
-    },
+    model,
     preset: Some(preset_role),
   }])
 }

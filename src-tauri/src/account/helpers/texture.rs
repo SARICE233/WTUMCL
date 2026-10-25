@@ -1,5 +1,10 @@
 use image::RgbaImage;
+use sjmcl_types::error::SJMCLResult;
+use std::path::{Path, PathBuf};
+use tauri::AppHandle;
 
+use crate::account::models::{AccountError, PlayerInfo, PresetRole, SkinModel, Texture};
+use crate::utils::fs::get_app_resource_filepath;
 use crate::utils::image::ImageWrapper;
 
 pub fn draw_avatar(size: u32, img: &RgbaImage) -> Vec<ImageWrapper> {
@@ -54,4 +59,34 @@ fn draw_image_section(
       avatar_img.put_pixel(dest_rect[0] + x_offset, dest_rect[1] + y_offset, *pixel);
     }
   }
+}
+
+/// Resolve the bundled preset skin file of the given preset role, together with its skin model.
+pub fn load_preset_skin_info(
+  app: &AppHandle,
+  preset_role: PresetRole,
+) -> SJMCLResult<(PathBuf, SkinModel)> {
+  let skin_path = get_app_resource_filepath(app, &format!("assets/skins/{}.png", preset_role))
+    .map_err(|_| AccountError::TextureError)?;
+  let skin_model = match preset_role {
+    PresetRole::Alex => SkinModel::Slim,
+    _ => SkinModel::Default,
+  };
+  Ok((skin_path, skin_model))
+}
+
+/// Operations on the textures (skin and cape) of a remote player profile.
+///
+/// Each account type implements this trait for the profile model its API returns, so that the
+/// texture commands can be written once for every account type.
+pub trait TextureOperation<T> {
+  async fn parse_skin(app: &AppHandle, profile: &T) -> SJMCLResult<Vec<Texture>>;
+  async fn upload_skin(
+    app: &AppHandle,
+    player: &PlayerInfo,
+    file_path: &Path,
+    model: SkinModel,
+  ) -> SJMCLResult<T>;
+  async fn upload_cape(app: &AppHandle, player: &PlayerInfo, file_path: &Path) -> SJMCLResult<T>;
+  async fn delete_cape(app: &AppHandle, player: &PlayerInfo) -> SJMCLResult<T>;
 }

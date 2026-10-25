@@ -1878,6 +1878,12 @@
       "label": "模型",
       "default": "寬型",
       "slim": "纖細"
+    },
+    "alert": {
+      "microsoftCape": {
+        "title": "披風變更暫不支援",
+        "description": "SJMCL 目前無法為 Microsoft 帳戶提供披風上傳服務。"
+      }
     }
   },
   "ManualAddJavaPathModal": {
@@ -2561,25 +2567,27 @@
           }
         }
       },
-      "updatePlayerSkinOfflinePreset": {
+      "updatePlayerTexturePreset": {
         "success": "角色外觀更新成功",
         "error": {
           "title": "角色外觀更新失敗",
           "description": {
             "NOT_FOUND": "角色不存在",
             "INVALID": "角色類型錯誤",
-            "TEXTURE_ERROR": "角色外觀獲取失敗"
+            "TEXTURE_ERROR": "角色外觀格式不正確",
+            "NO_TEXTURE_API": "暫不能使用此驗證伺服器的外觀變更功能"
           }
         }
       },
-      "updatePlayerSkinOfflineLocal": {
+      "updatePlayerTextureLocal": {
         "success": "角色外觀更新成功",
         "error": {
           "title": "角色外觀更新失敗",
           "description": {
             "NOT_FOUND": "角色不存在",
             "INVALID": "角色類型錯誤",
-            "TEXTURE_ERROR": "角色外觀獲取失敗"
+            "TEXTURE_ERROR": "角色外觀格式不正確",
+            "NO_TEXTURE_API": "暫不能使用此驗證伺服器的外觀變更功能"
           }
         }
       },

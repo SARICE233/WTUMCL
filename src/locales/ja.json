@@ -1878,6 +1878,12 @@
       "label": "モーダル",
       "default": "デフォルト",
       "slim": "スリム"
+    },
+    "alert": {
+      "microsoftCape": {
+        "title": "ケープの変更は未対応",
+        "description": "SJMCL は現在、Microsoft アカウントのケープをアップロードできない。"
+      }
     }
   },
   "ManualAddJavaPathModal": {
@@ -2561,25 +2567,27 @@
           }
         }
       },
-      "updatePlayerSkinOfflinePreset": {
-        "success": "キャラクタースキンをアップデートした",
+      "updatePlayerTexturePreset": {
+        "success": "キャラクターのテクスチャをアップデートした",
         "error": {
-          "title": "キャラクタースキンのアップデートに失敗",
+          "title": "キャラクターテクスチャのアップデートに失敗",
           "description": {
             "NOT_FOUND": "キャラクターが見つからない",
             "INVALID": "無効なキャラクタータイプ",
-            "TEXTURE_ERROR": "キャラクタースキンの取得に失敗"
+            "TEXTURE_ERROR": "テクスチャの形式が正しくない",
+            "NO_TEXTURE_API": "このサーバーではテクスチャの変更を利用できない"
           }
         }
       },
-      "updatePlayerSkinOfflineLocal": {
-        "success": "キャラクタースキンをアップデートした",
+      "updatePlayerTextureLocal": {
+        "success": "キャラクターのテクスチャをアップデートした",
         "error": {
-          "title": "キャラクタースキンのアップデートに失敗",
+          "title": "キャラクターテクスチャのアップデートに失敗",
           "description": {
             "NOT_FOUND": "キャラクターが存在しません",
             "INVALID": "無効なキャラクタータイプ",
-            "TEXTURE_ERROR": "キャラクタースキンの取得に失敗"
+            "TEXTURE_ERROR": "テクスチャの形式が正しくない",
+            "NO_TEXTURE_API": "このサーバーではテクスチャの変更を利用できない"
           }
         }
       },

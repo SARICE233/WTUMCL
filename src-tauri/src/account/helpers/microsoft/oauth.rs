@@ -14,11 +14,11 @@ use crate::account::helpers::microsoft::constants::{
 use crate::account::helpers::microsoft::models::{
   MinecraftProfile, XstsErrorResponse, XstsResponse,
 };
-use crate::account::helpers::misc::{self, fetch_image, oauth_polling};
-use crate::account::helpers::offline::load_preset_skin;
+use crate::account::helpers::microsoft::texture::MicrosoftTextureOperation;
+use crate::account::helpers::misc::{self, oauth_polling};
+use crate::account::helpers::texture::TextureOperation;
 use crate::account::models::{
   AccountError, DeviceAuthResponse, DeviceAuthResponseInfo, OAuthTokens, PlayerInfo, PlayerType,
-  PresetRole, SkinModel, Texture, TextureType,
 };
 
 pub async fn device_authorization(app: &AppHandle) -> SJMCLResult<DeviceAuthResponseInfo> {
@@ -190,36 +190,7 @@ async fn parse_profile(app: &AppHandle, tokens: &OAuthTokens) -> SJMCLResult<Pla
     fetch_minecraft_token(app, xsts_userhash, xsts_token).await?;
   let profile = fetch_minecraft_profile(app, minecraft_token.clone()).await?;
 
-  let mut textures = vec![];
-  if let Some(skins) = &profile.skins {
-    for skin in skins {
-      if skin.state == "ACTIVE" {
-        textures.push(Texture {
-          texture_type: TextureType::Skin,
-          image: fetch_image(app, skin.url.clone()).await?,
-          model: skin.variant.clone().unwrap_or_default(),
-          preset: None,
-        });
-      }
-    }
-  }
-  if let Some(capes) = &profile.capes {
-    for cape in capes {
-      if cape.state == "ACTIVE" {
-        textures.push(Texture {
-          texture_type: TextureType::Cape,
-          image: fetch_image(app, cape.url.clone()).await?,
-          model: SkinModel::Default,
-          preset: None,
-        });
-      }
-    }
-  }
-
-  if textures.is_empty() {
-    // this player didn't have a texture, use preset Steve skin instead
-    textures = load_preset_skin(app, PresetRole::Steve)?;
-  }
+  let textures = MicrosoftTextureOperation::parse_skin(app, &profile).await?;
 
   Ok(
     PlayerInfo {
@@ -327,8 +298,15 @@ async fn validate_access_token(
   Ok(response.status())
 }
 
-/// Returns the access token for the player, refreshing it if necessary.
-pub async fn get_access_token(app: &AppHandle, player: &PlayerInfo) -> SJMCLResult<String> {
+/// Returns the player with a valid Minecraft services access token, refreshing it if necessary.
+///
+/// Texture operations must call this once and then use the returned player, because a Microsoft
+/// refresh token is single-use: refreshing separately for every texture request would invalidate
+/// the token obtained by the previous one.
+pub async fn with_valid_access_token(
+  app: &AppHandle,
+  player: &PlayerInfo,
+) -> SJMCLResult<PlayerInfo> {
   if player.player_type != PlayerType::Microsoft {
     return Err(AccountError::Invalid.into());
   }
@@ -341,14 +319,20 @@ pub async fn get_access_token(app: &AppHandle, player: &PlayerInfo) -> SJMCLResu
 
   if need_refresh {
     let refreshed_player = refresh(app, player).await?;
-    let access_token = refreshed_player
-      .access_token
-      .clone()
-      .ok_or(AccountError::Invalid)?;
-    misc::update_player_by_id(app, &player.id, refreshed_player)?;
+    if refreshed_player.access_token.is_none() {
+      return Err(AccountError::Invalid.into());
+    }
+    misc::update_player_by_id(app, &player.id, refreshed_player.clone())?;
 
-    Ok(access_token)
+    Ok(refreshed_player)
   } else {
-    Ok(player.access_token.clone().ok_or(AccountError::Invalid)?)
+    Ok(player.clone())
   }
+}
+
+/// Returns the access token for the player, refreshing it if necessary.
+pub async fn get_access_token(app: &AppHandle, player: &PlayerInfo) -> SJMCLResult<String> {
+  let player = with_valid_access_token(app, player).await?;
+
+  player.access_token.ok_or(AccountError::Invalid.into())
 }

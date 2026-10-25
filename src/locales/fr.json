@@ -1878,6 +1878,12 @@
       "label": "Modèle",
       "default": "Largeur",
       "slim": "Mince"
+    },
+    "alert": {
+      "microsoftCape": {
+        "title": "Changement de cape non pris en charge",
+        "description": "SJMCL ne peut pas encore proposer de téléversement de cape pour les comptes Microsoft."
+      }
     }
   },
   "ManualAddJavaPathModal": {
@@ -2561,25 +2567,27 @@
           }
         }
       },
-      "updatePlayerSkinOfflinePreset": {
-        "success": "Skin du joueur mis à jour avec succès",
+      "updatePlayerTexturePreset": {
+        "success": "Texture du joueur mise à jour avec succès",
         "error": {
-          "title": "Échec de la mise à jour du skin du joueur",
+          "title": "Échec de la mise à jour de la texture du joueur",
           "description": {
             "NOT_FOUND": "Joueur introuvable",
             "INVALID": "Type de joueur incorrect",
-            "TEXTURE_ERROR": "Échec de la récupération du skin du joueur"
+            "TEXTURE_ERROR": "Le format de la texture est incorrect",
+            "NO_TEXTURE_API": "La modification de texture n'est pas disponible pour ce serveur"
           }
         }
       },
-      "updatePlayerSkinOfflineLocal": {
-        "success": "La mise à jour du skin du personnage a réussi",
+      "updatePlayerTextureLocal": {
+        "success": "Texture du joueur mise à jour avec succès",
         "error": {
-          "title": "Échec de la mise à jour du skin du personnage",
+          "title": "Échec de la mise à jour de la texture du joueur",
           "description": {
             "NOT_FOUND": "Le personnage n'existe pas",
             "INVALID": "Le type de personnage est incorrect",
-            "TEXTURE_ERROR": "Échec de la récupération du skin du personnage"
+            "TEXTURE_ERROR": "Le format de la texture est incorrect",
+            "NO_TEXTURE_API": "La modification de texture n'est pas disponible pour ce serveur"
           }
         }
       },

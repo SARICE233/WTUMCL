@@ -1878,6 +1878,12 @@
       "label": "形",
       "default": "寬",
       "slim": "纖"
+    },
+    "alert": {
+      "microsoftCape": {
+        "title": "蓑衣之改未可",
+        "description": "SJMCL 暫未能為微軟戲者上傳蓑衣。"
+      }
     }
   },
   "ManualAddJavaPathModal": {
@@ -2561,25 +2567,27 @@
           }
         }
       },
-      "updatePlayerSkinOfflinePreset": {
-        "success": "戲者外觀迭更既成",
+      "updatePlayerTexturePreset": {
+        "success": "戲者材質迭更既成",
         "error": {
-          "title": "戲者外觀迭更未成",
+          "title": "戲者材質迭更未成",
           "description": {
             "NOT_FOUND": "戲者無",
             "INVALID": "戲者型別謬",
-            "TEXTURE_ERROR": "戲者外觀獲取未成"
+            "TEXTURE_ERROR": "材質之式誤",
+            "NO_TEXTURE_API": "此認證服不可改材質"
           }
         }
       },
-      "updatePlayerSkinOfflineLocal": {
-        "success": "戲者外觀迭更既成",
+      "updatePlayerTextureLocal": {
+        "success": "戲者材質迭更既成",
         "error": {
-          "title": "戲者外觀迭更未成",
+          "title": "戲者材質迭更未成",
           "description": {
             "NOT_FOUND": "戲者無",
             "INVALID": "戲者型別謬",
-            "TEXTURE_ERROR": "戲者外觀獲取未成"
+            "TEXTURE_ERROR": "材質之式誤",
+            "NO_TEXTURE_API": "此認證服不可改材質"
           }
         }
       },

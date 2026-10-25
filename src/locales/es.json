@@ -1878,6 +1878,12 @@
       "label": "Modelo",
       "default": "Ancho",
       "slim": "Estrecho"
+    },
+    "alert": {
+      "microsoftCape": {
+        "title": "Cambio de capa no compatible",
+        "description": "SJMCL no puede ofrecer actualmente el servicio de subida de capas para cuentas de Microsoft."
+      }
     }
   },
   "ManualAddJavaPathModal": {
@@ -2561,25 +2567,27 @@
           }
         }
       },
-      "updatePlayerSkinOfflinePreset": {
-        "success": "Skin del jugador actualizada exitosamente",
+      "updatePlayerTexturePreset": {
+        "success": "Textura del jugador actualizada exitosamente",
         "error": {
-          "title": "Error al actualizar la skin del jugador",
+          "title": "Error al actualizar la textura del jugador",
           "description": {
             "NOT_FOUND": "El jugador no existe",
             "INVALID": "El tipo de jugador es inválido",
-            "TEXTURE_ERROR": "No se puede obtener la textura del jugador"
+            "TEXTURE_ERROR": "El formato de la textura es incorrecto",
+            "NO_TEXTURE_API": "La modificación de texturas no está disponible para este servidor"
           }
         }
       },
-      "updatePlayerSkinOfflineLocal": {
-        "success": "Skin del jugador actualizada exitosamente",
+      "updatePlayerTextureLocal": {
+        "success": "Textura del jugador actualizada exitosamente",
         "error": {
-          "title": "Error al actualizar la skin del jugador",
+          "title": "Error al actualizar la textura del jugador",
           "description": {
             "NOT_FOUND": "El jugador no existe",
             "INVALID": "El tipo de jugador es inválido",
-            "TEXTURE_ERROR": "No se puede obtener la textura del jugador"
+            "TEXTURE_ERROR": "El formato de la textura es incorrecto",
+            "NO_TEXTURE_API": "La modificación de texturas no está disponible para este servidor"
           }
         }
       },

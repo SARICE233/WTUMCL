@@ -1878,6 +1878,12 @@
       "label": "Model",
       "default": "Wide",
       "slim": "Slim"
+    },
+    "alert": {
+      "microsoftCape": {
+        "title": "Cape Change Not Supported",
+        "description": "SJMCL cannot currently provide cape upload services for Microsoft accounts."
+      }
     }
   },
   "ManualAddJavaPathModal": {
@@ -2561,25 +2567,27 @@
           }
         }
       },
-      "updatePlayerSkinOfflinePreset": {
-        "success": "Successfully updated player skin",
+      "updatePlayerTexturePreset": {
+        "success": "Successfully updated player texture",
         "error": {
-          "title": "Failed to update player skin",
+          "title": "Failed to update player texture",
           "description": {
             "NOT_FOUND": "The player does not exist",
             "INVALID": "The player type is invalid",
-            "TEXTURE_ERROR": "Unable to get player texture"
+            "TEXTURE_ERROR": "Texture format is incorrect",
+            "NO_TEXTURE_API": "Texture modifying is not available for this server"
           }
         }
       },
-      "updatePlayerSkinOfflineLocal": {
-        "success": "Successfully updated player skin",
+      "updatePlayerTextureLocal": {
+        "success": "Successfully updated player texture",
         "error": {
-          "title": "Failed to update player skin",
+          "title": "Failed to update player texture",
           "description": {
             "NOT_FOUND": "The player does not exist",
             "INVALID": "The player type is invalid",
-            "TEXTURE_ERROR": "Unable to get player texture"
+            "TEXTURE_ERROR": "Texture format is incorrect",
+            "NO_TEXTURE_API": "Texture modifying is not available for this server"
           }
         }
       },

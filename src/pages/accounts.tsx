@@ -162,33 +162,20 @@ const AccountsPage = () => {
     }
   };
 
-  // Only offline players store their textures in the launcher account storage,
-  // so the preset and upload paths of ManageSkinModal apply to them alone.
+  // Textures can be changed for every account type: offline players are updated
+  // locally, while third-party (authlib-injector) and Microsoft players go
+  // through their own texture APIs. Account types that cannot be handled are
+  // reported by the command itself instead of hiding the entry here.
   const isSkinEditable =
-    selectedPlayer?.playerType === PlayerType.Offline &&
+    !!selectedPlayer &&
     filterPlayersByType(selectedPlayerType).some(
       (player) => player.id === selectedPlayer.id
     );
 
-  const selectedSkinTexture = selectedPlayer?.textures.find(
-    (texture) => texture.textureType === TextureType.Skin
-  );
-
-  const selectedCapeTexture = selectedPlayer?.textures.find(
-    (texture) => texture.textureType === TextureType.Cape
-  );
-
   const getSkinEditablePlayer = (): Player | undefined => {
-    if (!selectedPlayer) {
+    if (!selectedPlayer || !isSkinEditable) {
       toast({
         title: t("AccountsPage.toast.noSelectedPlayer"),
-        status: "error",
-      });
-      return undefined;
-    }
-    if (!isSkinEditable) {
-      toast({
-        title: t("AccountsPage.toast.skinNotEditable"),
         status: "error",
       });
       return undefined;
@@ -221,7 +208,7 @@ const AccountsPage = () => {
     }
     setIsCapeLoading(true);
     try {
-      const response = await AccountService.updatePlayerSkinOfflineLocal(
+      const response = await AccountService.updatePlayerTextureLocal(
         player.id,
         capePath,
         TextureType.Cape,
@@ -470,9 +457,7 @@ const AccountsPage = () => {
         <ManageSkinModal
           isOpen={isManageSkinModalOpen}
           onClose={onManageSkinModalClose}
-          playerId={selectedPlayer.id}
-          skin={selectedSkinTexture}
-          cape={selectedCapeTexture}
+          player={selectedPlayer}
         />
       )}
     </>
