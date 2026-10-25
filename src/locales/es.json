@@ -351,7 +351,7 @@
       "settings": {
         "showInfoFeed": {
           "title": "Información de la página de inicio",
-          "description": "Muestra las noticias de la comunidad y la frase del día en la página de inicio. El saludo, la instancia reciente, el progreso de descarga y el tiempo de juego se muestran de todos modos."
+          "description": "Muestra el tiempo de juego, la instancia reciente, la frase del día y las noticias de la comunidad en la página de inicio. El saludo y el progreso de descarga siguen visibles."
         }
       }
     },

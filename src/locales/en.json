@@ -351,7 +351,7 @@
       "settings": {
         "showInfoFeed": {
           "title": "Launch Page Information Feed",
-          "description": "Show the community news and the daily quote on the launch page. The greeting, recent instance, download progress and play time widgets stay visible either way."
+          "description": "Show the play time, recent instance, daily quote and community news on the launch page. The greeting and the download progress stay visible either way."
         }
       }
     },

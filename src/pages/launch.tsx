@@ -39,8 +39,9 @@ const LaunchPage = () => {
   // being rendered unconditionally.
   const showMeridianDecor =
     config.appearance.background.choice === `${BUILT_IN_BG_PREFIX}Meridian`;
-  // The information feed column (news + daily quote) can be switched off in
-  // Settings > Appearance; the greeting and progress widgets always stay.
+  // The information feed (play time, recent instance, daily quote and the news
+  // list) can be switched off in Settings > Appearance. Only the greeting and
+  // the download progress stay: they report state instead of feeding content.
   const showInfoFeed = config.appearance.launchPage.showInfoFeed;
 
   // The shared Fade wrapper is a block box with height: 100%, so it is as tall
@@ -155,11 +156,11 @@ const LaunchPage = () => {
           className={styles.feed}
         >
           <LaunchGreeting compact={isStacked} />
-          <WeeklyPlaytimeCard />
-          {hasInstances && <RecentInstanceCard />}
           <DownloadProgressCard />
           {showInfoFeed && (
             <>
+              <WeeklyPlaytimeCard />
+              {hasInstances && <RecentInstanceCard />}
               <HitokotoCard />
               <CommunityNewsFeed />
             </>
@@ -189,6 +190,8 @@ const LaunchPage = () => {
             h={isStacked ? undefined : "100%"}
             w={isStacked ? "100%" : undefined}
           >
+            {/* The skin showcase sits right above the launch button; the
+                column gap above is the only spacing between the two. */}
             <PlayerSkinCard />
             <HomeButtonGroup />
           </Flex>

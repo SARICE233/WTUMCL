@@ -1,57 +1,86 @@
-import { Box } from "@chakra-ui/react";
+import { Box, HStack, Switch, Text } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import AdvancedCard from "@/components/common/advanced-card";
-import { Section } from "@/components/common/section";
 import SkinPreview from "@/components/skin-preview";
+import { useLauncherConfig } from "@/contexts/config";
 import { useGlobalData } from "@/contexts/global-data";
 import { TextureType } from "@/enums/account";
+import { UtilsService } from "@/services/utils";
 import styles from "@/styles/launch-home.module.css";
 import { base64ImgSrc } from "@/utils/string";
 
 // Bundled fallback skin, so a player without a skin texture still shows a body
 // instead of an empty canvas. It is a local asset, never a third-party CDN.
 const FALLBACK_SKIN_SRC = "/images/skins/steve.png";
-// skinview3d renders into a fixed-size canvas while the card is fluid, so the
-// card measures the body it gets and fits a 5:6 canvas into it; the control bar
-// adds its own 40px on top, exactly like the other preview call sites.
-const CANVAS_HEIGHT_RATIO = 1.2;
-const CONTROL_BAR_HEIGHT = 40;
+// Size envelope of the showcase. It no longer fills the action column: the
+// whole card, id badge and cape row included, is capped at 210x320 so it stays
+// a skin floating above the launch button. .playerSkinCard keeps the same
+// max-width, update both together.
+const MAX_CARD_WIDTH = 210;
+const MAX_CARD_HEIGHT = 320;
+// Floors: a narrower column shrinks the preview, but never to nothing.
 const MIN_CANVAS_WIDTH = 120;
-const MIN_CANVAS_HEIGHT = 120;
-// Used before the first measurement and in the stacked layout, where the card
-// has no definite height from its column and would otherwise collapse.
-const DEFAULT_BODY_WIDTH = 14.5 * 16 - 20;
-const DEFAULT_BODY_HEIGHT = 300;
+const MIN_CANVAS_HEIGHT = 140;
+// The id pill above the skin and the distance that separates it from the skin.
+const BADGE_HEIGHT = 24;
+const BADGE_GAP = 10;
+// SkinPreview always reserves 40px for the control bar it draws. We hide that
+// bar (showControlBar={false}) and use the strip for our single cape row.
+const PREVIEW_RESERVED_BAR = 40;
+// One right-aligned row under the skin: the only control left on the card.
+const CONTROL_BAR_HEIGHT = 28;
 
-// Live 3D preview of the player selected on the launch page: it shows the skin
-// and cape textures the account already stores and hides itself while no player
-// is selected.
+// Transparent 3D showcase of the player selected on the launch page: the skin
+// floats on the wallpaper with the player id above it, and nothing is rendered
+// while no player is selected.
 const PlayerSkinCard = () => {
   const { t } = useTranslation();
+  const { config } = useLauncherConfig();
   const { selectedPlayer } = useGlobalData();
+  const primaryColor = config.appearance.theme.primaryColor;
   const [isCapeVisible, setIsCapeVisible] = useState(true);
-  const [bodySize, setBodySize] = useState({ width: 0, height: 0 });
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const [fontFamily, setFontFamily] = useState<string | null>(null);
+  const [cardWidth, setCardWidth] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // The card takes the free column space, so a short window shrinks the preview
-  // instead of pushing the launch controls out of view. The effect re-runs on a
-  // player change because the body only exists once a player is selected.
+  // Minecraft is not a bundled font: if the machine already has one installed
+  // (shipped by the launcher or by the game itself), borrow it for the id pill.
+  // The lookup runs after mount, never on render, and any failure simply leaves
+  // the pill on the inherited font.
   useEffect(() => {
-    const body = bodyRef.current;
-    if (!body) return;
+    let active = true;
 
-    const syncBodySize = () => {
-      const rect = body.getBoundingClientRect();
-      setBodySize({
-        width: Math.floor(rect.width),
-        height: Math.floor(rect.height),
+    UtilsService.retrieveFontList()
+      .then((response) => {
+        if (!active || response.status !== "success") return;
+        const minecraftFont = response.data.find((font) =>
+          /minecraft/i.test(font)
+        );
+        if (minecraftFont) setFontFamily(`"${minecraftFont}"`);
+      })
+      .catch(() => {
+        // A missing font list must not break the preview.
       });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // The column caps the card, but a narrower window must still shrink the
+  // canvas, so its box is measured instead of assumed. The effect re-runs on a
+  // player change because the card only exists once a player is selected.
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    const syncCardWidth = () => {
+      setCardWidth(Math.floor(card.getBoundingClientRect().width));
     };
 
-    syncBodySize();
-    const observer = new ResizeObserver(syncBodySize);
-    observer.observe(body);
+    syncCardWidth();
+    const observer = new ResizeObserver(syncCardWidth);
+    observer.observe(card);
     return () => observer.disconnect();
   }, [selectedPlayer]);
 
@@ -64,52 +93,72 @@ const PlayerSkinCard = () => {
     (texture) => texture.textureType === TextureType.Cape
   );
 
-  const bodyWidth = bodySize.width || DEFAULT_BODY_WIDTH;
-  const bodyHeight = bodySize.height || DEFAULT_BODY_HEIGHT;
-  // Fit a 5:6 canvas into the body like object-fit: contain, with a floor, so it
-  // never overflows the card and never collapses either.
-  const canvasHeight = Math.max(
-    MIN_CANVAS_HEIGHT,
-    Math.min(
-      Math.round(bodyWidth * CANVAS_HEIGHT_RATIO),
-      bodyHeight - CONTROL_BAR_HEIGHT
-    )
+  const canvasWidth = Math.min(
+    Math.max(cardWidth || MAX_CARD_WIDTH, MIN_CANVAS_WIDTH),
+    MAX_CARD_WIDTH
   );
-  const canvasWidth = Math.max(
-    MIN_CANVAS_WIDTH,
-    Math.min(bodyWidth, Math.round(canvasHeight / CANVAS_HEIGHT_RATIO))
+  // Keep the 5:6 silhouette of the default skin, clamped by the height the card
+  // may still occupy under the badge.
+  const maxCanvasHeight =
+    MAX_CARD_HEIGHT - BADGE_HEIGHT - BADGE_GAP - PREVIEW_RESERVED_BAR;
+  const canvasHeight = Math.min(
+    Math.max(Math.round((canvasWidth * 6) / 5), MIN_CANVAS_HEIGHT),
+    maxCanvasHeight
   );
-  const height = canvasHeight + CONTROL_BAR_HEIGHT;
+  const previewHeight = canvasHeight + PREVIEW_RESERVED_BAR;
 
   return (
-    <Section
+    <Box
+      ref={cardRef}
       data-launch="player-skin"
       className={styles.playerSkinCard}
-      title={t("LaunchPage.playerSkin.title")}
-      description={selectedPlayer.name}
     >
-      <AdvancedCard p={2.5} flex="1" minH={0}>
-        <Box
-          ref={bodyRef}
-          h="100%"
-          minH={0}
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          overflow="hidden"
+      <Box
+        data-launch="player-skin-id"
+        className={styles.playerSkinBadge}
+        title={selectedPlayer.name}
+        style={fontFamily ? { fontFamily } : undefined}
+      >
+        {selectedPlayer.name}
+      </Box>
+      <Box
+        className={styles.playerSkinStage}
+        style={{
+          width: `${canvasWidth}px`,
+          height: `${previewHeight}px`,
+        }}
+      >
+        <SkinPreview
+          skinSrc={skin ? base64ImgSrc(skin.image) : FALLBACK_SKIN_SRC}
+          capeSrc={cape ? base64ImgSrc(cape.image) : undefined}
+          skinModel={skin?.model}
+          width={canvasWidth}
+          height={previewHeight}
+          // No plate behind the skin: "none" is SkinPreview's transparent
+          // backgroundType, it clears the viewer background so the wallpaper
+          // shows through the canvas.
+          canvasBg="none"
+          showControlBar={false}
+          isCapeVisible={isCapeVisible}
+          onCapeVisibilityChange={setIsCapeVisible}
+        />
+        <HStack
+          className={styles.playerSkinControls}
+          style={{ height: `${CONTROL_BAR_HEIGHT}px` }}
         >
-          <SkinPreview
-            skinSrc={skin ? base64ImgSrc(skin.image) : FALLBACK_SKIN_SRC}
-            capeSrc={cape ? base64ImgSrc(cape.image) : undefined}
-            skinModel={skin?.model}
-            width={canvasWidth}
-            height={height}
-            isCapeVisible={isCapeVisible}
-            onCapeVisibilityChange={setIsCapeVisible}
+          <Text fontSize="xs" className="secondary-text" whiteSpace="nowrap">
+            {t("SkinPreview.cape")}
+          </Text>
+          <Switch
+            size="sm"
+            colorScheme={primaryColor}
+            isChecked={isCapeVisible}
+            onChange={(event) => setIsCapeVisible(event.target.checked)}
+            aria-label={t("SkinPreview.cape")}
           />
-        </Box>
-      </AdvancedCard>
-    </Section>
+        </HStack>
+      </Box>
+    </Box>
   );
 };
 
