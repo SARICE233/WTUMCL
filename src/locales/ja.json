@@ -215,21 +215,21 @@
       "description": {
         "start": {
           "3rdparty": "この認証ソースは Yggdrasil Connect 仕様提案をサポート",
-          "microsoft": " WTUMCL は Microsoft OAuth 2.0 デバイス認証フローをサポート"
+          "microsoft": "WTUMCL は Microsoft OAuth 2.0 デバイス認証フローをサポート"
         },
         "next": "次へ進むボタンをクリックし、ログインウィンドウに上記のコードを入力してください。（自動コピー済）"
       },
       "button": {
         "start": {
-          "3rdparty": " OAuth ログイン",
-          "microsoft": " Microsoft ログイン"
+          "3rdparty": "OAuth ログイン",
+          "microsoft": "Microsoft ログイン"
         },
         "next": "次へ進む"
       }
     },
     "button": {
-      "buyMinecraft": " Minecraft を購入",
-      "useOAuthLogin": " OAuth ログイン",
+      "buyMinecraft": "Minecraft を購入",
+      "useOAuthLogin": "OAuth ログイン",
       "usePasswordLogin": "アカウントとパスワードでログイン"
     }
   },
@@ -435,7 +435,7 @@
     },
     "content": "{{type}} <b>{{name}}</b> を",
     "resourceType": {
-      "Root": " ",
+      "Root": "",
       "ResourcePacks": "リソースパック",
       "Saves": "マップ",
       "Schematics": "スキーマティック",
@@ -482,7 +482,7 @@
   "DeleteInstanceAlertDialog": {
     "dialog": {
       "title": "インスタンス削除",
-      "content": "このインスタンス「{{gameName}}」を消去しますか。インスタンスは完全に消えます。（戻せません！）",
+      "content": "このインスタンス「{{instanceName}}」を消去しますか。インスタンスは完全に消えます。（戻せません！）",
       "warning": {
         "withVerIso": "バージョン分離が有効化されています。セーブデータなども消去されます。保存が必要な場合は事前移行をしてください。",
         "woVerIso": "バージョン分離が有効時、未移行のセーブデータなども消去することをご注意してください。"
@@ -498,7 +498,7 @@
   "DeletePlayerAlertDialog": {
     "dialog": {
       "title": "キャラクターを削除",
-      "content": "このキャラクターを削除しますか。この操作は取り消せません！"
+      "content": "このキャラクター「{{name}}」を削除しますか。この操作は取り消せません！"
     }
   },
   "DevToolbar": {
@@ -1103,7 +1103,7 @@
       "MOD_RESOLUTION_MISSING": "モッド {{param1}} に前提モッド {{param2}} が不足しています",
       "MOD_RESOLUTION_MISSING_MINECRAFT": "モッド {{param1}} を実行するには Minecraft {{param2}} が必要です。",
       "MOD_RESOLUTION_COLLECTION": "モッド {{param1}} に前提モッド {{param2}} が不足しています。",
-      "FILE_ALREADY_EXISTS": "{{param}} が既に存在するため実行できません。このファイルをバックアップ後に削除してゲームを再起動してみてください。",
+      "FILE_ALREADY_EXISTS": "{{param1}} が既に存在するため実行できません。このファイルをバックアップ後に削除してゲームを再起動してみてください。",
       "LOADING_CRASHED_FORGE": "モッド {{param1}} ({{param2}}) のエラーにより実行できません。このモッドを削除または更新して再起動してください。",
       "BOOTSTRAP_FAILED": "モッド {{param1}} に問題があります。このモッドを削除または更新して再起動してください。",
       "LOADING_CRASHED_FABRIC": "モッド {{param1}} のエラーにより実行できません。このモッドを削除または更新して再起動してください",
@@ -1875,14 +1875,14 @@
     "skin": "スキン",
     "cape": "ケープ",
     "model": {
-      "label": "モーダル",
+      "label": "モデル",
       "default": "デフォルト",
       "slim": "スリム"
     },
     "alert": {
       "microsoftCape": {
         "title": "ケープの変更は未対応",
-        "description": "SJMCL は現在、Microsoft アカウントのケープをアップロードできない。"
+        "description": "WTUMCL は現在、Microsoft アカウントのケープをアップロードできない。"
       }
     }
   },
@@ -2186,7 +2186,7 @@
         "gui": "GUI",
         "items": "アイテム",
         "locale": "ロケール",
-        "models": "モーダル",
+        "models": "モデル",
         "combat": "コンバット",
         "cursed": "不気味",
         "decoration": "デコレーション",

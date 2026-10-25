@@ -1,6 +1,6 @@
 **English** · [简体中文](docs/CHANGELOG.zh-Hans.md)
 
-SJMCL follows [Semantic Versioning 2.0.0](http://semver.org/).
+WTUMCL follows [Semantic Versioning 2.0.0](http://semver.org/).
 
 ## 1.4.0
 

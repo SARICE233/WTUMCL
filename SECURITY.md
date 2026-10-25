@@ -4,7 +4,7 @@
 
 ## Supported Versions
 
-The following releases of SJMCL are currently supported.
+The following releases of WTUMCL are currently supported.
 
 | Version | Supported |
 | ------- | --------- |
@@ -18,7 +18,7 @@ If you believe you have found a security vulnerability in our launcher, please r
 
 1. **DO NOT** create a GitHub issue for security vulnerabilities
 2. Send an email to [wtumclfeedback@wtumc.top](mailto:wtumclfeedback@wtumc.top)
-   - Start your email subject with `[SJMCL Security]`
+   - Start your email subject with `[WTUMCL Security]`
    - Provide as much information as possible about the vulnerability
 
 ## Response Time

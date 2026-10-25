@@ -758,7 +758,7 @@
   },
   "EnableExtensionConfirmDialog": {
     "title": "Enable Extension",
-    "body": "Are you sure you want to enable the extension <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) from <hl>{{author}}</hl>? ",
+    "body": "Are you sure you want to enable the extension <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) from <hl>{{author}}</hl>?",
     "button": {
       "enable": "Enable"
     },
@@ -1586,7 +1586,7 @@
         "info": "Mod Info",
         "update": "Update",
         "search": "Search",
-        "placeholder": " Search mods..."
+        "placeholder": "Search mods..."
       }
     }
   },
@@ -1882,7 +1882,7 @@
     "alert": {
       "microsoftCape": {
         "title": "Cape Change Not Supported",
-        "description": "SJMCL cannot currently provide cape upload services for Microsoft accounts."
+        "description": "WTUMCL cannot currently provide cape upload services for Microsoft accounts."
       }
     }
   },

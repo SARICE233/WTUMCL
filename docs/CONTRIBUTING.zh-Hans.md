@@ -51,9 +51,9 @@ pnpm install
 
 ### 配置环境变量
 
-将 `.env.template` 文件复制为 `.env`，并根据模板中的注释填写所需的环境变量。
+可选：将 `.env.template` 复制为仓库根目录的 `.env`，并按模板中的注释调整变量；多数开发构建使用默认值即可。
 
-这些值将作为编译时常量嵌入 Rust 后端。
+`WTUMCL_*` 变量作为编译时常量嵌入 Rust 后端，`NEXT_PUBLIC_*` 变量供前端构建使用。仓库不提交任何凭证，CurseForge API key 在构建时注入。
 
 ### 本地运行
 

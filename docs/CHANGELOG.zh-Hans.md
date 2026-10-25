@@ -1,6 +1,6 @@
 [English](../CHANGELOG.md) · **简体中文**
 
-SJMCL 遵循 [语义化版本规范 2.0.0](https://semver.org/lang/zh-CN/)。
+WTUMCL 遵循 [语义化版本规范 2.0.0](https://semver.org/lang/zh-CN/)。
 
 ## 1.4.0
 

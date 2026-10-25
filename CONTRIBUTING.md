@@ -51,9 +51,9 @@ pnpm install
 
 ### Configure environment variables
 
-Copy the `.env.template` file to `.env`, and fill in the required environment variables based on the comments in the template.
+Optionally copy `.env.template` to `.env` at the repository root and adjust the variables as described in the template; the defaults are enough for most development builds.
 
-These values will be embedded into the Rust backend as compile-time constants.
+`WTUMCL_*` values are embedded into the Rust backend as compile-time constants, and `NEXT_PUBLIC_*` values are used by the frontend build. No credential is committed; the CurseForge API key is injected at build time.
 
 ### Run locally
 

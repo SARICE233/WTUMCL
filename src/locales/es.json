@@ -758,7 +758,7 @@
   },
   "EnableExtensionConfirmDialog": {
     "title": "Habilitar Extensión",
-    "body": "¿Está seguro de que desea habilitar la extensión <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) de <hl>{{author}}</hl>? ",
+    "body": "¿Está seguro de que desea habilitar la extensión <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) de <hl>{{author}}</hl>?",
     "button": {
       "enable": "Habilitar"
     },
@@ -1586,7 +1586,7 @@
         "info": "Información del Mod",
         "update": "Actualizar",
         "search": "Buscar",
-        "placeholder": " Buscar mods..."
+        "placeholder": "Buscar mods..."
       }
     }
   },
@@ -1882,7 +1882,7 @@
     "alert": {
       "microsoftCape": {
         "title": "Cambio de capa no compatible",
-        "description": "SJMCL no puede ofrecer actualmente el servicio de subida de capas para cuentas de Microsoft."
+        "description": "WTUMCL no puede ofrecer actualmente el servicio de subida de capas para cuentas de Microsoft."
       }
     }
   },

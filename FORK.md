@@ -70,7 +70,7 @@ GitHub 的 zip 下载会破坏两类 git 对象，这里已通过直接对齐上
 | 界面全名 | `WTUMC Launcher` | 同上（可随时改） |
 | 认证服务器自报名 | `WTUMCL` | `yggdrasil_server.rs` |
 | 版权 | 双署名：上游 + 本分支 | `tauri.conf.json`、7 个语言文件、README 三语 |
-| 仓库 | https://github.com/SARICE233/WTUMCL（私有，**尚未推送**） | `origin` |
+| 仓库 | https://github.com/SARICE233/WTUMCL | `origin` |
 
 ### 2.1 刻意保留的标识
 
@@ -102,10 +102,10 @@ GitHub 的 zip 下载会破坏两类 git 对象，这里已通过直接对齐上
 - `src-tauri/Cargo.toml:7`：repository
 - `src-tauri/assets/icons/`：图标需替换
 
-### 3.3 界面品牌（约 202 处）
+### 3.3 界面品牌
 
-- 7 个语言文件共 192 处 `SJMCL`（en 26 / es 26 / fr 28 / ja 28 / lzh 28 / zh-Hans 28 / zh-Hant 28）
-- `.tsx` 中约 10 处：`src/pages/settings/about.tsx`、`src/layouts/main-layout.tsx`、`src/components/modals/star-us-modal.tsx` 等
+- 7 个语言文件中的 `SJMCL` 仅剩上游归属：关于页致谢、版权声明、`awesome-SJMCL-extensions` 链接（均不可替换）
+- `.tsx` 中仅剩 `src/pages/settings/about.tsx:38` 的上游仓库链接映射，以及 4 处指向上游 issue/PR 的代码注释
 - 注意：`src-tauri/src/launcher_config/models.rs:374-375`、`commands.rs:70,106` 指向的是上游服务端接口，是否保留取决于是否继续使用其服务
 
 ### 3.4 上游归属（必须保留，不可替换）
@@ -144,7 +144,7 @@ pnpm tauri dev        # 开发
 pnpm tauri build      # 打包
 ```
 
-工具链要求：Node 22+、pnpm 10+、**Rust >= 1.98.1**（`src-tauri/Cargo.toml` 的 workspace `rust-version`）。`.env` 可选（从 `.env.template` 复制，含 CurseForge API key）。
+工具链要求：Node 22+、pnpm 10+、**Rust >= 1.98.1**（`src-tauri/Cargo.toml` 的 workspace `rust-version`）。CurseForge API key 不随仓库提交，由构建时的 `WTUMCL_CURSEFORGE_API_KEY` 注入并嵌入后端（仅开发者构建时需要；缺省仍可编译，但浏览 CurseForge 时会提示凭证缺失）。开发时可按需把 `.env.template` 复制为 `.env` 以覆盖默认值。
 
 ### 5.2 CI（已清理）
 
@@ -188,7 +188,7 @@ Fork 后保留 5 个工作流，其余上游专用流程已删除并通过 YAML 
 | 前端构建 | `pnpm build` 通过，44 个页面全部静态导出，`out/` 16.9 MB |
 | 前端 lint | `pnpm eslint 'src/**/*.{js,jsx,ts,tsx}' --no-fix --max-warnings=0` 通过（CI 同款命令） |
 | 后端类型检查 | ✅ `cargo check` exit 0，0 错误（见 7.3） |
-| 后端格式检查 | Windows 上 `cargo fmt --check` 必然失败，见 7.1 |
+| 后端格式检查 | ✅ `cargo fmt --check` 在 Windows 上通过（`newline_style = "Unix"`，见 7.1） |
 
 ### 7.1 Windows 上 cargo fmt 的假阳性
 
@@ -271,7 +271,7 @@ git config user.email "你的邮箱"
 - **其余上游文档链接**：语言文件中 `helpUrl`、用户群等仍指向 `mc.sjtu.cn`（描述的是继承自上游的功能文档），后续可迁移
 - **GitHub Secrets 改名**：仓库设置里的 `SJMCL_*` 需改成 `WTUMCL_*`（用户决定暂时搁置）
 - **banner/图标源文件**：设计源图不在本仓库中，如需重生成图标按第 9 节方法
-- 按要求：**尚未向 origin 推送任何内容**
+- 已向 `origin`（`SARICE233/WTUMCL`）推送 `main`，远端 latest 为 `82b4c36`，本地 `main` 领先该提交
 
 ## 9. 图标生成方法（复现用）
 

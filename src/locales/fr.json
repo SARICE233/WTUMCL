@@ -639,7 +639,7 @@
     }
   },
   "DownloadSpecificResourceModal": {
-    "title": "Téléchargement de ressource - {{name}}",
+    "title": "Téléchargement de ressource - {{name}} - {{source}}",
     "label": {
       "all": "Tout",
       "recommendedVersion": "Version recommandée",
@@ -754,11 +754,11 @@
     }
   },
   "Empty": {
-    "noData": " donnée"
+    "noData": "Aucune donnée"
   },
   "EnableExtensionConfirmDialog": {
     "title": "Activer l'extension",
-    "body": "Voulez-vous vraiment activer l'extension <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) de <hl>{{author}}</hl> ? ",
+    "body": "Voulez-vous vraiment activer l'extension <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) de <hl>{{author}}</hl> ?",
     "button": {
       "enable": "Activer"
     },
@@ -1103,7 +1103,7 @@
       "MOD_RESOLUTION_MISSING": "Cette instance ne peut pas continuer à s'exécuter car le mod {{param1}} nécessite le mod prérequis {{param2}}.",
       "MOD_RESOLUTION_MISSING_MINECRAFT": "Le mod {{param1}} dans cette instance nécessite Minecraft {{param2}} pour s'exécuter.",
       "MOD_RESOLUTION_COLLECTION": "Cette instance ne peut pas continuer à s'exécuter car le mod {{param1}} nécessite le(s) mod(s) prérequis {{param2}}.",
-      "FILE_ALREADY_EXISTS": "Cette instance ne peut pas continuer à s'exécuter car {{param}} existe déjà. Si vous pensez que ce fichier peut être supprimé, vous pouvez essayer de le supprimer après l'avoir sauvegardé, puis redémarrer le jeu.",
+      "FILE_ALREADY_EXISTS": "Cette instance ne peut pas continuer à s'exécuter car {{param1}} existe déjà. Si vous pensez que ce fichier peut être supprimé, vous pouvez essayer de le supprimer après l'avoir sauvegardé, puis redémarrer le jeu.",
       "LOADING_CRASHED_FORGE": "Cette instance ne peut pas continuer à s'exécuter en raison d'une erreur avec le mod {{param1}} ({{param2}}). Vous pouvez essayer de supprimer ou de mettre à jour ce mod pour résoudre le problème.",
       "BOOTSTRAP_FAILED": "Cette instance ne peut pas continuer à s'exécuter en raison d'un problème avec le mod {{param1}}. Vous pouvez essayer de supprimer ou de mettre à jour ce mod pour résoudre le problème.",
       "LOADING_CRASHED_FABRIC": "Cette instance ne peut pas continuer à s'exécuter en raison d'une erreur avec le mod {{param1}}. Vous pouvez essayer de supprimer ou de mettre à jour ce mod pour résoudre le problème.",
@@ -1882,7 +1882,7 @@
     "alert": {
       "microsoftCape": {
         "title": "Changement de cape non pris en charge",
-        "description": "SJMCL ne peut pas encore proposer de téléversement de cape pour les comptes Microsoft."
+        "description": "WTUMCL ne peut pas encore proposer de téléversement de cape pour les comptes Microsoft."
       }
     }
   },

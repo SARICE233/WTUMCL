@@ -4,7 +4,7 @@
 
 ## 支持的版本
 
-SJMCL 当前支持以下版本。
+WTUMCL 当前支持以下版本。
 
 | 版本 | 是否支持 |
 | ---- | -------- |
@@ -18,7 +18,7 @@ SJMCL 当前支持以下版本。
 
 1. **请勿**为安全漏洞创建 GitHub 议题
 2. 发送邮件至 [wtumclfeedback@wtumc.top](mailto:wtumclfeedback@wtumc.top)
-   - 邮件主题请以 `[SJMCL Security]` 开头
+   - 邮件主题请以 `[WTUMCL Security]` 开头
    - 请尽可能提供有关该漏洞的详细信息
 
 ## 响应时间

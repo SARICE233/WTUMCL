@@ -1103,7 +1103,7 @@
       "MOD_RESOLUTION_MISSING": "目前實例由於模組 {{param1}} 缺少前置模組 {{param2}}，無法繼續執行。",
       "MOD_RESOLUTION_MISSING_MINECRAFT": "目前實例中模組 {{param1}} 需要 Minecraft {{param2}} 才能執行。",
       "MOD_RESOLUTION_COLLECTION": "目前實例由於模組 {{param1}} 缺少前置模組 {{param2}}，無法繼續執行。",
-      "FILE_ALREADY_EXISTS": "目前實例由於 {{param}} 已經存在，無法繼續執行。如果你認為這個檔案可以刪除，你可以在備份這個檔案後嘗試刪除它，並重新啟動遊戲。",
+      "FILE_ALREADY_EXISTS": "目前實例由於 {{param1}} 已經存在，無法繼續執行。如果你認為這個檔案可以刪除，你可以在備份這個檔案後嘗試刪除它，並重新啟動遊戲。",
       "LOADING_CRASHED_FORGE": "目前實例由於模組 {{param1}} ({{param2}}) 錯誤，無法繼續執行。你可以嘗試刪除或更新該模組以解決問題。",
       "BOOTSTRAP_FAILED": "目前實例由於模組 {{param1}} 出現問題，無法繼續執行。你可以嘗試刪除或更新該模組以解決問題。",
       "LOADING_CRASHED_FABRIC": "目前實例由於模組 {{param1}} 錯誤，無法繼續執行。你可以嘗試刪除或更新該模組以解決問題。",
@@ -1882,7 +1882,7 @@
     "alert": {
       "microsoftCape": {
         "title": "披風變更暫不支援",
-        "description": "SJMCL 目前無法為 Microsoft 帳戶提供披風上傳服務。"
+        "description": "WTUMCL 目前無法為 Microsoft 帳戶提供披風上傳服務。"
       }
     }
   },
@@ -3212,7 +3212,7 @@
     "cape": "披風",
     "animation": {
       "idle": "空閒",
-      "walk": "步行 ",
+      "walk": "步行",
       "run": "跑步",
       "wave": "揮手"
     },

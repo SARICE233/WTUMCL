@@ -370,7 +370,7 @@ pub async fn run() {
         eprintln!("Failed to build Tauri application: {:?}", e); // fallback when logging is not available
         native_dialog::DialogBuilder::message()
           .set_title("Initialization error")
-          .set_text(format!("Cannot initialize SJMCL due to an error:\n{e}"))
+          .set_text(format!("Cannot initialize WTUMCL due to an error:\n{e}"))
           .set_level(native_dialog::MessageLevel::Error)
           .alert()
           .show()

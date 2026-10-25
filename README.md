@@ -54,7 +54,7 @@ WTUMCL currently supports the following platforms:
 | Platform | Versions                            | Architectures               | Provided Bundles                  |
 | -------- | ----------------------------------- | --------------------------- | --------------------------------- |
 | Windows  | 10 and above                        | `aarch64`, `i686`, `x86_64` | installer `.exe`, portable `.exe` |
-| macOS    | 10.15 and above                     | `aarch64`, `x86_64`         | `.app`, `.dmg`                    |
+| macOS    | 10.15 and above                     | `aarch64`, `x86_64`         | `.app`, `.app.tar.gz`             |
 | Linux    | webkit2gtk 4.1 (e.g., Ubuntu 22.04) | `aarch64`, `x86_64`         | `.deb`, `.rpm`, portable binary   |
 
 ## Build from Source
