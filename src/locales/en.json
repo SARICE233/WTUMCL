@@ -1611,11 +1611,6 @@
       "title": "Schematics"
     }
   },
-  "InstanceScreenshotsPage": {
-    "button": {
-      "details": "Details"
-    }
-  },
   "InstanceSettingsPage": {
     "name": "Instance Name",
     "description": "Instance Description",
