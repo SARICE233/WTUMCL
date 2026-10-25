@@ -415,3 +415,48 @@ mod launch_page_feed_tests {
     assert!(!parsed.appearance.launch_page.show_info_feed);
   }
 }
+
+#[cfg(test)]
+mod liquid_glass_theme_tests {
+  use crate::launcher_config::models::LauncherConfig;
+
+  #[test]
+  fn liquid_glass_design_defaults_to_on() {
+    assert!(
+      LauncherConfig::default()
+        .appearance
+        .theme
+        .use_liquid_glass_design
+    );
+  }
+
+  #[test]
+  fn legacy_config_without_the_glass_flag_keeps_the_material_on() {
+    // Configs written before the flag existed must not lose the material.
+    let legacy = r#"{"appearance":{"theme":{"primaryColor":"red"}}}"#;
+    let config: LauncherConfig = serde_json::from_str(legacy).expect("legacy config should load");
+
+    assert!(config.appearance.theme.use_liquid_glass_design);
+  }
+
+  #[test]
+  fn saved_off_value_is_preserved_without_a_migration() {
+    // Users who already turned the material off keep that choice.
+    let saved = r#"{"appearance":{"theme":{"useLiquidGlassDesign":false}}}"#;
+    let config: LauncherConfig = serde_json::from_str(saved).expect("saved config should load");
+
+    assert!(!config.appearance.theme.use_liquid_glass_design);
+  }
+
+  #[test]
+  fn the_glass_flag_round_trips_as_camel_case() {
+    let mut config = LauncherConfig::default();
+    config.appearance.theme.use_liquid_glass_design = false;
+
+    let json = serde_json::to_value(&config).unwrap();
+    assert_eq!(json["appearance"]["theme"]["useLiquidGlassDesign"], false);
+
+    let parsed: LauncherConfig = serde_json::from_value(json).unwrap();
+    assert!(!parsed.appearance.theme.use_liquid_glass_design);
+  }
+}

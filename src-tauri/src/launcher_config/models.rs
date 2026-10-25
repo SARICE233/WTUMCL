@@ -329,6 +329,10 @@ structstruck::strike! {
         pub primary_color: String,
         #[default = "light"]
         pub color_mode: String,
+        // On by default for fresh installs: the launcher's own surfaces are
+        // designed around the liquid glass material. A saved value is still
+        // honoured, so users who turned it off keep it off.
+        #[default = true]
         pub use_liquid_glass_design: bool,
         #[default = "adaptive"]
         pub head_nav_style: String,
