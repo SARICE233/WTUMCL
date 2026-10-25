@@ -19,7 +19,7 @@
 - 区间内共 82 条提交，其中 5 条是 merge commit（`5d8b9787`、`e32769fa`、`682a1d9a`、`2e240833`、`9ce57e80`）。
 - 盘点时本仓自 `ba24b6dc` 起另有 97 条自研提交，不在本表范围内。
 
-判定方法：逐条执行 `git show --stat <hash>` 看实际改动文件，再对本仓对应文件做 `git log -S` / `grep` 核实是否已有等效实现；依赖类条目直接核对 `Cargo.toml`、`Cargo.lock`、`package.json`、`versions.txt` 的当前值。
+判定方法：逐条执行 `git show --stat <hash>` 看实际改动文件，再对本仓对应文件做 `git log -S` / `grep` 核实是否已有等效实现；依赖类条目直接核对 `Cargo.toml`、`Cargo.lock`、`package.json`、`versions.txt` 的当前值。merge 提交同样要评估：用 `git show --format= --name-only <hash>` 查看 combined diff（合并/冲突解决带入的改动），再按改动实际属于哪条分支归属判定——若属于本仓不移植的 downloader_v2 分支，即便文件数不为零也仍判 skipped-core；不要因为标题含「Merge」就假定它没有改动。
 
 ## 二、分类口径与统计
 
@@ -67,7 +67,7 @@
 | `6100c2dd` | fix(download): exclude installation steps from file progress | skipped-core | 不引入 | 进度里排除安装步骤，同样基于新任务模型与 locales。 | — |
 | `43d4f2ce` | fix(download): hide stopped progress and bound error details | skipped-core | 不引入 | 下载页与下载指示器跟新模型的状态/错误字段。 | — |
 | `e9b85b26` | fix(download): hide excessive and invalid remaining times | skipped-core | 不引入 | src/utils/download.ts 本仓不存在，无落点。 | — |
-| `682a1d9a` | Merge branch 'main' into refactor/downloader_v2 | skipped-core | 不引入 | downloader_v2 分支合并 main 的 merge commit，自身无独立改动（带入的主线提交已单列）。 | — |
+| `682a1d9a` | Merge branch 'main' into refactor/downloader_v2 | skipped-core | 不引入 | downloader_v2 分支合并 main 的 merge commit；`git show --format= --name-only 682a1d9a` 的 combined diff 列出 16 个文件（Cargo.lock、capabilities、instance 命令与 7 个 locale 等，属合并/冲突解决带入的改动），这些改动属于本仓不移植的 downloader_v2 分支，因此仍判 skipped-core（带入的主线提交已单列）。 | — |
 | `c046a7aa` | fix(backend): register download engine state before starting task recovery | skipped-core | 不引入 | 引擎状态注册顺序，crate 内代码加示例。 | — |
 | `46af6381` | feat(download): retry across sources before reporting failure | skipped-core | 不引入 | 跨源重试在 crate 与 src-tauri/src/download.rs。 | — |
 | `d71b27bd` | refactor(download): filter restored task history, align navbar visibility with main | skipped-core | 不引入 | 恢复任务历史过滤与导航栏可见性对齐，分支内实现。 | — |
@@ -95,7 +95,7 @@
 | `877c8e2c` | feat(frontend): add hover effect to wrap card, update code style | ported | 已移植 | wrap card 增加 hover 边框并统一代码风格；本仓 768763a8 引入 hoverBorderColor 与 _hover 边框，等效。 | `768763a8` |
 | `ce5213e2` | test(download): remove tests added by downloader refactor | skipped-core | 不引入 | 删除本次重构新增的测试（cli、crate、前端 ETA 测试）。 | — |
 | `ef8bd812` | refactor(client): simplify general and download HTTP client builders | deferred | 暂缓 | 纯重命名式重构（build_sjmcl_client 拆成 general / download 两个 builder），无行为变化；本仓已有独立的下载 client（tasks/download.rs），改名收益低。 | — |
-| `e32769fa` | Merge remote-tracking branch 'origin/main' into refactor/downloader_v2 | skipped-core | 不引入 | downloader_v2 分支同步 main 的 merge commit，无独立改动。 | — |
+| `e32769fa` | Merge remote-tracking branch 'origin/main' into refactor/downloader_v2 | skipped-core | 不引入 | downloader_v2 分支同步 origin/main 的 merge commit；`git show --format= --name-only e32769fa` 的 combined diff 列出 8 个文件（Cargo.toml / Cargo.lock 与 cleanroom、forge、neoforge、optifine、整合包导入的冲突解决），这些改动属于本仓不移植的 downloader_v2 分支，因此仍判 skipped-core。 | — |
 | `888857c7` | docs(cli): reorganize the CLI introduction and usage guide | adopted | 已落地 | 重组 CLI 文档；本仓 cli 命令集不同（没有 install / download 子命令），dad40ad7 按本仓命令重写了使用指南。 | `dad40ad7` |
 | `9b4e1f19` | refactor(backend): consolidate downloader persistence schema | skipped-core | 不引入 | 统一下载持久化 schema，crate 的 model / storage。 | — |
 | `2e240833` | Merge pull request #2070 from NoirHare/main | skipped-core | 不引入 | PR #2070 的 merge commit，内容为 0458d63e / 526a448d / a51803d9，已由 b58e0ee9 与 768763a8 覆盖；merge 自身无独立改动。 | — |
