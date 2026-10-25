@@ -15,8 +15,10 @@ pub struct MinecraftProfile {
 
 #[derive(Deserialize, Debug)]
 pub struct TextureEntry {
+  pub id: Option<String>,
   pub state: String,
   pub url: String,
+  pub alias: Option<String>,
   pub variant: Option<SkinModel>,
 }
 

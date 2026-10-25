@@ -118,6 +118,8 @@ pub async fn run() {
         account::commands::add_player_from_selection,
         account::commands::update_player_texture_preset,
         account::commands::update_player_texture_local,
+        account::commands::list_player_capes,
+        account::commands::update_player_cape,
         account::commands::delete_player,
         account::commands::refresh_player,
         account::commands::retrieve_microsoft_friend_list,

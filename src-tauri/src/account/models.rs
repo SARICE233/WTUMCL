@@ -77,6 +77,16 @@ pub struct Texture {
   pub preset: Option<PresetRole>,
 }
 
+/// A cape of a player, as listed by the cape commands.
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerCapeInfo {
+  pub id: String,
+  pub alias: String,
+  pub image: ImageWrapper,
+  pub active: bool,
+}
+
 // only for the client
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -16,12 +16,14 @@ use crate::account::helpers::import::hmcl::retrieve_hmcl_account_info;
 use crate::account::helpers::import::legacy_hmcl::retrieve_legacy_hmcl_account_info;
 use crate::account::helpers::import::multimc::retrieve_multimc_account_info;
 use crate::account::helpers::microsoft::models::{MicrosoftFriendAction, MicrosoftFriendList};
-use crate::account::helpers::microsoft::texture::MicrosoftTextureOperation;
-use crate::account::helpers::texture::{TextureOperation, load_preset_skin_info};
+use crate::account::helpers::microsoft::texture::{MicrosoftTextureOperation, parse_cape_entries};
+use crate::account::helpers::texture::{
+  TextureOperation, load_preset_skin_info, local_cape_info, upsert_texture,
+};
 use crate::account::helpers::{microsoft, misc, offline};
 use crate::account::models::{
-  AccountError, AccountInfo, AuthServer, DeviceAuthResponseInfo, Player, PlayerInfo, PlayerType,
-  PresetRole, SkinModel, Texture, TextureType,
+  AccountError, AccountInfo, AuthServer, DeviceAuthResponseInfo, Player, PlayerCapeInfo,
+  PlayerInfo, PlayerType, PresetRole, SkinModel, Texture, TextureType,
 };
 use crate::launcher_config::models::LauncherConfig;
 use crate::utils::fs::get_app_resource_filepath;
@@ -350,13 +352,11 @@ pub async fn update_player_texture_preset(
   match player.player_type {
     PlayerType::Offline => {}
     PlayerType::ThirdParty => {
-      let _ = AuthlibInjectorTextureOperation::delete_cape(&app, &player).await;
       AuthlibInjectorTextureOperation::upload_skin(&app, &player, &skin_path, model.clone())
         .await?;
     }
     PlayerType::Microsoft => {
       let player = microsoft::oauth::with_valid_access_token(&app, &player).await?;
-      let _ = MicrosoftTextureOperation::delete_cape(&app, &player).await;
       MicrosoftTextureOperation::upload_skin(&app, &player, &skin_path, model.clone()).await?;
     }
   };
@@ -365,15 +365,16 @@ pub async fn update_player_texture_preset(
     let mut account_state = account_binding.lock()?;
 
     if let Some(stored_player) = account_state.players.iter_mut().find(|p| p.id == player_id) {
-      stored_player.textures.clear();
-      stored_player.textures.push(Texture {
+      let new_skin = Texture {
         texture_type: TextureType::Skin,
         image: load_image_from_dir(&skin_path)
           .ok_or(AccountError::TextureError)?
           .into(),
         model,
         preset: Some(preset_role),
-      });
+      };
+      let textures = upsert_texture(&stored_player.textures, new_skin);
+      stored_player.textures = textures;
       account_state.save()?;
     }
   }
@@ -477,6 +478,98 @@ pub async fn update_player_texture_local(
       account_state.save()?;
     }
   }
+  Ok(())
+}
+
+#[tauri::command]
+pub async fn list_player_capes(
+  app: AppHandle,
+  player_id: String,
+) -> SJMCLResult<Vec<PlayerCapeInfo>> {
+  let player = misc::get_player_by_id(&app, &player_id)?.ok_or(AccountError::NotFound)?;
+
+  match player.player_type {
+    PlayerType::Microsoft => {
+      let player = microsoft::oauth::with_valid_access_token(&app, &player).await?;
+      MicrosoftTextureOperation::fetch_player_capes(&app, &player).await
+    }
+    // Offline and third-party players have no Mojang cape list: the cape they uploaded to their
+    // own auth server is the only cape the launcher stores for them.
+    PlayerType::Offline | PlayerType::ThirdParty => {
+      Ok(local_cape_info(&player.textures).into_iter().collect())
+    }
+  }
+}
+
+#[tauri::command]
+pub async fn update_player_cape(
+  app: AppHandle,
+  player_id: String,
+  cape_id: Option<String>,
+) -> SJMCLResult<()> {
+  let account_binding = app.state::<Mutex<AccountInfo>>();
+
+  let player = {
+    let account_state = account_binding.lock()?;
+    account_state
+      .get_player_by_id(player_id.clone())
+      .ok_or(AccountError::NotFound)?
+      .clone()
+  };
+
+  if player.player_type != PlayerType::Microsoft {
+    // The authlib-injector API has no cape list, so there is nothing to switch for these players.
+    return Err(AccountError::NoTextureApi.into());
+  }
+
+  let cape_id = cape_id
+    .map(|cape_id| cape_id.trim().to_string())
+    .filter(|cape_id| !cape_id.is_empty());
+  let clearing_cape = cape_id.is_none();
+
+  let player = microsoft::oauth::with_valid_access_token(&app, &player).await?;
+  let profile = MicrosoftTextureOperation::set_active_cape(&app, &player, cape_id).await?;
+
+  let mut textures: Vec<Texture> = player
+    .textures
+    .iter()
+    .filter(|texture| texture.texture_type != TextureType::Cape)
+    .cloned()
+    .collect();
+
+  // A successful clear removes the cape texture, whatever the response still reports. A chosen
+  // cape is stored so the showcase can render it without another request.
+  if !clearing_cape {
+    if let Some(cape) = parse_cape_entries(&profile)
+      .into_iter()
+      .find(|cape| cape.active)
+    {
+      textures.push(Texture {
+        texture_type: TextureType::Cape,
+        image: misc::fetch_image(&app, cape.url).await?,
+        model: SkinModel::Default,
+        preset: None,
+      });
+    } else if let Some(stored_cape) = player
+      .textures
+      .iter()
+      .find(|texture| texture.texture_type == TextureType::Cape)
+    {
+      // The API accepted the new cape but did not report it as active. Keep the known texture
+      // instead of dropping it; the next profile refresh will correct the state.
+      textures.push(stored_cape.clone());
+    }
+  }
+
+  {
+    let mut account_state = account_binding.lock()?;
+
+    if let Some(stored_player) = account_state.players.iter_mut().find(|p| p.id == player_id) {
+      stored_player.textures = textures;
+      account_state.save()?;
+    }
+  }
+
   Ok(())
 }
 

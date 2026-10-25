@@ -13,6 +13,8 @@ pub static DEVICE_AUTH_ENDPOINT: &str =
 pub static FRIENDS_ENDPOINT: &str = "https://api.minecraftservices.com/friends";
 pub static PRESENCE_ENDPOINT: &str = "https://api.minecraftservices.com/presence";
 pub static PROFILE_ENDPOINT: &str = "https://api.minecraftservices.com/minecraft/profile";
+pub static ACTIVE_CAPE_ENDPOINT: &str =
+  "https://api.minecraftservices.com/minecraft/profile/capes/active";
 pub static XSTS_AUTH_ENDPOINT: &str = "https://xsts.auth.xboxlive.com/xsts/authorize";
 pub static MINECRAFT_TOKEN_ENDPOINT: &str =
   "https://api.minecraftservices.com/authentication/login_with_xbox";

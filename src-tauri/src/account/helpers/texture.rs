@@ -3,7 +3,9 @@ use sjmcl_types::error::SJMCLResult;
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 
-use crate::account::models::{AccountError, PlayerInfo, PresetRole, SkinModel, Texture};
+use crate::account::models::{
+  AccountError, PlayerCapeInfo, PlayerInfo, PresetRole, SkinModel, Texture, TextureType,
+};
 use crate::utils::fs::get_app_resource_filepath;
 use crate::utils::image::ImageWrapper;
 
@@ -75,6 +77,37 @@ pub fn load_preset_skin_info(
   Ok((skin_path, skin_model))
 }
 
+/// Replace the stored texture of the same type, or append it when the player does not have one
+/// yet. Other textures (for example the cape while the skin changes) are left untouched.
+pub fn upsert_texture(textures: &[Texture], new_texture: Texture) -> Vec<Texture> {
+  let mut textures = textures.to_vec();
+  if let Some(existing) = textures
+    .iter_mut()
+    .find(|texture| texture.texture_type == new_texture.texture_type)
+  {
+    *existing = new_texture;
+  } else {
+    textures.push(new_texture);
+  }
+  textures
+}
+
+/// Describe the locally stored cape of an offline or third-party player.
+///
+/// Those account types have no Mojang cape list: the cape they uploaded to their own auth server
+/// is the only one the launcher knows about.
+pub fn local_cape_info(textures: &[Texture]) -> Option<PlayerCapeInfo> {
+  textures
+    .iter()
+    .find(|texture| texture.texture_type == TextureType::Cape)
+    .map(|texture| PlayerCapeInfo {
+      id: String::new(),
+      alias: String::new(),
+      image: texture.image.clone(),
+      active: true,
+    })
+}
+
 /// Operations on the textures (skin and cape) of a remote player profile.
 ///
 /// Each account type implements this trait for the profile model its API returns, so that the
@@ -89,4 +122,67 @@ pub trait TextureOperation<T> {
   ) -> SJMCLResult<T>;
   async fn upload_cape(app: &AppHandle, player: &PlayerInfo, file_path: &Path) -> SJMCLResult<T>;
   async fn delete_cape(app: &AppHandle, player: &PlayerInfo) -> SJMCLResult<T>;
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::account::helpers::texture::{local_cape_info, upsert_texture};
+  use crate::account::models::{PlayerCapeInfo, PresetRole, SkinModel, Texture, TextureType};
+  use crate::utils::image::ImageWrapper;
+  use image::{Rgba, RgbaImage};
+
+  fn texture(texture_type: TextureType, pixel: [u8; 4], preset: Option<PresetRole>) -> Texture {
+    Texture {
+      texture_type,
+      image: ImageWrapper::from(RgbaImage::from_pixel(2, 2, Rgba(pixel))),
+      model: SkinModel::Default,
+      preset,
+    }
+  }
+
+  #[test]
+  fn upsert_texture_replaces_skin_and_keeps_cape() {
+    let cape = texture(TextureType::Cape, [1, 2, 3, 255], None);
+    let stored_skin = texture(TextureType::Skin, [4, 5, 6, 255], None);
+    let new_skin = texture(TextureType::Skin, [7, 8, 9, 255], Some(PresetRole::Alex));
+
+    let textures = upsert_texture(&[stored_skin, cape.clone()], new_skin.clone());
+
+    assert_eq!(textures.len(), 2);
+    assert_eq!(textures[0], new_skin);
+    assert_eq!(textures[1], cape);
+  }
+
+  #[test]
+  fn upsert_texture_appends_skin_when_missing() {
+    let cape = texture(TextureType::Cape, [1, 2, 3, 255], None);
+    let new_skin = texture(TextureType::Skin, [7, 8, 9, 255], Some(PresetRole::Steve));
+
+    let textures = upsert_texture(std::slice::from_ref(&cape), new_skin.clone());
+
+    assert_eq!(textures, vec![cape, new_skin]);
+  }
+
+  #[test]
+  fn local_cape_info_uses_the_stored_cape() {
+    let cape = texture(TextureType::Cape, [1, 2, 3, 255], None);
+    let skin = texture(TextureType::Skin, [4, 5, 6, 255], None);
+
+    assert_eq!(
+      local_cape_info(&[skin, cape.clone()]),
+      Some(PlayerCapeInfo {
+        id: String::new(),
+        alias: String::new(),
+        image: cape.image.clone(),
+        active: true,
+      })
+    );
+  }
+
+  #[test]
+  fn local_cape_info_is_empty_without_a_stored_cape() {
+    let skin = texture(TextureType::Skin, [4, 5, 6, 255], None);
+
+    assert_eq!(local_cape_info(&[skin]), None);
+  }
 }
