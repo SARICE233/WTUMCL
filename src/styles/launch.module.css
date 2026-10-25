@@ -395,3 +395,51 @@
     filter: none;
   }
 }
+
+/* ------------------------------------------------------------------------- */
+/* Liquid glass launch material                                              */
+/*                                                                           */
+/* The launch button reuses the AdvancedCard wrapper's light glass (dropping  */
+/* the old dark LiquidGlassEffect). Everything here is scoped to              */
+/* [data-liquid="true"], which only the glass branch sets, so the plain       */
+/* button keeps its blackAlpha fill and white label untouched.               */
+/* ------------------------------------------------------------------------- */
+
+/* Same resting shadow as liquid-glass.module.css .wrapper, so the button
+   floats like the adjacent player card. The :not() guards leave the existing
+   hover ring and the Chakra focus ring in charge while they apply. */
+.launch-button[data-liquid="true"]:not(:hover):not(:active):not(
+    :focus-visible
+  ) {
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+/* Dark ink on the pale glass, beating the VStack's color="white" prop. */
+.launch-button-shell[data-liquid="true"] .launch-button-label {
+  color: rgba(17, 17, 17, 0.9);
+}
+
+/* Mirror the account card's quarter affordance, which already assumes light
+   glass on this surface. */
+.launch-button-shell[data-liquid="true"] .launch-add-zone {
+  color: var(--chakra-colors-gray-700);
+}
+
+.launch-button-shell[data-liquid="true"] .launch-divider {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.32) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.launch-button-shell[data-liquid="true"] .launch-add-icon circle {
+  fill: rgba(0, 0, 0, 0.04);
+}
+
+.launch-button-shell[data-liquid="true"] .launch-add-zone:focus-visible {
+  outline-color: var(--chakra-colors-gray-500);
+}

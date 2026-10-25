@@ -32,6 +32,7 @@ import { useLauncherConfig } from "@/contexts/config";
 import { useGlobalData } from "@/contexts/global-data";
 import { useSharedModals } from "@/contexts/shared-modal";
 import { PlayerType } from "@/enums/account";
+import homeStyles from "@/styles/launch-home.module.css";
 import styles from "@/styles/launch.module.css";
 
 interface CustomButtonProps extends Omit<IconButtonProps, "onClick"> {
@@ -222,10 +223,17 @@ const HomeButtonGroup = () => {
 
       <Flex direction="column" align="flex-end">
         {hasInstances && (
-          <HStack spacing={1} justify="flex-end" mb={2} zIndex={5}>
+          <HStack
+            spacing={1}
+            justify="flex-end"
+            mb={2}
+            zIndex={5}
+            className={useLiquidGlass ? homeStyles.glassChipBar : undefined}
+          >
             <CompactButtonGroup
               colorScheme={compactButtonGroupColorScheme}
               size="xs"
+              variant={useLiquidGlass ? "ghost" : "solid"}
             >
               {selectedInstance && (
                 <CommonIconButton
@@ -282,7 +290,7 @@ const HomeButtonGroup = () => {
               }
             }}
           >
-            {useLiquidGlass && <LiquidGlassEffect isDark />}
+            {useLiquidGlass && <LiquidGlassEffect />}
             <VStack
               spacing={1.5}
               w="100%"

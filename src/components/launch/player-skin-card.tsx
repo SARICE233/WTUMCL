@@ -44,6 +44,7 @@ const PlayerSkinCard = () => {
   const { selectedPlayer, getPlayerList } = useGlobalData();
   const toast = useToast();
   const primaryColor = config.appearance.theme.primaryColor;
+  const useLiquidGlass = config.appearance.theme.useLiquidGlassDesign;
   const [isCapeVisible, setIsCapeVisible] = useState(true);
   const [isSkinManagerOpen, setIsSkinManagerOpen] = useState(false);
   const [fontFamily, setFontFamily] = useState<string | null>(null);
@@ -226,7 +227,11 @@ const PlayerSkinCard = () => {
         >
           <Box
             data-launch="player-skin-id"
-            className={styles.playerSkinBadge}
+            className={
+              useLiquidGlass
+                ? `${styles.playerSkinBadge} ${styles.playerSkinBadgeGlass}`
+                : styles.playerSkinBadge
+            }
             title={selectedPlayer.name}
             style={fontFamily ? { fontFamily } : undefined}
           >
@@ -257,7 +262,11 @@ const PlayerSkinCard = () => {
               onCapeVisibilityChange={setIsCapeVisible}
             />
             <HStack
-              className={styles.playerSkinControls}
+              className={
+                useLiquidGlass
+                  ? `${styles.playerSkinControls} ${styles.playerSkinControlsGlass}`
+                  : styles.playerSkinControls
+              }
               style={{ height: `${CONTROL_BAR_HEIGHT}px` }}
               // Clicks on the row's controls must not also open the manager.
               onClick={(event) => event.stopPropagation()}

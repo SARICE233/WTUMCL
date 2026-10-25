@@ -13,6 +13,7 @@ import {
   WeeklyPlayTime,
 } from "@/models/instance/misc";
 import { InstanceService } from "@/services/instance";
+import homeStyles from "@/styles/launch-home.module.css";
 
 const formatDuration = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
@@ -42,6 +43,7 @@ const WeeklyPlaytimeCard = () => {
   const { t } = useTranslation();
   const { config } = useLauncherConfig();
   const primaryColor = config.appearance.theme.primaryColor;
+  const useLiquidGlass = config.appearance.theme.useLiquidGlassDesign;
   const { selectedPlayer, selectedInstance } = useGlobalData();
 
   const [windowDays, setWindowDays] = useState<PlayTimeWindow>(
@@ -118,6 +120,7 @@ const WeeklyPlaytimeCard = () => {
           size="2xs"
           withIndicator
           colorScheme={primaryColor}
+          className={useLiquidGlass ? homeStyles.glassSegmented : undefined}
           selected={String(windowDays)}
           items={PLAY_TIME_WINDOWS.map((days) => ({
             value: String(days),

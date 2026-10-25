@@ -163,6 +163,7 @@ const CommunityNewsFeed = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { config } = useLauncherConfig();
+  const useLiquidGlass = config.appearance.theme.useLiquidGlassDesign;
 
   const [posts, setPosts] = useState<NewsPostSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -291,7 +292,10 @@ const CommunityNewsFeed = () => {
       data-launch="community-news"
       title={t("LaunchPage.news.title")}
       headExtra={
-        <HStack spacing={1}>
+        <HStack
+          spacing={1}
+          className={useLiquidGlass ? homeStyles.glassChipBar : undefined}
+        >
           <CommonIconButton
             icon={LuChevronLeft}
             label={t("LaunchPage.news.previous")}
