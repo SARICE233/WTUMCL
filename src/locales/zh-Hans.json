@@ -1810,6 +1810,7 @@
       "next": "下一条新闻"
     },
     "playerSkin": {
+      "changeSkin": "点击更换皮肤",
       "title": "玩家皮肤"
     },
     "recentInstance": {

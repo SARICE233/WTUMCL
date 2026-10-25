@@ -1810,6 +1810,7 @@
       "next": "Noticia siguiente"
     },
     "playerSkin": {
+      "changeSkin": "Haz clic para cambiar el aspecto",
       "title": "Aspecto del jugador"
     },
     "recentInstance": {
