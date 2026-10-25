@@ -175,12 +175,43 @@ pub async fn fetch_minecraft_profile(
     .await
     .map_err(|_| AccountError::NetworkError)?;
 
-  Ok(
-    response
-      .json::<MinecraftProfile>()
-      .await
-      .map_err(|_| AccountError::NoMinecraftProfile)?,
-  )
+  // The status decides the error, never the body: an unauthorized profile request means the
+  // token expired, so the user has to log in again instead of being told the body was malformed.
+  let status = response.status();
+  let body = response
+    .bytes()
+    .await
+    .map_err(|_| AccountError::NetworkError)?;
+
+  profile_from_response(status, &body)
+}
+
+/// Map a failed `/minecraft/profile` status to the account error the client can explain.
+///
+/// A 401 means the Minecraft token is no longer accepted; a 404 keeps the old meaning "this
+/// account owns no Minecraft profile"; every other failure status is a transport problem.
+pub fn profile_status_error(status: reqwest::StatusCode) -> AccountError {
+  if status == reqwest::StatusCode::UNAUTHORIZED {
+    AccountError::Expired
+  } else if status == reqwest::StatusCode::NOT_FOUND {
+    AccountError::NoMinecraftProfile
+  } else {
+    AccountError::NetworkError
+  }
+}
+
+/// Interpret a `/minecraft/profile` response: the status first, the body only when it succeeded.
+pub fn profile_from_response(
+  status: reqwest::StatusCode,
+  body: &[u8],
+) -> SJMCLResult<MinecraftProfile> {
+  if !status.is_success() {
+    log::error!("Failed to fetch the Minecraft profile from {PROFILE_ENDPOINT}: HTTP {status}");
+    return Err(profile_status_error(status).into());
+  }
+
+  serde_json::from_slice::<MinecraftProfile>(body)
+    .map_err(|_| AccountError::NoMinecraftProfile.into())
 }
 
 async fn parse_profile(app: &AppHandle, tokens: &OAuthTokens) -> SJMCLResult<PlayerInfo> {
@@ -335,4 +366,80 @@ pub async fn get_access_token(app: &AppHandle, player: &PlayerInfo) -> SJMCLResu
   let player = with_valid_access_token(app, player).await?;
 
   player.access_token.ok_or(AccountError::Invalid.into())
+}
+
+#[cfg(test)]
+mod profile_response_tests {
+  use super::{profile_from_response, profile_status_error};
+  use crate::account::models::AccountError;
+  use tauri_plugin_http::reqwest::StatusCode;
+
+  const HTML_ERROR_BODY: &[u8] = b"<html><body>401 Unauthorized</body></html>";
+
+  #[test]
+  fn unauthorized_profile_response_is_expired() {
+    // An expired token answers 401 with an error body; it must never be reported as a parse
+    // error, otherwise the user is never asked to log in again.
+    let error = profile_from_response(StatusCode::UNAUTHORIZED, HTML_ERROR_BODY)
+      .err()
+      .expect("401 is not a profile");
+
+    assert_eq!(error.0, "EXPIRED");
+    assert_eq!(
+      profile_status_error(StatusCode::UNAUTHORIZED).to_string(),
+      "EXPIRED"
+    );
+  }
+
+  #[test]
+  fn forbidden_profile_response_is_not_reported_as_expired() {
+    let error = profile_from_response(StatusCode::FORBIDDEN, HTML_ERROR_BODY)
+      .err()
+      .expect("403 is not a profile");
+
+    assert_eq!(error.0, "NETWORK_ERROR");
+  }
+
+  #[test]
+  fn server_error_profile_response_is_a_network_error() {
+    let error = profile_from_response(StatusCode::INTERNAL_SERVER_ERROR, b"")
+      .err()
+      .expect("500 is not a profile");
+
+    assert_eq!(error.0, "NETWORK_ERROR");
+  }
+
+  #[test]
+  fn missing_profile_response_keeps_the_no_minecraft_profile_meaning() {
+    let error = profile_from_response(StatusCode::NOT_FOUND, b"")
+      .err()
+      .expect("404 is not a profile");
+
+    assert_eq!(error.0, "NO_MINECRAFT_PROFILE");
+    assert!(matches!(
+      profile_status_error(StatusCode::NOT_FOUND),
+      AccountError::NoMinecraftProfile
+    ));
+  }
+
+  #[test]
+  fn successful_profile_response_is_parsed() {
+    let profile = profile_from_response(
+      StatusCode::OK,
+      br#"{ "id": "069a79f444e94726a5befca90e38aaf5", "name": "Notch" }"#,
+    )
+    .expect("a successful body is a profile");
+
+    assert_eq!(profile.name, "Notch");
+    assert!(profile.skins.is_none());
+  }
+
+  #[test]
+  fn malformed_successful_profile_response_keeps_the_old_error() {
+    let error = profile_from_response(StatusCode::OK, HTML_ERROR_BODY)
+      .err()
+      .expect("html is not a profile");
+
+    assert_eq!(error.0, "NO_MINECRAFT_PROFILE");
+  }
 }

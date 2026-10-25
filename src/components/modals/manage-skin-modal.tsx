@@ -42,6 +42,7 @@ import {
 } from "@/enums/account";
 import { Player, PlayerCapeInfo } from "@/models/account";
 import { AccountService } from "@/services/account";
+import { logger } from "@/utils/logging";
 import { base64ImgSrc } from "@/utils/string";
 
 type SkinType = PresetRole | "default" | "upload";
@@ -72,6 +73,7 @@ const ManageSkinModal: React.FC<ManageSkinModalProps> = ({
   const [activeCapeId, setActiveCapeId] = useState<string | null>(null);
   const [isCapeListLoading, setIsCapeListLoading] = useState<boolean>(false);
   const [isCapeListFailed, setIsCapeListFailed] = useState<boolean>(false);
+  const [capeListErrorDetails, setCapeListErrorDetails] = useState<string>("");
   const [isCapeUpdating, setIsCapeUpdating] = useState<boolean>(false);
   const { t } = useTranslation();
   const { config } = useLauncherConfig();
@@ -101,25 +103,33 @@ const ManageSkinModal: React.FC<ManageSkinModalProps> = ({
     }
     setIsCapeListLoading(true);
     setIsCapeListFailed(false);
+    setCapeListErrorDetails("");
     try {
       const resp = await AccountService.listPlayerCapes(playerId);
       if (resp.status === "success") {
         setCapeList(resp.data);
         setActiveCapeId(resp.data.find((item) => item.active)?.id ?? null);
       } else {
+        // The localized details carry the real reason (for example "the access token
+        // has expired, please re-login"); fall back to the raw backend error string.
+        const details = resp.details || resp.raw_error;
         setCapeList([]);
         setIsCapeListFailed(true);
+        setCapeListErrorDetails(details);
         toast({
           title: resp.message,
-          description: resp.details,
+          description: details,
           status: "error",
         });
       }
     } catch (e: any) {
+      const details = e instanceof Error ? e.message : String(e);
       setCapeList([]);
       setIsCapeListFailed(true);
+      setCapeListErrorDetails(details);
       toast({
         title: t("ManageSkinModal.capeList.failed"),
+        description: details,
         status: "error",
       });
       logger.error("Failed to load the cape list", e);
@@ -139,11 +149,11 @@ const ManageSkinModal: React.FC<ManageSkinModalProps> = ({
   const activeCape = capeList?.find((item) => item.id === activeCapeId);
   let previewCapeSrc: string | undefined;
   if (isMicrosoft) {
-    previewCapeSrc = activeCape
-      ? base64ImgSrc(activeCape.image)
-      : capeList === null && cape
-        ? base64ImgSrc(cape.image)
-        : undefined;
+    if (activeCape?.image) {
+      previewCapeSrc = base64ImgSrc(activeCape.image);
+    } else if (capeList === null && cape) {
+      previewCapeSrc = base64ImgSrc(cape.image);
+    }
   } else {
     previewCapeSrc = uploadCapeFilePath
       ? convertFileSrc(uploadCapeFilePath)
@@ -178,6 +188,7 @@ const ManageSkinModal: React.FC<ManageSkinModalProps> = ({
     setCapeList(null);
     setActiveCapeId(null);
     setIsCapeListFailed(false);
+    setCapeListErrorDetails("");
     if (isMicrosoft) {
       handleListPlayerCapes();
     }
@@ -318,7 +329,9 @@ const ManageSkinModal: React.FC<ManageSkinModalProps> = ({
             defaultValue: item.alias,
           })
         : t("ManageSkinModal.capeList.unknown"),
-      src: base64ImgSrc(item.image),
+      // A cape whose texture failed to download comes back with an empty image: show the
+      // placeholder tile instead of a broken data URL.
+      src: item.image ? base64ImgSrc(item.image) : "",
     })),
   ];
 
@@ -442,19 +455,31 @@ const ManageSkinModal: React.FC<ManageSkinModalProps> = ({
                       </Text>
                     </HStack>
                   ) : isCapeListFailed ? (
-                    <HStack spacing={2}>
-                      <Text fontSize="sm" color="gray.500">
-                        {t("ManageSkinModal.capeList.failed")}
-                      </Text>
-                      <IconButton
-                        size="sm"
-                        variant="ghost"
-                        aria-label={t("General.refresh")}
-                        onClick={handleListPlayerCapes}
-                      >
-                        <LuRefreshCw />
-                      </IconButton>
-                    </HStack>
+                    <VStack spacing={1} alignItems="flex-start" width="100%">
+                      <HStack spacing={2}>
+                        <Text fontSize="sm" color="gray.500">
+                          {t("ManageSkinModal.capeList.failed")}
+                        </Text>
+                        <IconButton
+                          size="sm"
+                          variant="ghost"
+                          aria-label={t("General.refresh")}
+                          onClick={handleListPlayerCapes}
+                        >
+                          <LuRefreshCw />
+                        </IconButton>
+                      </HStack>
+                      {capeListErrorDetails && (
+                        <Text
+                          fontSize="xs"
+                          color="red.500"
+                          wordBreak="break-word"
+                          width="100%"
+                        >
+                          {capeListErrorDetails}
+                        </Text>
+                      )}
+                    </VStack>
                   ) : (
                     capeList && (
                       <VStack spacing={2} alignItems="flex-start" width="100%">

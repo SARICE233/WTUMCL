@@ -2,7 +2,7 @@ use sjmcl_types::error::SJMCLResult;
 use sjmcl_types::storage::Storage;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_http::reqwest::{self, RequestBuilder};
+use tauri_plugin_http::reqwest::{self, RequestBuilder, StatusCode};
 
 use crate::account::constants::DEFAULT_POLLING_INTERVAL;
 use crate::account::models::{
@@ -17,10 +17,19 @@ pub async fn fetch_image(app: &AppHandle, url: String) -> SJMCLResult<ImageWrapp
   let client = app.state::<reqwest::Client>();
 
   let response = client
-    .get(url)
+    .get(url.clone())
     .send()
     .await
     .map_err(|_| AccountError::NetworkError)?;
+
+  // A failing texture host used to reach the image decoder, so its 403 or 404 body was
+  // reported as a malformed image. Check the status first, and keep an expired token apart
+  // from a transport problem so the client can show the real reason.
+  let status = response.status();
+  if !status.is_success() {
+    log::warn!("Failed to download the texture image from {url}: HTTP {status}");
+    return Err(image_status_error(status).into());
+  }
 
   let img_bytes = response
     .bytes()
@@ -33,6 +42,19 @@ pub async fn fetch_image(app: &AppHandle, url: String) -> SJMCLResult<ImageWrapp
       .map_err(|_| AccountError::ParseError)?
       .into(),
   )
+}
+
+/// Map the status of a failed texture download to the account error the client can explain.
+///
+/// Only an unauthorized response means the access token went stale. Every other failure (a 403
+/// of the texture host, a 404 of a removed texture, a 5xx of the CDN) is a transport problem:
+/// reporting them as a parse error hides the real reason from the user.
+pub fn image_status_error(status: StatusCode) -> AccountError {
+  if status == StatusCode::UNAUTHORIZED {
+    AccountError::Expired
+  } else {
+    AccountError::NetworkError
+  }
 }
 
 pub fn get_selected_player_info(app: &AppHandle) -> SJMCLResult<PlayerInfo> {
@@ -260,5 +282,49 @@ mod login_flag_tests {
   fn offline_login_follows_its_own_flag() {
     assert!(!can_add_player(&PlayerType::Offline, &config(false)));
     assert!(can_add_player(&PlayerType::Offline, &config(true)));
+  }
+}
+
+#[cfg(test)]
+mod texture_download_tests {
+  use super::image_status_error;
+  use crate::account::models::AccountError;
+  use crate::utils::image::decode_image;
+  use tauri_plugin_http::reqwest::StatusCode;
+
+  #[test]
+  fn unauthorized_texture_download_is_reported_as_expired() {
+    let error = image_status_error(StatusCode::UNAUTHORIZED);
+
+    assert!(matches!(error, AccountError::Expired));
+    assert_eq!(error.to_string(), "EXPIRED");
+  }
+
+  #[test]
+  fn forbidden_texture_download_is_not_an_expired_token() {
+    // A 403 from the texture host must not ask the user to log in again.
+    let error = image_status_error(StatusCode::FORBIDDEN);
+
+    assert!(matches!(error, AccountError::NetworkError));
+    assert_eq!(error.to_string(), "NETWORK_ERROR");
+  }
+
+  #[test]
+  fn missing_and_broken_texture_responses_are_network_errors() {
+    for status in [
+      StatusCode::NOT_FOUND,
+      StatusCode::INTERNAL_SERVER_ERROR,
+      StatusCode::BAD_GATEWAY,
+    ] {
+      assert_eq!(image_status_error(status).to_string(), "NETWORK_ERROR");
+    }
+  }
+
+  #[test]
+  fn an_html_error_page_is_not_decoded_as_a_texture() {
+    // The body of a failed download (an HTML error page) must never be treated as image data.
+    let html = b"<!DOCTYPE html><html><body>403 Forbidden</body></html>".to_vec();
+
+    assert!(decode_image(html).is_err());
   }
 }

@@ -14,49 +14,37 @@ use crate::account::helpers::texture::{TextureOperation, load_preset_skin_info};
 use crate::account::models::{
   AccountError, PlayerCapeInfo, PlayerInfo, PresetRole, SkinModel, Texture, TextureType,
 };
-use crate::utils::image::load_image_from_dir;
+use crate::utils::image::{ImageWrapper, load_image_from_dir};
 
 pub struct MicrosoftTextureOperation;
 
 impl TextureOperation<MinecraftProfile> for MicrosoftTextureOperation {
   async fn parse_skin(app: &AppHandle, profile: &MinecraftProfile) -> SJMCLResult<Vec<Texture>> {
-    let mut textures = vec![];
-    if let Some(skins) = &profile.skins {
-      for skin in skins {
-        if skin.state == "ACTIVE" {
-          textures.push(Texture {
-            texture_type: TextureType::Skin,
-            image: fetch_image(app, skin.url.clone()).await?,
-            model: skin.variant.clone().unwrap_or_default(),
-            preset: None,
-          });
-        }
-      }
+    let mut downloads = Vec::new();
+    for pending in parse_texture_entries(profile) {
+      let image = fetch_image(app, pending.url.clone()).await;
+      downloads.push((pending, image));
     }
-    if let Some(capes) = &profile.capes {
-      for cape in capes {
-        if cape.state == "ACTIVE" {
-          textures.push(Texture {
-            texture_type: TextureType::Cape,
-            image: fetch_image(app, cape.url.clone()).await?,
-            model: SkinModel::Default,
-            preset: None,
-          });
-        }
-      }
-    }
+    let mut textures = assemble_textures(downloads);
 
-    if textures.is_empty() {
-      // this player didn't have a texture, use preset Steve skin instead
+    if !textures
+      .iter()
+      .any(|texture| texture.texture_type == TextureType::Skin)
+    {
+      // this player has no usable skin, use preset Steve skin instead: the avatar is drawn from
+      // the first texture, so a skin has to stay first even when only a cape could be downloaded
       let (skin_path, model) = load_preset_skin_info(app, PresetRole::Steve)?;
-      textures = vec![Texture {
-        texture_type: TextureType::Skin,
-        image: load_image_from_dir(&skin_path)
-          .ok_or(AccountError::TextureError)?
-          .into(),
-        model,
-        preset: Some(PresetRole::Steve),
-      }];
+      textures.insert(
+        0,
+        Texture {
+          texture_type: TextureType::Skin,
+          image: load_image_from_dir(&skin_path)
+            .ok_or(AccountError::TextureError)?
+            .into(),
+          model,
+          preset: Some(PresetRole::Steve),
+        },
+      );
     }
     Ok(textures)
   }
@@ -117,6 +105,67 @@ impl TextureOperation<MinecraftProfile> for MicrosoftTextureOperation {
   }
 }
 
+/// One ACTIVE texture of a profile whose image still has to be downloaded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingTexture {
+  pub texture_type: TextureType,
+  pub url: String,
+  pub model: SkinModel,
+}
+
+/// List the ACTIVE textures of a profile that the launcher has to download, skin first.
+pub fn parse_texture_entries(profile: &MinecraftProfile) -> Vec<PendingTexture> {
+  let mut entries = Vec::new();
+  if let Some(skins) = &profile.skins {
+    for skin in skins.iter().filter(|skin| skin.state == ACTIVE_STATE) {
+      entries.push(PendingTexture {
+        texture_type: TextureType::Skin,
+        url: skin.url.clone(),
+        model: skin.variant.clone().unwrap_or_default(),
+      });
+    }
+  }
+  if let Some(capes) = &profile.capes {
+    for cape in capes.iter().filter(|cape| cape.state == ACTIVE_STATE) {
+      entries.push(PendingTexture {
+        texture_type: TextureType::Cape,
+        url: cape.url.clone(),
+        model: SkinModel::Default,
+      });
+    }
+  }
+  entries
+}
+
+/// Build the texture list from the downloaded images.
+///
+/// A texture whose image could not be downloaded is skipped instead of failing the whole login
+/// or token refresh: one broken texture host must not force the user to log in again. Only a
+/// warning is logged, and the textures that did download are kept.
+pub fn assemble_textures(
+  downloads: Vec<(PendingTexture, SJMCLResult<ImageWrapper>)>,
+) -> Vec<Texture> {
+  downloads
+    .into_iter()
+    .filter_map(|(pending, download)| match download {
+      Ok(image) => Some(Texture {
+        texture_type: pending.texture_type,
+        image,
+        model: pending.model,
+        preset: None,
+      }),
+      Err(error) => {
+        log::warn!(
+          "Skipping the {} texture from {}: {error:?}",
+          pending.texture_type,
+          pending.url
+        );
+        None
+      }
+    })
+    .collect()
+}
+
 const ACTIVE_STATE: &str = "ACTIVE";
 
 /// One cape of a Minecraft profile, as returned by the Mojang API.
@@ -151,6 +200,38 @@ pub fn parse_cape_entries(profile: &MinecraftProfile) -> Vec<CapeEntry> {
         url: cape.url.clone(),
         active: cape.state == ACTIVE_STATE,
       })
+    })
+    .collect()
+}
+
+/// Build the cape list from the downloaded images.
+///
+/// A cape whose texture could not be downloaded stays in the list with an empty image, so the
+/// user still sees which capes exist and can switch to them; only the picture is missing. One
+/// failing texture host must never hide the whole cape list.
+pub fn assemble_player_capes(
+  downloads: Vec<(CapeEntry, SJMCLResult<ImageWrapper>)>,
+) -> Vec<PlayerCapeInfo> {
+  downloads
+    .into_iter()
+    .map(|(cape, download)| {
+      let image = match download {
+        Ok(image) => image,
+        Err(error) => {
+          log::warn!(
+            "Skipping the texture of cape {} from {}: {error:?}",
+            cape.id,
+            cape.url
+          );
+          ImageWrapper::default()
+        }
+      };
+      PlayerCapeInfo {
+        id: cape.id,
+        alias: cape.alias,
+        image,
+        active: cape.active,
+      }
     })
     .collect()
 }
@@ -224,16 +305,12 @@ impl MicrosoftTextureOperation {
     let profile =
       fetch_minecraft_profile(app, player.access_token.clone().unwrap_or_default()).await?;
 
-    let mut capes = Vec::new();
+    let mut downloads = Vec::new();
     for cape in parse_cape_entries(&profile) {
-      capes.push(PlayerCapeInfo {
-        id: cape.id,
-        alias: cape.alias,
-        image: fetch_image(app, cape.url).await?,
-        active: cape.active,
-      });
+      let image = fetch_image(app, cape.url.clone()).await;
+      downloads.push((cape, image));
     }
-    Ok(capes)
+    Ok(assemble_player_capes(downloads))
   }
 
   /// Select the cape with the given id, or clear the active cape when it is None.
@@ -257,7 +334,13 @@ impl MicrosoftTextureOperation {
 mod tests {
   use crate::account::helpers::microsoft::constants::ACTIVE_CAPE_ENDPOINT;
   use crate::account::helpers::microsoft::models::MinecraftProfile;
-  use crate::account::helpers::microsoft::texture::{build_cape_request, parse_cape_entries};
+  use crate::account::helpers::microsoft::texture::{
+    CapeEntry, PendingTexture, assemble_player_capes, assemble_textures, build_cape_request,
+    parse_cape_entries, parse_texture_entries,
+  };
+  use crate::account::models::{AccountError, SkinModel, TextureType};
+  use crate::utils::image::ImageWrapper;
+  use image::{Rgba, RgbaImage};
   use tauri_plugin_http::reqwest::Method;
 
   fn parse_profile(json: &str) -> MinecraftProfile {
@@ -342,5 +425,153 @@ mod tests {
     let profile = parse_profile(r#"{ "id": "069a79f444e94726a5befca90e38aaf5", "name": "Notch" }"#);
 
     assert!(parse_cape_entries(&profile).is_empty());
+  }
+
+  fn pending_texture(texture_type: TextureType, url: &str) -> PendingTexture {
+    PendingTexture {
+      texture_type,
+      url: url.to_string(),
+      model: SkinModel::Default,
+    }
+  }
+
+  fn cape_entry(id: &str, alias: &str, active: bool) -> CapeEntry {
+    CapeEntry {
+      id: id.to_string(),
+      alias: alias.to_string(),
+      url: format!("https://textures.minecraft.net/texture/{id}"),
+      active,
+    }
+  }
+
+  fn texture_image(pixel: [u8; 4]) -> ImageWrapper {
+    RgbaImage::from_pixel(2, 2, Rgba(pixel)).into()
+  }
+
+  #[test]
+  fn active_texture_entries_keep_the_skin_first() {
+    let profile = parse_profile(
+      r#"{
+        "id": "069a79f444e94726a5befca90e38aaf5",
+        "name": "Notch",
+        "skins": [
+          { "state": "ACTIVE", "url": "https://textures.minecraft.net/texture/skin", "variant": "SLIM" },
+          { "state": "INACTIVE", "url": "https://textures.minecraft.net/texture/old-skin" }
+        ],
+        "capes": [
+          { "id": "cape-migrator", "state": "ACTIVE", "url": "https://textures.minecraft.net/texture/cape-1" },
+          { "id": "cape-mapmaker", "state": "INACTIVE", "url": "https://textures.minecraft.net/texture/cape-2" }
+        ]
+      }"#,
+    );
+
+    let entries = parse_texture_entries(&profile);
+
+    assert_eq!(entries.len(), 2);
+    assert_eq!(entries[0].texture_type, TextureType::Skin);
+    assert_eq!(entries[0].model, SkinModel::Slim);
+    assert_eq!(entries[1].texture_type, TextureType::Cape);
+    assert_eq!(entries[1].model, SkinModel::Default);
+  }
+
+  #[test]
+  fn one_failed_texture_download_does_not_fail_the_profile() {
+    // The cape host answers 500: the skin texture still has to reach the caller, so the login
+    // and the token refresh survive a broken texture download.
+    let downloads = vec![
+      (
+        pending_texture(
+          TextureType::Skin,
+          "https://textures.minecraft.net/texture/skin",
+        ),
+        Ok(texture_image([1, 2, 3, 255])),
+      ),
+      (
+        pending_texture(
+          TextureType::Cape,
+          "https://textures.minecraft.net/texture/cape",
+        ),
+        Err(AccountError::NetworkError.into()),
+      ),
+    ];
+
+    let textures = assemble_textures(downloads);
+
+    assert_eq!(textures.len(), 1);
+    assert_eq!(textures[0].texture_type, TextureType::Skin);
+    assert_eq!(textures[0].image.image.dimensions(), (2, 2));
+  }
+
+  #[test]
+  fn failed_texture_downloads_are_skipped_without_an_error() {
+    let downloads = vec![
+      (
+        pending_texture(
+          TextureType::Skin,
+          "https://textures.minecraft.net/texture/skin",
+        ),
+        Err(AccountError::Expired.into()),
+      ),
+      (
+        pending_texture(
+          TextureType::Cape,
+          "https://textures.minecraft.net/texture/cape",
+        ),
+        Err(AccountError::NetworkError.into()),
+      ),
+    ];
+
+    assert!(assemble_textures(downloads).is_empty());
+  }
+
+  #[test]
+  fn failed_cape_texture_keeps_the_cape_entry_with_an_empty_image() {
+    let downloads = vec![
+      (
+        cape_entry("cape-migrator", "Migrator", true),
+        Ok(texture_image([4, 5, 6, 255])),
+      ),
+      (
+        cape_entry("cape-mapmaker", "", false),
+        Err(AccountError::NetworkError.into()),
+      ),
+    ];
+
+    let capes = assemble_player_capes(downloads);
+
+    assert_eq!(capes.len(), 2);
+    assert_eq!(capes[0].id, "cape-migrator");
+    assert!(capes[0].active);
+    assert_eq!(capes[0].image.image.dimensions(), (2, 2));
+    assert_eq!(capes[1].id, "cape-mapmaker");
+    assert_eq!(capes[1].image, ImageWrapper::default());
+    assert_eq!(capes[1].image.image.dimensions(), (0, 0));
+    assert!(!capes[1].active);
+  }
+
+  #[test]
+  fn a_failing_cape_texture_does_not_drop_the_cape_list() {
+    let downloads = vec![
+      (
+        cape_entry("cape-migrator", "Migrator", true),
+        Err(AccountError::Expired.into()),
+      ),
+      (
+        cape_entry("cape-mapmaker", "", false),
+        Err(AccountError::NetworkError.into()),
+      ),
+    ];
+
+    let capes = assemble_player_capes(downloads);
+
+    assert_eq!(capes.len(), 2);
+    assert!(
+      capes
+        .iter()
+        .all(|cape| cape.image == ImageWrapper::default())
+    );
+    assert!(capes[0].active);
+    assert_eq!(capes[0].alias, "Migrator");
+    assert_eq!(capes[1].id, "cape-mapmaker");
   }
 }
