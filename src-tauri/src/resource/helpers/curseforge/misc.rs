@@ -13,14 +13,18 @@ use crate::resource::models::{
   ResourceError,
 };
 
-/// WTUMCL ships a working CurseForge credential: asking every player to apply for an
-/// API key and fill in a .env file made CurseForge browsing unavailable on a fresh
-/// install. WTUMCL_CURSEFORGE_API_KEY stays available as a developer-only override.
-const BUILTIN_CURSEFORGE_API_KEY: &str =
-  "";
+/// The CurseForge credential is injected at build time: WTUMCL_CURSEFORGE_API_KEY must
+/// be present in the build environment (CI supplies it from the repository secret) and
+/// is embedded into the binary through `option_env!`, so no credential is committed to
+/// the repository. A build without the variable still compiles, and the missing-key
+/// error is reported instead of sending an unauthenticated request.
+const BUILTIN_CURSEFORGE_API_KEY: &str = match option_env!("WTUMCL_CURSEFORGE_API_KEY") {
+  Some(key) => key,
+  None => "",
+};
 
-/// A non-blank override wins over the bundled credential, while a missing, empty or
-/// blank value falls back to it, so a stale .env entry cannot disable CurseForge.
+/// A non-blank runtime override wins over the compile-time credential; a missing, empty
+/// or blank value falls back to it.
 fn resolve_curseforge_api_key(override_value: Option<String>) -> String {
   override_value
     .map(|value| value.trim().to_owned())
@@ -44,9 +48,10 @@ pub fn is_curseforge_authenticated_url(url: &url::Url) -> bool {
 /// trimmed before it is written to the log.
 const CURSEFORGE_ERROR_REASON_MAX_LEN: usize = 160;
 
-/// The resolved credential is the bundled key unless a developer override is set, so
-/// this guard only fires for a blank resolution; even then the problem must be reported
-/// before the request is attempted instead of being mistaken for a connection failure.
+/// The resolved credential is the compile-time key unless a runtime override is set, so
+/// this guard fires only when neither supplied a usable value; even then the problem must
+/// be reported before the request is attempted instead of being mistaken for a connection
+/// failure.
 fn curseforge_credential_error(url: &str, api_key: &str) -> Option<SJMCLError> {
   if api_key.trim().is_empty() {
     log::warn!(
@@ -623,48 +628,42 @@ mod tests {
   use std::io::{Read, Write};
 
   #[test]
-  fn the_builtin_credential_is_a_complete_curseforge_key() {
-    assert_eq!(BUILTIN_CURSEFORGE_API_KEY.len(), 60);
+  fn the_compiled_credential_comes_from_the_build_environment() {
     assert_eq!(
-      BUILTIN_CURSEFORGE_API_KEY.trim(),
-      BUILTIN_CURSEFORGE_API_KEY
+      BUILTIN_CURSEFORGE_API_KEY,
+      option_env!("WTUMCL_CURSEFORGE_API_KEY").unwrap_or(""),
+      "the key must be injected when building, never read from the repository"
     );
-    assert!(
-      BUILTIN_CURSEFORGE_API_KEY.starts_with("$2a$10$"),
-      "bundled keys keep the bcrypt prefix; a mangled copy would break every request"
-    );
-    assert!(!BUILTIN_CURSEFORGE_API_KEY.contains(char::is_whitespace));
   }
 
   #[test]
-  fn a_missing_override_uses_the_builtin_credential() {
+  fn a_missing_override_uses_the_compiled_credential() {
     assert_eq!(resolve_curseforge_api_key(None), BUILTIN_CURSEFORGE_API_KEY);
   }
 
   #[test]
-  fn a_blank_override_uses_the_builtin_credential() {
-    for blank in ["", " ", "   "] {
+  fn a_blank_override_uses_the_compiled_credential() {
+    for blank in ["", " ", "   ", "\t", "\r\n"] {
       assert_eq!(
         resolve_curseforge_api_key(Some(blank.to_string())),
         BUILTIN_CURSEFORGE_API_KEY,
-        "override {:?} must not blank out the bundled credential",
+        "override {:?} must fall back to the compiled credential",
         blank
       );
     }
   }
 
   #[test]
-  fn a_configured_override_replaces_the_builtin_credential() {
+  fn a_configured_override_is_trimmed_and_replaces_the_compiled_credential() {
     assert_eq!(resolve_curseforge_api_key(Some(" x ".to_string())), "x");
-
-    let override_value = Some("another-key".to_string());
     assert_eq!(
-      resolve_curseforge_api_key(override_value.clone()),
+      resolve_curseforge_api_key(Some("\n another-key \t".to_string())),
       "another-key"
     );
     assert_ne!(
-      resolve_curseforge_api_key(override_value),
-      BUILTIN_CURSEFORGE_API_KEY
+      resolve_curseforge_api_key(Some("another-key".to_string())),
+      BUILTIN_CURSEFORGE_API_KEY,
+      "a non-blank override must win over the compiled credential"
     );
   }
 
@@ -765,6 +764,29 @@ mod tests {
     assert_eq!(unset, SJMCLError(MISSING_KEY_ERROR.to_string()));
     assert_eq!(configured, SJMCLError(TRANSPORT_ERROR.to_string()));
     assert_ne!(unset, configured);
+  }
+
+  #[tokio::test]
+  async fn an_empty_compiled_credential_reports_the_missing_key_error() {
+    if !BUILTIN_CURSEFORGE_API_KEY.is_empty() {
+      // This build injected a key, so the blank-credential path is covered by
+      // `an_unset_credential_stops_before_any_connection_is_attempted` above.
+      return;
+    }
+
+    let client = reqwest::Client::new();
+    let resolved = resolve_curseforge_api_key(None);
+    assert!(resolved.is_empty());
+    assert_eq!(
+      curseforge_credential_error("/v1/mods/search", &resolved),
+      Some(SJMCLError(MISSING_KEY_ERROR.to_string()))
+    );
+
+    // Unusable URL on purpose: a sent request would surface as a transport error.
+    assert_eq!(
+      error_for(&client, "not-a-valid-url", &resolved).await,
+      SJMCLError(MISSING_KEY_ERROR.to_string())
+    );
   }
 
   #[tokio::test]

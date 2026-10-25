@@ -34,7 +34,7 @@ cp .env.template .env
 ```
 
 The `.env` file contains required environment variables that are embedded into the Rust backend at compile time:
-- `WTUMCL_CURSEFORGE_API_KEY`: CurseForge API key for mod downloads (the Rust build only reads the `WTUMCL_` prefix)
+- `WTUMCL_CURSEFORGE_API_KEY`: CurseForge API key for mod downloads, injected when building and embedded into the binary through `option_env!`; it must be present in the build environment because no credential is committed (the Rust build only reads the `WTUMCL_` prefix)
 - `NEXT_PUBLIC_DEV_TOOLBAR`: Development toolbar toggle
 
 Without the `.env` file, the build will fail or produce a non-functional application.
