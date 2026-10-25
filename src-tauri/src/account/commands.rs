@@ -411,22 +411,24 @@ pub async fn update_player_texture_local(
       let image: ImageWrapper = load_image_from_dir(&image_path)
         .ok_or(AccountError::TextureError)?
         .into();
-      player
-        .textures
-        .iter()
-        .map(|texture| {
-          if texture.texture_type == texture_type {
-            Texture {
-              texture_type: texture_type.clone(),
-              image: image.clone(),
-              model: skin_model.clone(),
-              preset: None,
-            }
-          } else {
-            texture.clone()
-          }
-        })
-        .collect()
+      let new_texture = Texture {
+        texture_type: texture_type.clone(),
+        image,
+        model: skin_model.clone(),
+        preset: None,
+      };
+      // Replace the stored texture of the same type, or append it when the player does not
+      // have one yet (e.g. the first cape of an offline player).
+      let mut textures = player.textures.clone();
+      if let Some(existing) = textures
+        .iter_mut()
+        .find(|texture| texture.texture_type == texture_type)
+      {
+        *existing = new_texture;
+      } else {
+        textures.push(new_texture);
+      }
+      textures
     }
     PlayerType::ThirdParty => {
       AuthlibInjectorTextureOperation::parse_skin(
