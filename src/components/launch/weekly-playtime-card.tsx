@@ -27,7 +27,16 @@ const shortDate = (date: string) => date.slice(5);
 // stretched to the card width, so strokes use vector-effect to stay even.
 const CHART_HEIGHT = 44;
 const CHART_DAY_UNIT = 8;
-const CHART_PADDING = 4;
+// Breathing room above the plot so the peak never touches the svg edge.
+const CHART_TOP_PADDING = 6;
+// Keep the baseline a few pixels above the svg floor so the area fill is not
+// clipped.
+const CHART_BASELINE_INSET = 3;
+// Chart box and skeleton share one height, so switching the window never
+// nudges the card layout.
+const CHART_BOX_HEIGHT = "2.75rem";
+// Value line and its skeleton share one height for the same reason.
+const VALUE_HEIGHT = "2rem";
 
 const WeeklyPlaytimeCard = () => {
   const { t } = useTranslation();
@@ -41,6 +50,9 @@ const WeeklyPlaytimeCard = () => {
   const [data, setData] = useState<WeeklyPlayTime>();
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredIndex, setHoveredIndex] = useState<number>();
+  // Remember the last hovered slot so the guide can fade out where the mouse
+  // left instead of snapping back to an edge.
+  const [lastHoveredIndex, setLastHoveredIndex] = useState<number>();
 
   const [lineColor] = useToken("colors", [`${primaryColor}.500`]);
   const [areaColor] = useToken("colors", [`${primaryColor}.200`]);
@@ -49,6 +61,7 @@ const WeeklyPlaytimeCard = () => {
     let isCancelled = false;
     setIsLoading(true);
     setHoveredIndex(undefined);
+    setLastHoveredIndex(undefined);
 
     InstanceService.getPlayTimeRange(windowDays)
       .then((response) => {
@@ -68,11 +81,11 @@ const WeeklyPlaytimeCard = () => {
 
   const days = data?.days ?? [];
   const peakSeconds = Math.max(...days.map((day) => day.seconds), 1);
-  const baseline = CHART_HEIGHT - CHART_PADDING;
+  const baseline = CHART_HEIGHT - CHART_BASELINE_INSET;
   const viewWidth = Math.max(days.length, 1) * CHART_DAY_UNIT;
   const points = days.map((day, index) => ({
     x: (index + 0.5) * CHART_DAY_UNIT,
-    y: baseline - (day.seconds / peakSeconds) * (baseline - CHART_PADDING),
+    y: baseline - (day.seconds / peakSeconds) * (baseline - CHART_TOP_PADDING),
   }));
   const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
 
@@ -88,6 +101,14 @@ const WeeklyPlaytimeCard = () => {
       ].join(" \u00b7 ")
     : "";
 
+  // The guide is a translate-only group: the mouse moves it with a short
+  // transition, and leaving the chart only fades it, never repositions it.
+  const guideIndex = Math.min(
+    lastHoveredIndex ?? days.length - 1,
+    days.length - 1
+  );
+  const guidePoint = days.length ? points[guideIndex] : undefined;
+
   return (
     <Section
       title={t("LaunchPage.weeklyPlaytime.title")}
@@ -95,6 +116,7 @@ const WeeklyPlaytimeCard = () => {
       headExtra={
         <SegmentedControl
           size="2xs"
+          withIndicator
           colorScheme={primaryColor}
           selected={String(windowDays)}
           items={PLAY_TIME_WINDOWS.map((days) => ({
@@ -108,13 +130,18 @@ const WeeklyPlaytimeCard = () => {
       }
     >
       <AdvancedCard p={3}>
-        <VStack align="stretch" spacing={2}>
-          <HStack align="flex-end" justifyContent="space-between" spacing={2}>
-            <VStack align="start" spacing={0}>
+        <VStack align="stretch" spacing={2.5}>
+          <HStack align="flex-start" justifyContent="space-between" spacing={3}>
+            <VStack align="start" spacing={1} minW={0}>
               {isLoading ? (
-                <Skeleton h="1.75rem" w="6rem" />
+                <Skeleton h={VALUE_HEIGHT} w="6rem" />
               ) : (
-                <Text fontSize="2xl" fontWeight="bold" lineHeight="shorter">
+                <Text
+                  fontSize="2xl"
+                  fontWeight="bold"
+                  lineHeight={VALUE_HEIGHT}
+                  whiteSpace="nowrap"
+                >
                   {formatDuration(data?.weekSeconds ?? 0)}
                 </Text>
               )}
@@ -125,16 +152,19 @@ const WeeklyPlaytimeCard = () => {
             <Text
               fontSize="xs"
               className="secondary-text"
-              isTruncated
-              flexShrink={0}
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
               maxW="45%"
+              flexShrink={0}
               textAlign="right"
+              pt={2}
             >
               {focusLabel}
             </Text>
           </HStack>
           {isLoading ? (
-            <Skeleton h="2.75rem" w="100%" />
+            <Skeleton h={CHART_BOX_HEIGHT} w="100%" borderRadius="sm" />
           ) : (
             <svg
               role="img"
@@ -142,7 +172,11 @@ const WeeklyPlaytimeCard = () => {
                 days: windowDays,
               })}
               viewBox={`0 0 ${viewWidth} ${CHART_HEIGHT}`}
-              style={{ width: "100%", height: "2.75rem" }}
+              style={{
+                display: "block",
+                width: "100%",
+                height: CHART_BOX_HEIGHT,
+              }}
               preserveAspectRatio="none"
               onMouseLeave={() => setHoveredIndex(undefined)}
             >
@@ -174,18 +208,26 @@ const WeeklyPlaytimeCard = () => {
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
               />
-              {focusDay && (
-                <line
-                  x1={points[focusIndex].x}
-                  y1={CHART_PADDING}
-                  x2={points[focusIndex].x}
-                  y2={baseline}
-                  stroke={lineColor}
-                  strokeWidth={1}
-                  strokeDasharray="2 2"
-                  strokeOpacity={0.6}
-                  vectorEffect="non-scaling-stroke"
-                />
+              {guidePoint && (
+                <g
+                  style={{
+                    transform: `translate(${guidePoint.x}px, 0)`,
+                    transition: "transform 120ms ease-out, opacity 150ms ease",
+                    opacity: hoveredIndex === undefined ? 0 : 1,
+                  }}
+                >
+                  <line
+                    x1={0}
+                    y1={CHART_TOP_PADDING}
+                    x2={0}
+                    y2={baseline}
+                    stroke={lineColor}
+                    strokeWidth={1}
+                    strokeDasharray="2 2"
+                    strokeOpacity={0.6}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
               )}
               {days.map((day, index) => (
                 <rect
@@ -195,18 +237,25 @@ const WeeklyPlaytimeCard = () => {
                   width={CHART_DAY_UNIT}
                   height={CHART_HEIGHT}
                   fill="transparent"
-                  onMouseEnter={() => setHoveredIndex(index)}
+                  onMouseEnter={() => {
+                    setHoveredIndex(index);
+                    setLastHoveredIndex(index);
+                  }}
                 >
                   <title>{`${day.date} \u00b7 ${formatDuration(day.seconds)}`}</title>
                 </rect>
               ))}
             </svg>
           )}
-          <HStack justifyContent="space-between">
-            <Text fontSize="2xs" className="secondary-text">
+          <HStack
+            justifyContent="space-between"
+            alignItems="center"
+            spacing={2}
+          >
+            <Text fontSize="2xs" className="secondary-text" whiteSpace="nowrap">
               {days.length ? shortDate(days[0].date) : ""}
             </Text>
-            <Text fontSize="2xs" className="secondary-text">
+            <Text fontSize="2xs" className="secondary-text" whiteSpace="nowrap">
               {t("LaunchPage.weeklyPlaytime.today")}
             </Text>
           </HStack>
