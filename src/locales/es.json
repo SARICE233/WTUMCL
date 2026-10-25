@@ -758,7 +758,7 @@
   },
   "EnableExtensionConfirmDialog": {
     "title": "Habilitar Extensión",
-    "body": "¿Está seguro de que desea habilitar la extensión <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) de <hl>{{author}}</hl>?",
+    "body": "¿Está seguro de que desea habilitar la extensión <hl>{{name}}</hl> (<hl>{{identifier}}</hl>) de <hl>{{author}}</hl>? ",
     "button": {
       "enable": "Habilitar"
     },
