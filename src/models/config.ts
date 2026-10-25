@@ -314,7 +314,7 @@ export const defaultConfig: LauncherConfig = {
     theme: {
       primaryColor: "blue",
       colorMode: "light",
-      useLiquidGlassDesign: false,
+      useLiquidGlassDesign: true,
       headNavStyle: "adaptive",
     },
     font: {

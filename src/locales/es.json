@@ -291,7 +291,7 @@
         },
         "useLiquidGlassDesign": {
           "title": "Efecto de Vidrio Líquido",
-          "description": "Cuando está habilitado, partes de la interfaz usarán el efecto 'Vidrio Líquido', lo que puede afectar el rendimiento."
+          "description": "Cuando está habilitado, la barra de navegación, las tarjetas, el botón de inicio y la información de la página de inicio usarán el efecto 'Vidrio Líquido', lo que puede afectar el rendimiento."
         },
         "headNavStyle": {
           "title": "Estilo de Barra de Navegación",

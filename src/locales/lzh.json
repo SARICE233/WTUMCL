@@ -291,7 +291,7 @@
         },
         "useLiquidGlassDesign": {
           "title": "液璃之效",
-          "description": "啟後，部分介面將使用「液態玻璃」效果，這或會影響效能"
+          "description": "啟後，導欄、卡片、啟動之鈕與啟動頁之訊息流將使用「液態玻璃」效果，這或會影響效能"
         },
         "headNavStyle": {
           "title": "上方導欄之式",

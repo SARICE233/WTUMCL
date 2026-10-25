@@ -291,7 +291,7 @@
         },
         "useLiquidGlassDesign": {
           "title": "Liquid Glass Effect",
-          "description": "When enabled, parts of the interface will use the 'Liquid Glass' effect, which may impact performance."
+          "description": "When enabled, the navigation bar, cards, the launch button and the launch page information feed will use the 'Liquid Glass' effect, which may impact performance."
         },
         "headNavStyle": {
           "title": "Navigation Bar Style",

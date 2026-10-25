@@ -291,7 +291,7 @@
         },
         "useLiquidGlassDesign": {
           "title": "Effet verre liquide",
-          "description": "Une fois activé, certaines interfaces utiliseront l'effet 'Verre liquide', ce qui peut affecter les performances"
+          "description": "Une fois activé, la barre de navigation, les cartes, le bouton de lancement et le fil d'actualité de la page de lancement utiliseront l'effet 'Verre liquide', ce qui peut affecter les performances"
         },
         "headNavStyle": {
           "title": "Style de la barre de navigation supérieure",
