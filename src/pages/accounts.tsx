@@ -194,6 +194,13 @@ const AccountsPage = () => {
     if (!player) {
       return;
     }
+    // Microsoft capes are picked from the account's Mojang cape list in the
+    // texture manager: Mojang has no cape upload endpoint, so the local PNG
+    // dialog below could only fail for these accounts.
+    if (player.playerType === PlayerType.Microsoft) {
+      onManageSkinModalOpen();
+      return;
+    }
     const capePath = await open({
       multiple: false,
       filters: [
