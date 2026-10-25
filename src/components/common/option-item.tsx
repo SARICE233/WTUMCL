@@ -59,8 +59,22 @@ export const OptionItem: React.FC<OptionItemProps> = ({
   ...boxProps
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const { config } = useLauncherConfig();
+  const primaryColor = config.appearance.theme.primaryColor;
+  const isClickable = isFullClickZone && !!boxProps.onClick;
 
   const palettes = useColorModeValue([100, 200, 300], [900, 800, 700]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    boxProps.onKeyDown?.(e);
+    if (!isClickable || e.defaultPrevented || e.target !== e.currentTarget) {
+      return;
+    }
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.currentTarget.click();
+    }
+  };
 
   const titleLineClampProps: TextProps = {
     noOfLines: maxTitleLines,
@@ -132,6 +146,19 @@ export const OptionItem: React.FC<OptionItemProps> = ({
         cursor={isFullClickZone ? "pointer" : "default"}
         p={0.5}
         {...boxProps}
+        role={boxProps.role ?? (isClickable ? "button" : undefined)}
+        tabIndex={boxProps.tabIndex ?? (isClickable ? 0 : undefined)}
+        onKeyDown={handleKeyDown}
+        _focusVisible={
+          boxProps._focusVisible ??
+          (isClickable
+            ? {
+                outline: "2px solid",
+                outlineColor: `${primaryColor}.500`,
+                outlineOffset: "2px",
+              }
+            : undefined)
+        }
       >
         <HStack spacing={2.5} overflow="hidden">
           {prefixElement && (
