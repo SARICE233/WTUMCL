@@ -443,3 +443,49 @@
 .launch-button-shell[data-liquid="true"] .launch-add-zone:focus-visible {
   outline-color: var(--chakra-colors-gray-500);
 }
+
+/* ------------------------------------------------------------------------- */
+/* Dark mode pairs                                                           */
+/*                                                                           */
+/* liquid-glass.module.css flips the shine to a dark pane in dark mode, so    */
+/* the ink and the quarter affordance go back to the light-on-dark values the */
+/* plain launch button already uses. Everything stays gated on                */
+/* [data-liquid="true"], so the glass-off button never matches these rules.   */
+/* ------------------------------------------------------------------------- */
+
+/* Chakra's dark body ink (whiteAlpha-900) on the dark glass. */
+:global([data-theme="dark"])
+  .launch-button-shell[data-liquid="true"]
+  .launch-button-label {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+:global([data-theme="dark"])
+  .launch-button-shell[data-liquid="true"]
+  .launch-add-zone {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+:global([data-theme="dark"])
+  .launch-button-shell[data-liquid="true"]
+  .launch-divider {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+:global([data-theme="dark"])
+  .launch-button-shell[data-liquid="true"]
+  .launch-add-icon
+  circle {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+:global([data-theme="dark"])
+  .launch-button-shell[data-liquid="true"]
+  .launch-add-zone:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.72);
+}

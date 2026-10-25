@@ -535,3 +535,83 @@
 .playerSkinControlsGlass button {
   color: rgba(17, 17, 17, 0.72);
 }
+
+/* ------------------------------------------------------------------------- */
+/* Dark mode pairs                                                           */
+/*                                                                           */
+/* The glass chips use the same material as the launch button, so they flip  */
+/* with it: the dark shine pane of liquid-glass.module.css plus whiteAlpha   */
+/* ink, instead of the pale pane and the dark ink of light mode. Every rule  */
+/* only matches a glass class, and every rule is dark-scoped.                */
+/* ------------------------------------------------------------------------- */
+
+:global([data-theme="dark"]) .glassChipBar {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(25, 28, 34, 0.64),
+    rgba(25, 28, 34, 0.48)
+  );
+}
+
+:global([data-theme="dark"]) .glassChipBar button {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+:global([data-theme="dark"]) .glassChipBar button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+:global([data-theme="dark"]) .glassSegmented {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(25, 28, 34, 0.64),
+    rgba(25, 28, 34, 0.48)
+  ) !important;
+}
+
+:global([data-theme="dark"]) .glassSegmented > div:first-of-type {
+  background-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+:global([data-theme="dark"]) .glassSegmented button {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+:global([data-theme="dark"]) .glassSegmented button:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+:global([data-theme="dark"]) .glassSegmented button:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+:global([data-theme="dark"]) .playerSkinBadge.playerSkinBadgeGlass {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(25, 28, 34, 0.64),
+    rgba(25, 28, 34, 0.48)
+  );
+  color: rgba(255, 255, 255, 0.92);
+}
+
+:global([data-theme="dark"]) .playerSkinControls.playerSkinControlsGlass {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(25, 28, 34, 0.64),
+    rgba(25, 28, 34, 0.48)
+  );
+  color: rgba(255, 255, 255, 0.88);
+}
+
+:global([data-theme="dark"]) .playerSkinControlsGlass :global(.secondary-text) {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+:global([data-theme="dark"]) .playerSkinControlsGlass button {
+  color: rgba(255, 255, 255, 0.82);
+}
