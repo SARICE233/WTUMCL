@@ -103,6 +103,12 @@ const HomeButtonGroup = () => {
   const [launchRingColor] = useToken("colors", [`${primaryColor}.500`]);
   const subtitleColor = useColorModeValue("gray.600", "gray.400");
   const compactButtonGroupColorScheme = useColorModeValue("blackAlpha", "gray");
+  // The glass launch surface flips with the color mode, so its label ink must
+  // follow it; the plain (glass-off) button keeps its original white label.
+  const glassLaunchLabelColor = useColorModeValue(
+    "rgba(17, 17, 17, 0.9)",
+    "rgba(255, 255, 255, 0.92)"
+  );
   const { selectedPlayer, selectedInstance, getPlayerList, getInstanceList } =
     useGlobalData();
 
@@ -295,6 +301,9 @@ const HomeButtonGroup = () => {
               spacing={1.5}
               w="100%"
               color="white"
+              style={
+                useLiquidGlass ? { color: glassLaunchLabelColor } : undefined
+              }
               position="relative"
               zIndex={useLiquidGlass ? 3 : undefined}
               className={styles["launch-button-label"]}
